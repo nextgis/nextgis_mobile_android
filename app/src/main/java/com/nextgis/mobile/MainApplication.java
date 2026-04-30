@@ -102,7 +102,7 @@ public class MainApplication extends GISApplication
 
     private Tracker mTracker;
 
-    List<Integer> layersToRefresh = new ArrayList<>();
+
 
     @Override
     public void onCreate() {
@@ -133,14 +133,9 @@ public class MainApplication extends GISApplication
         updateFromOldVersion();
         NGWUtil.NGUA = "ng_mobile";
         NGWUtil.UUID = TrackerService.getUid(this);
-        initializeMapbox();
     }
 
-    private void initializeMapbox() {
-        MapLibre.getInstance(this, "sjdkfhjkdshfkjhsdkjf", WellKnownTileServer.MapTiler);
-        //TileLoadingMeasurementUtils.setUpTileLoadingMeasurement();
-        MapStrictMode.setStrictModeEnabled(true);
-    }
+
 
     private void setExceptionHandler() {
         ExceptionReporter handler = new ExceptionReporter(getTracker(), Thread.getDefaultUncaughtExceptionHandler(), this);
@@ -189,35 +184,6 @@ public class MainApplication extends GISApplication
         OfflineSyncIntentService.startActionFoo(this, lpath);
     }
 
-    @Override
-    public void setLayerToRefresh(int id) {
-        synchronized (layersToRefresh){
-            layersToRefresh.add(id);
-        }
-    }
-
-    @Override
-    public void removeLayerToRefresh(int id) {
-        try {
-            synchronized (layersToRefresh) {
-                layersToRefresh.removeIf(integer -> id == integer);
-            }
-        } catch (Exception ex){
-            Log.e(TAG, Objects.requireNonNull(ex.getMessage()));
-        }
-    }
-
-    @Override
-    public List<Integer> getlayersToRefresh() {
-        try {
-            synchronized (layersToRefresh) {
-                return new ArrayList<>(layersToRefresh);
-            }
-        } catch (Exception ex){
-            Log.e(TAG, Objects.requireNonNull(ex.getMessage()));
-            return new ArrayList<>();
-        }
-    }
 
     @Override
     public void sendEvent(String category, String action, String label) {
@@ -292,36 +258,7 @@ public class MainApplication extends GISApplication
         } catch (PackageManager.NameNotFoundException ignored) { }
     }
 
-    @Override
-    public MapBase getMap()
-    {
-        if (null != mMap) {
-            return mMap;
-        }
-
-        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        File defaultPath = getExternalFilesDir(SettingsConstants.KEY_PREF_MAP);
-        if (defaultPath == null) {
-            defaultPath = new File(getFilesDir(), SettingsConstants.KEY_PREF_MAP);
-        }
-
-        String mapPath = mSharedPreferences.getString(SettingsConstants.KEY_PREF_MAP_PATH, defaultPath.getPath());
-        String mapName = mSharedPreferences.getString(SettingsConstantsUI.KEY_PREF_MAP_NAME, "default");
-
-        File mapFullPath = new File(mapPath, mapName + MAP_EXT);
-
-        final Bitmap bkBitmap = getMapBackground();
-        mMap = new MapDrawable(bkBitmap, this, mapFullPath, new LayerFactoryUI());
-        mMap.setName(mapName);
-        mMap.load();
-
-        checkTracksLayerExist();
-
-        return mMap;
-    }
-
-
-    protected void checkTracksLayerExist()
+    public void checkTracksLayerExist()
     {
         List<ILayer> tracks = new ArrayList<>();
         LayerGroup.getLayersByType(mMap, Constants.LAYERTYPE_TRACKS, tracks);

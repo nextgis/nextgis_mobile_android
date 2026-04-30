@@ -155,8 +155,11 @@ import kotlin.math.tan
 public class MapFragment
 
     : Fragment(), MapViewEventListener, GpsEventListener, EditEventListener,
-    View.OnClickListener, OnRulerChanged, OnMapReadyCallback , MaplibreMapInteraction,
-    MapLibreMap.OnCameraIdleListener {
+    View.OnClickListener, OnRulerChanged,
+    OnMapReadyCallback ,
+    MaplibreMapInteraction,
+    MapLibreMap.OnCameraIdleListener
+{
     protected var mTolerancePX: Float = 0f
 
     protected var mPreferences: SharedPreferences? = null
