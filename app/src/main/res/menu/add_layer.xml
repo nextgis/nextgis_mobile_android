@@ -36,4 +36,9 @@
     <item
         android:id="@+id/menu_add_ngw"
         android:title="@string/ngw_layer_add"/>
+
+    <item
+        android:id="@+id/action_mask_layer"
+        android:title="Mask Layer"
+        />
 </menu>
