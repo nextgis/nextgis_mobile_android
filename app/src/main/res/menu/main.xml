@@ -3,7 +3,6 @@
   ~ Purpose:  Mobile GIS for Android.
   ~ Author:   Dmitry Baryshnikov (aka Bishop), bishop.dev@gmail.com
   ~ Author:   NikitaFeodonit, nfeodonit@yandex.com
-  ~ Author:   Stanislav Petriakov, becomeglory@gmail.com
   ~ ******************************************************************************
   ~ Copyright (c) 2012-2016 NextGIS, info@nextgis.com
   ~
@@ -43,6 +42,12 @@
         android:icon="@drawable/ic_action_maps_directions_walk"
         android:orderInCategory="50"
         android:title="@string/track_start"
+        app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/action_mask_layer"
+        android:orderInCategory="70"
+        android:title="@string/action_mask_layer"
         app:showAsAction="never"/>
 
     <item
