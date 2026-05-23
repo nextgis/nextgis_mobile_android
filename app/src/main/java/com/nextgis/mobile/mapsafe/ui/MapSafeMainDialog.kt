@@ -8,7 +8,7 @@ import androidx.fragment.app.DialogFragment
 /**
  * Main MapSafe entry dialog.
  *
- * Future versions will launch:
+ * This mirrors the MapSafe web/QGIS structure by separating:
  * - Safeguard features
  * - Access features
  */
@@ -22,8 +22,13 @@ class MapSafeMainDialog : DialogFragment() {
                     "Safeguard Features",
                     "Access Features"
                 )
-            ) { _, _ ->
-                // Placeholder for future navigation.
+            ) { _, which ->
+                when (which) {
+                    0 -> SafeguardFeaturesDialog()
+                        .show(parentFragmentManager, "SafeguardFeaturesDialog")
+                    1 -> AccessFeaturesDialog()
+                        .show(parentFragmentManager, "AccessFeaturesDialog")
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .create()
