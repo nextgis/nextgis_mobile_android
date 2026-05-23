@@ -45,9 +45,9 @@
         app:showAsAction="never"/>
 
     <item
-        android:id="@+id/action_mask_layer"
+        android:id="@+id/action_mapsafe"
         android:orderInCategory="70"
-        android:title="@string/action_mask_layer"
+        android:title="MapSafe"
         app:showAsAction="never"/>
 
     <item
