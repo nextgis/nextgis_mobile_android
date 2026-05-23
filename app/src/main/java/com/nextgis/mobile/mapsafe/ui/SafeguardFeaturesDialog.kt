@@ -21,8 +21,11 @@ class SafeguardFeaturesDialog : DialogFragment() {
                     "Encrypt",
                     "Blockchain Notarisation"
                 )
-            ) { _, _ ->
-                // Future navigation target.
+            ) { _, which ->
+                when (which) {
+                    0 -> AnonymiseDialog()
+                        .show(parentFragmentManager, "AnonymiseDialog")
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .create()
