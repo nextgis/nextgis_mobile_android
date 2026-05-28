@@ -375,6 +375,14 @@ public class MapFragment
         }
     }
 
+    override fun checkCreateIfNeed() {
+        // its from collector proj - no need do anything here
+    }
+
+    override fun setMapLayersLoaded() {
+        // use in collector
+    }
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -392,7 +400,7 @@ public class MapFragment
     }
 
     override fun onMapReady(mapboxMap: MapLibreMap) {
-        mMapRef.get()!!.map!!.setMapFragment(this)
+        mMapRef.get()!!.map!!.setMapContext(this)
 
         val  interceptor = (mApp as IGISApplication).getAuthInterceptor();
 
@@ -2769,7 +2777,10 @@ public class MapFragment
 
 
     override fun onLocationChanged(location: Location?) {
+        Log.d("TRACCK", "mapFrag  onLocationChanged" );
         if (location != null) {
+            Log.d("TRACCK", "mapFrag  onLocationChanged location" );
+
 
             if (tmpFirstLocation != null && tmpFirstLocation!!.latitude == location.latitude &&
                 tmpFirstLocation!!.longitude == location.longitude )
@@ -2841,6 +2852,7 @@ public class MapFragment
     }
 
     override fun onBestLocationChanged(location: Location) {
+        onLocationChanged(location)
     }
 
     private fun fillStatusPanel(location: Location?) {
