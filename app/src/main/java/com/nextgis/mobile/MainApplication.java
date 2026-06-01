@@ -273,6 +273,17 @@ public class MainApplication extends GISApplication
         }
     }
 
+    @Override
+    public void setPostponedLayerId(int layerId) {
+        // for collector part
+    }
+
+    @Override
+    public int getPostponedLayerId() {
+        // for collector part
+        return 0;
+    }
+
 
     @Override
     public String getAuthority()

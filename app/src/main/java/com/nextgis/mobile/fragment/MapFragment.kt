@@ -415,7 +415,8 @@ public class MapFragment
         HttpRequestImpl.setOkHttpClient(client)
 
         val mapboxMaplibre = mapboxMap
-        mMapRef.get()!!.map!!.maplibreMap = mapboxMaplibre
+
+        mMapRef.get()!!.map!!.setMaplibreMap(mapboxMaplibre)
 
         mapboxMaplibre.uiSettings.isRotateGesturesEnabled = false
         mapboxMaplibre.uiSettings.isCompassEnabled = false
@@ -540,20 +541,20 @@ public class MapFragment
             }
 
             com.nextgis.maplibui.R.id.menu_edit_add_new_line  ->{
-                val center = mMapRef.get()!!.map!!.maplibreMap.cameraPosition.target
-                val result = mMapRef.get()!!.map!!.addNewLine(center, mMapRef.get()!!.map!!.maplibreMap.getProjection());
+                val center = mMapRef.get()!!.map!!.maplibreMap.get()?.cameraPosition?.target
+                val result = mMapRef.get()!!.map!!.addNewLine(center, mMapRef.get()!!.map!!.maplibreMap.get()?.getProjection());
                 return result
             }
 
             com.nextgis.maplibui.R.id.menu_edit_add_new_point  ->{
-                val center = mMapRef.get()!!.map!!.maplibreMap.cameraPosition.target
+                val center = mMapRef.get()!!.map!!.maplibreMap.get()?.cameraPosition?.target
                 val result = mMapRef.get()!!.map!!.addNewPoint(center);
                 return result
             }
 
             com.nextgis.maplibui.R.id.menu_edit_add_new_inner_ring  ->{
-                val center = mMapRef.get()!!.map!!.maplibreMap.cameraPosition.target
-                val result = mMapRef.get()!!.map!!.addHole( center, mMapRef.get()!!.map!!.maplibreMap.getProjection());
+                val center = mMapRef.get()!!.map!!.maplibreMap.get()?.cameraPosition?.target
+                val result = mMapRef.get()!!.map!!.addHole( center, mMapRef.get()!!.map!!.maplibreMap.get()?.getProjection());
                 return result
             }
 
@@ -568,13 +569,13 @@ public class MapFragment
             }
 
             com.nextgis.maplibui.R.id.menu_edit_add_new_polygon  ->{
-                val center = mMapRef.get()!!.map!!.maplibreMap.cameraPosition.target
-                val result = mMapRef.get()!!.map!!.addNewPolygon(center, mMapRef.get()!!.map!!.maplibreMap.getProjection());
+                val center = mMapRef.get()!!.map!!.maplibreMap.get()?.cameraPosition?.target
+                val result = mMapRef.get()!!.map!!.addNewPolygon(center, mMapRef.get()!!.map!!.maplibreMap.get()?.getProjection());
                 return result
             }
 
             com.nextgis.maplibui.R.id.menu_edit_move_point_to_center  ->{
-                val center = mMapRef.get()!!.map!!.maplibreMap.cameraPosition.target
+                val center = mMapRef.get()!!.map!!.maplibreMap.get()?.cameraPosition?.target
                 return mMapRef.get()!!.map!!.moveToPoint(center);
             }
 
@@ -1211,7 +1212,7 @@ public class MapFragment
         val mapLibreMap = mMapRef.get()!!.map.maplibreMap
         if (mapLibreMap != null) {
             //return "${mapLibreMap.zoom.toInt()}z"
-            return "%.1fz".format(Locale.US, mapLibreMap.zoom)
+            return "%.1fz".format(Locale.US, mapLibreMap.get()?.zoom)
         }
         else
             return ".z"
@@ -1220,7 +1221,7 @@ public class MapFragment
     fun getCurrentZoom(): Int {
         val mapLibreMap = mMapRef.get()!!.map.maplibreMap
         if (mapLibreMap != null)
-            return mapLibreMap.zoom.toInt()
+            return mapLibreMap.get()?.zoom!!.toInt()
         else
             return -1
 
@@ -1307,7 +1308,7 @@ public class MapFragment
     protected fun setMapLibreZoomOutEnabled() {
         val mapLibreMap = mMapRef.get()!!.map.maplibreMap
         if (mapLibreMap != null){
-            if (mapLibreMap.zoom <= mapLibreMap.minZoomLevel) {
+            if (mapLibreMap.get()!!.zoom <= mapLibreMap.get()!!.minZoomLevel) {
                 mivZoomOut!!.isEnabled = false
                 return
             }
@@ -1319,7 +1320,7 @@ public class MapFragment
     protected fun setMapLibreZoomInEnabled() {
         val mapLibreMap = mMapRef.get()!!.map.maplibreMap
         if (mapLibreMap != null){
-            if (mapLibreMap.zoom  >= mapLibreMap.maxZoomLevel) {
+            if (mapLibreMap.get()!!.zoom  >= mapLibreMap.get()!!.maxZoomLevel) {
                 mivZoomIn!!.isEnabled = false
                 return
             }
@@ -1453,7 +1454,7 @@ public class MapFragment
         if (null != mMapRef.get()) {
             if (mMapRef.get()!!.map!!.maplibreMap != null) {
                 edit.putFloat(SettingsConstantsUI.KEY_PREF_ZOOM_LEVEL,
-                    mMapRef.get()!!.map!!.maplibreMap.cameraPosition.zoom.toFloat())
+                    mMapRef.get()!!.map!!.maplibreMap.get()!!.cameraPosition!!.zoom!!.toFloat())
 
                 val point2 = mMapRef.get()!!.map.getMaplibreCenter()
                 edit.putLong(
@@ -2289,9 +2290,10 @@ public class MapFragment
         editLayerOverlay!!.setOverlayPoint(screenX, screenY)
 
         val pointf = PointF(screenX.toFloat(), screenY.toFloat())
-        val latLng: LatLng = mMapRef.get()!!.map!!.maplibreMap.getProjection().fromScreenLocation(pointf)
+        val latLng: LatLng? = mMapRef.get()!!.map!!.maplibreMap.get()?.getProjection()?.fromScreenLocation(pointf)
 
-        mMapRef.get()!!.map.addPressedPoint(latLng)
+        if  (latLng != null)
+            mMapRef.get()!!.map.addPressedPoint(latLng)
     }
 
     fun showOverlayPointMultiChoise(
@@ -2556,8 +2558,8 @@ public class MapFragment
                 val screenPointMin = PointF(dMinX, dMinY)
                 val screenPointMax = PointF(dMaxX, dMaxY)
 
-                val minPoint = mMapRef.get()!!.map!!.maplibreMap.getProjection().fromScreenLocation(screenPointMin)
-                val maxPoint = mMapRef.get()!!.map!!.maplibreMap.getProjection().fromScreenLocation(screenPointMax)
+                val minPoint = mMapRef.get()!!.map!!.maplibreMap.get()?.getProjection()!!.fromScreenLocation(screenPointMin)
+                val maxPoint = mMapRef.get()!!.map!!.maplibreMap.get()?.getProjection()!!.fromScreenLocation(screenPointMax)
 
 //                Log.e("CCCLLIICK", " click at: " + screenx + " - " + " screeny: " + screeny)
 //                Log.e("CCCLLIICK", "points lnglong " + minPoint.longitude + " : " +  minPoint.latitude + " : "
@@ -2581,7 +2583,8 @@ public class MapFragment
                 }
                 //val exactEnv: GeoEnvelope = GeoEnvelope(minx,maxx , miny, maxy)
                 val pointClick = PointF(screenx, screeny)
-                val exactEnv: GeoEnvelope = getClickEnelope(pointClick, mMapRef.get()!!.map!!.maplibreMap)
+                val exactEnv: GeoEnvelope = getClickEnelope(pointClick,
+                    mMapRef.get()!!.map!!.maplibreMap.get()!!)
 
                 val point = GeoPoint(exactEnv.center.x, exactEnv.center.y)
                 point.crs = GeoConstants.CRS_WEB_MERCATOR
@@ -3038,12 +3041,12 @@ public class MapFragment
 
             val targetPosition = CameraPosition.Builder()
                 .target(LatLng(lonLat[1], lonLat[0]))
-                .zoom(mMapRef.get()!!.map.maplibreMap.cameraPosition.zoom)
+                .zoom(mMapRef.get()!!.map.maplibreMap.get()!!.cameraPosition!!.zoom)
                 .bearing(0.0)
                 .tilt(0.0)
                 .build()
 
-                mMapRef.get()!!.map.maplibreMap.animateCamera(
+                mMapRef.get()!!.map.maplibreMap.get()?.animateCamera(
                 CameraUpdateFactory.newCameraPosition(targetPosition),
                 2000)
         } else {
@@ -3114,21 +3117,21 @@ public class MapFragment
                 // test
                 //mMapRef.get()!!.map!!.changePointColor()
 
-                val currentZoom =  mMapRef.get()!!.map.maplibreMap.cameraPosition.zoom
+                val currentZoom =  mMapRef.get()!!.map.maplibreMap.get()!!.cameraPosition!!.zoom
                 var newZoom = currentZoom + 1.0
-                if (newZoom > mMapRef.get()!!.map.maplibreMap.maxZoomLevel)
-                    newZoom = mMapRef.get()!!.map.maplibreMap.maxZoomLevel
+                if (newZoom > mMapRef.get()!!.map.maplibreMap.get()?.maxZoomLevel!!)
+                    newZoom = mMapRef.get()!!.map.maplibreMap.get()?.maxZoomLevel!!
                 val cameraUpdate = CameraUpdateFactory.zoomTo(newZoom)
-                mMapRef.get()!!.map.maplibreMap.animateCamera(cameraUpdate)
+                mMapRef.get()!!.map.maplibreMap.get()?.animateCamera(cameraUpdate)
             }
             R.id.action_zoom_out -> {
                 //if (v.isEnabled) mMapRef.get()!!.zoomOut()
-                val currentZoom = mMapRef.get()!!.map.maplibreMap.cameraPosition.zoom
+                val currentZoom = mMapRef.get()!!.map.maplibreMap.get()?.cameraPosition!!.zoom
                 var newZoom = currentZoom - 1.0
-                if (newZoom < mMapRef.get()!!.map.maplibreMap.minZoomLevel)
-                    newZoom = mMapRef.get()!!.map.maplibreMap.minZoomLevel
+                if (newZoom < mMapRef.get()!!.map.maplibreMap.get()?.minZoomLevel!!)
+                    newZoom = mMapRef.get()!!.map.maplibreMap.get()?.minZoomLevel!!
                 val cameraUpdate = CameraUpdateFactory.zoomTo(newZoom)
-                mMapRef.get()!!.map.maplibreMap.animateCamera(cameraUpdate)
+                mMapRef.get()!!.map.maplibreMap.get()?.animateCamera(cameraUpdate)
             }
 
             R.id.add_point_by_tap -> if (mRulerOverlay!!.isMeasuring) {
