@@ -30,6 +30,10 @@
         android:title="@string/action_add_local"/>
 
     <item
+        android:id="@+id/menu_add_by_url"
+        android:title="@string/action_add_by_url"/>
+
+    <item
         android:id="@+id/menu_add_remote"
         android:title="@string/create_qms_layer"/>
 

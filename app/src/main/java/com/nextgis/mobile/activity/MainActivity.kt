@@ -23,6 +23,7 @@
 package com.nextgis.mobile.activity
 
 import android.Manifest
+import android.accounts.AccountManager
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
@@ -45,6 +46,7 @@ import android.os.Looper
 import android.preference.PreferenceManager
 import android.provider.Settings
 import android.text.SpannableString
+import android.text.TextUtils
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import android.util.Log
@@ -52,6 +54,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -61,6 +64,8 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.loader.app.LoaderManager
+import androidx.loader.content.Loader
 import com.google.android.material.snackbar.Snackbar
 import com.hypertrack.hyperlog.HyperLog
 import com.nextgis.maplib.api.GpsEventListener
@@ -68,24 +73,37 @@ import com.nextgis.maplib.api.IGISApplication
 import com.nextgis.maplib.api.ILayer
 import com.nextgis.maplib.datasource.GeoMultiPoint
 import com.nextgis.maplib.datasource.GeoPoint
+import com.nextgis.maplib.datasource.ngw.Connection
+import com.nextgis.maplib.datasource.ngw.Connection.NGWResourceTypeRasterLayer
+import com.nextgis.maplib.datasource.ngw.Connection.NGWResourceTypeVectorLayer
+import com.nextgis.maplib.datasource.ngw.INGWResource
+import com.nextgis.maplib.datasource.ngw.LayerWithStyles
+import com.nextgis.maplib.datasource.ngw.TokenContainer
+import com.nextgis.maplib.datasource.ngw.WebMap
 import com.nextgis.maplib.map.MapDrawable
+import com.nextgis.maplib.map.NGWRasterLayer
 import com.nextgis.maplib.map.NGWVectorLayer
 import com.nextgis.maplib.map.VectorLayer
 import com.nextgis.maplib.util.AccountUtil
 import com.nextgis.maplib.util.Constants
+import com.nextgis.maplib.util.Constants.NGW_ACCOUNT_GUEST
 import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.maplib.util.MapUtil
 import com.nextgis.maplib.util.NGWUtil
 import com.nextgis.maplib.util.NetworkUtil
-import com.nextgis.maplibui.GISApplication
 import com.nextgis.maplibui.activity.NGActivity
 import com.nextgis.maplibui.api.IChooseLayerResult
 import com.nextgis.maplibui.api.IVectorLayerUI
+import com.nextgis.maplibui.dialog.SelectNGWResourceDialog.fillConnections
 import com.nextgis.maplibui.fragment.BottomToolbar
 import com.nextgis.maplibui.fragment.LayerFillProgressDialogFragment
+import com.nextgis.maplibui.mapui.NGWRasterLayerUI
+import com.nextgis.maplibui.mapui.NGWWebMapLayerUI
 import com.nextgis.maplibui.mapui.TrackLayerUI.CODE_TRACK_LIST
 import com.nextgis.maplibui.overlay.EditLayerOverlay
+import com.nextgis.maplibui.service.HTTPLoader
+import com.nextgis.maplibui.service.LayerFillService
 import com.nextgis.maplibui.service.TrackerService
 import com.nextgis.maplibui.service.TrackerService.BackgroundPermissionCallback
 import com.nextgis.maplibui.util.ConstantsUI
@@ -97,6 +115,8 @@ import com.nextgis.maplibui.util.ControlHelper
 import com.nextgis.maplibui.util.NGIDUtils
 import com.nextgis.maplibui.util.SettingsConstantsUI
 import com.nextgis.maplibui.util.UiUtil
+import com.nextgis.maplibui.util.UiUtil.showSimpleOKAlert
+import com.nextgis.maplibui.util.UiUtil.showSimpleToast
 import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.R
 import com.nextgis.mobile.fragment.LayersFragment
@@ -109,16 +129,22 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URI
+import java.net.URISyntaxException
 import java.util.Calendar
 import java.util.GregorianCalendar
 import java.util.Locale
+import java.util.concurrent.CompletableFuture.runAsync
+import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
  * Main activity. Map and drawer with layers list created here
  */
-class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
+class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
+    androidx.loader.app.LoaderManager.LoaderCallbacks<TokenContainer>{
 
 
 //    lateinit var settingsFrame : FrameLayout
@@ -126,7 +152,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
 
     var mapFragment: MapFragment? = null
         protected set
-    protected var mLayersFragment: LayersFragment? = null
+    public var mLayersFragment: LayersFragment? = null
     private var mMessageReceiver: MessageReceiver? = null
     protected var mToolbar: Toolbar? = null
 
@@ -135,6 +161,16 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
 
     protected var mBackPressed: Long = 0
     protected var mTrackItem: MenuItem? = null
+
+    var originalUrl = ""
+    var urlByUrlGuest : String = ""
+    var remoteId: String = ""
+    protected var mLoader: Loader<TokenContainer>? = null
+    var startNGWCreateforLaterCreation = false;
+    //protected var mUrlWithProtocol: AtomicReference<String?> = AtomicReference<String?>()
+    var isActivityVisible: Boolean = false
+    var isLoaderCompelte = true
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,11 +218,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
 
         if (mLayersFragment != null && null != mLayersFragment!!.view) {
             mLayersFragment?.view?.setBackgroundColor(
-                    ContextCompat.getColor(
-                        this,
-                        com.nextgis.maplibui.R.color.color_grey_050
-                    )
+                ContextCompat.getColor(
+                    this,
+                    com.nextgis.maplibui.R.color.color_grey_050
                 )
+            )
             // Set up the drawer.
             mLayersFragment!!.setUp(R.id.layers, drawerLayout, app.map as MapDrawable)
         }
@@ -714,7 +750,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
     }
 
 
-    fun addLocalLayer() {
+    fun   addLocalLayer() {
         // ACTION_OPEN_DOCUMENT is the intent to choose a file via the system's file
         // browser.
         // https://developer.android.com/guide/topics/providers/document-provider.html#client
@@ -727,21 +763,277 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
         intent.addCategory(Intent.CATEGORY_OPENABLE)
 
         try {
-            startActivityForResult(
-                Intent.createChooser(intent, getString(R.string.select_file)),
-                FILE_SELECT_CODE
-            )
+            startActivityForResult(Intent.createChooser(intent, getString(R.string.select_file)), FILE_SELECT_CODE)
         } catch (ex: ActivityNotFoundException) {
             //TODO: open select local resource dialog
             // Potentially direct the user to the Market with a Dialog
-            Toast.makeText(
-                this, getString(R.string.warning_install_file_manager), Toast.LENGTH_SHORT
-            )
-                .show()
+            Toast.makeText(this, getString(R.string.warning_install_file_manager), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun addLocalLayerByUrl() {
+        // show alert for enter url
+        val editText = EditText(this)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.action_add_by_url)
+            .setView(editText)
+            .setPositiveButton("OK") { _, _ ->
+                val text = editText.text.toString()
+                checkOpenByUrl(text, true)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    fun checkOpenByUrl(url: String, firstRun : Boolean){
+        // check url
+        if (TextUtils.isEmpty(url)){
+            if (isActivityVisible)
+                showSimpleOKAlert(this, getString(R.string.error_empty_url))
+            else
+                showSimpleToast(this, getString(R.string.error_empty_url))
+            return
+        }
+        if (!NetworkUtil.isValidUri(url)) {
+            if (isActivityVisible)
+                showSimpleOKAlert(this, getString( com.nextgis.maplibui.R.string.error_invalid_url))
+            else
+                showSimpleToast(this, getString( com.nextgis.maplibui.R.string.error_invalid_url))
+            return
+        }
+
+
+        mapFragment?.changeProgress(true, getString( R.string.check_resource))
+
+        parseNextgisUrl(url).onSuccess {
+            val accountManager = AccountManager.get(this);
+            val connections = fillConnections(this, accountManager)
+            var connectionExist = false
+
+            for (i in 0 until connections.childrenCount){
+                val connection = connections.getChild(i)
+                if (connection.name.equals(it.host)){
+                    connectionExist = true
+                    val id = it.resourceId.toLong()
+                    runAsync {
+                        if ((connection as Connection).connect((Constants.NGW_ACCOUNT_GUEST.equals(connection.getLogin())), id)){
+                            val resourceResult = connection.rootResource.reloadRoot()
+                            if (resourceResult.respCode == 404){
+                                runOnUiThread {
+                                    if (isActivityVisible)
+                                        showSimpleOKAlert(this, getString( R.string.resource_not_found_404))
+                                    else
+                                        showSimpleToast(this, getString( R.string.resource_not_found_404))
+                                    mapFragment?.changeProgress(false, "")
+                                }
+                                return@runAsync
+                            }
+
+                            if (resourceResult.respCode == -1 || resourceResult.respCode == 403){
+                                runOnUiThread {
+                                    if (isActivityVisible)
+                                        showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                    else
+                                        showSimpleToast(this, getString( R.string.resource_no_perm))
+                                    mapFragment?.changeProgress(false, "")
+                                }
+                                return@runAsync
+                            }
+
+                            if (resourceResult.resource == null){
+                                runOnUiThread {
+                                    if (isActivityVisible)
+                                        showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                    else
+                                        showSimpleToast(this, getString( R.string.resource_no_perm))
+                                    mapFragment?.changeProgress(false, "")
+
+                                }
+                                return@runAsync
+                            }
+
+                            if (resourceResult.resource != null && resourceResult.resource.mPermissions!= null
+                                && resourceResult.resource.mPermissions.has("data")
+                                && resourceResult.resource.mPermissions.getJSONObject("data").has("read")){
+                                //
+                                val readPerm = resourceResult.resource.mPermissions.getJSONObject("data").get("read")
+                                if (readPerm == null || readPerm == false){
+                                    runOnUiThread {
+                                        if (isActivityVisible)
+                                            showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                        else
+                                            showSimpleToast(this, getString( R.string.resource_no_perm))
+                                        mapFragment?.changeProgress(false, "")
+                                    }
+                                    return@runAsync
+                                } else {
+                                    // start create
+
+                                    val type= (resourceResult.resource as INGWResource).type
+                                    val app = application as MainApplication
+                                    if (type == NGWResourceTypeVectorLayer){
+                                        runOnUiThread {
+                                            val layer = resourceResult.resource as LayerWithStyles
+                                            // create or connect to fill layer with features
+                                            val intent = Intent(this, LayerFillService::class.java)
+                                            intent.setAction(LayerFillService.ACTION_ADD_TASK)
+                                            intent.putExtra(LayerFillService.KEY_NAME, layer.getName())
+                                            intent.putExtra(LayerFillService.KEY_ACCOUNT, connection.getName())
+                                            intent.putExtra(LayerFillService.KEY_REMOTE_ID, layer.getRemoteId())
+                                            intent.putExtra(LayerFillService.KEY_LAYER_GROUP_ID, (app.map as MapDrawable).id) // mGroupLayer.getId())
+                                            intent.putExtra(LayerFillService.KEY_INPUT_TYPE, LayerFillService.NGW_LAYER)
+
+                                            if (layer.getFormCount() > 0) {
+                                                val path = NGWUtil.getFormUrl(connection.getURL(), layer.getFormId(0))
+                                                intent.putExtra(LayerFillService.KEY_URI, Uri.parse(path))
+                                                intent.putExtra(LayerFillService.KEY_INPUT_TYPE, LayerFillService.VECTOR_LAYER_WITH_FORM)
+                                            }
+                                            LayerFillProgressDialogFragment.startFill(intent)
+                                            mapFragment?.changeProgress(false, "")
+                                        }
+                                    } else if (type == NGWResourceTypeRasterLayer){
+
+                                        runOnUiThread {
+                                            //create raster
+                                            if (resourceResult.resource is LayerWithStyles) {
+                                                val layer = resourceResult.resource as LayerWithStyles
+                                                // get first style
+                                                //val connection = layer.getConnection()
+                                                // create tiles url
+                                                val layerURL = layer.getTMSUrl(0)
+
+                                                if (layerURL == null) {
+                                                    if (isActivityVisible)
+                                                        showSimpleOKAlert(this, getString(com.nextgis.maplib.R.string.error_layer_create))
+                                                    else
+                                                        showSimpleToast(this, getString(com.nextgis.maplib.R.string.error_layer_create))
+                                                    mapFragment?.changeProgress(false, "")
+                                                    return@runOnUiThread
+                                                }
+
+                                                //create layer
+                                                val layerName = layer.getName()
+
+                                                val newLayer: NGWRasterLayer
+                                                if (resourceResult.resource is WebMap) {
+                                                    val webmap = NGWWebMapLayerUI((app.map as MapDrawable).getContext(), (app.map as MapDrawable).createLayerStorage())
+                                                    webmap.setChildren((resourceResult.resource as WebMap).getChildren())
+                                                    newLayer = webmap
+                                                } else {
+                                                    newLayer = NGWRasterLayerUI((app.map as MapDrawable).getContext(), (app.map as MapDrawable).createLayerStorage())
+                                                    newLayer.getExtents().set(layer.getExtent())
+                                                }
+
+                                                newLayer.setName(layerName)
+                                                newLayer.setRemoteId(layer.getRemoteId())
+                                                newLayer.setURL(layerURL)
+                                                newLayer.setTMSType(GeoConstants.TMSTYPE_OSM)
+                                                newLayer.setVisible(true)
+                                                newLayer.setAccountName(connection.getName())
+                                                newLayer.setMinZoom(GeoConstants.DEFAULT_MIN_ZOOM.toFloat())
+                                                newLayer.setMaxZoom(GeoConstants.DEFAULT_MAX_ZOOM.toFloat())
+
+                                                (app.map as MapDrawable).addLayer(newLayer)
+                                                (app.map as MapDrawable).save()
+
+                                                mapFragment?.changeProgress(false, "")
+                                            }
+                                        }
+
+                                    } else {
+                                        if (isActivityVisible)
+                                            showSimpleOKAlert(this, getString(R.string.unsupported_res_type) )
+                                        else
+                                            showSimpleToast(this, getString(R.string.unsupported_res_type))
+                                    }
+                                    mapFragment?.changeProgress(false, "")
+                                }
+                            } else {
+                                runOnUiThread {
+                                    if (isActivityVisible)
+                                        showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                    else
+                                        showSimpleToast(this, getString( R.string.resource_no_perm))
+                                    mapFragment?.changeProgress(false, "")
+                                }
+                            }
+
+                        } else {
+                            runOnUiThread {
+                                if (isActivityVisible)
+                                    showSimpleOKAlert(this, "NO CONNECT")
+                                else
+                                    showSimpleToast(this, "NO CONNECT")
+                                mapFragment?.changeProgress(false, "")
+                            }
+                        }
+                    }
+                    break
+                }
+            }
+            if (!connectionExist && firstRun){
+                // try create guest
+                originalUrl = url
+                urlByUrlGuest = it.host
+                remoteId = it.resourceId
+
+                mapFragment?.changeProgress(true, getString(R.string.start_open_layer))
+                val id: Int = com.nextgis.maplibui.R.id.non_auth_token_loader  // else R.id.auth_token_loader
+
+                if (null != mLoader && mLoader!!.isStarted()) {
+                    mLoader = LoaderManager.getInstance(this)
+                        .restartLoader(id, null, this)
+                } else {
+                    mLoader = LoaderManager.getInstance(this)
+                        .initLoader(id, null, this)
+                }
+                isLoaderCompelte = false;
+                startNGWCreateforLaterCreation = true
+            }
+            //mRootResource = ResourceGroup(0, this)
+        }.onFailure {
+            val msg = it.message
+            if (isActivityVisible)
+                showSimpleOKAlert(this, msg)
+            else
+                showSimpleToast(this, msg)
+            mapFragment?.changeProgress(false, "")
         }
     }
 
 
+    data class NextgisUrlParts(
+        val host: String,        // например: "company.nextgis.com" или "test.nextgis.ru"
+        val resourceId: String   // yyyy
+    )
+
+    fun parseNextgisUrl(url: String): Result<NextgisUrlParts> {
+        // Регулярка: https://<поддомен>.nextgis.<любой_домен>/resource/<id>
+        val regex = Regex(
+            """^https://([a-zA-Z0-9-]+)\.nextgis\.([a-zA-Z0-9-]+)(?:/resource/([a-zA-Z0-9-]+))?$"""
+        )
+
+        val match = regex.matchEntire(url.trim()) ?: return Result.failure(IllegalArgumentException(
+            "Неверный формат URL"))
+
+        val subdomain = match.groupValues[1]
+        val tld = match.groupValues[2]
+        val resourceId = match.groupValues[3]
+
+        // Проверка: если resourceId пустой — значит нет /resource/ части
+        if (resourceId.isBlank()) {
+            return Result.failure(IllegalArgumentException("URL не содержит /resource/yyyy"))
+        }
+
+        val fullHost = "$subdomain.nextgis.$tld"
+
+        // Дополнительная проверка: после resourceId ничего не должно быть
+        if (url.contains("/resource/$resourceId/") || url.endsWith("/resource/$resourceId/")) {
+            return Result.failure(IllegalArgumentException("URL содержит лишний путь после resource/yyyy"))
+        }
+
+        return Result.success(NextgisUrlParts(fullHost, resourceId))
+    }
 
     override fun onActivityResult(
         requestCode: Int,
@@ -1094,7 +1386,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
     override fun onFinishChooseLayerDialog(
         code: Int,
         layer: ILayer
-    , useCreatePoint: Boolean,
+        , useCreatePoint: Boolean,
         startFillByWalk: Boolean) {
         if (null != mapFragment) {
             mapFragment!!.onFinishChooseLayerDialog(code, layer, useCreatePoint, startFillByWalk)
@@ -1198,6 +1490,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
 
     override fun onResume() {
         super.onResume()
+
+        isActivityVisible = true
         mToolbar!!.background.alpha = 128
         val intentFilter = IntentFilter()
         intentFilter.addAction(ConstantsUI.MESSAGE_INTENT)
@@ -1230,6 +1524,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
                 .setTitle(com.nextgis.maplibui.R.string.sd_card)
             val alertDialog = builder.create()
             alertDialog.show()
+        }
+
+
+        if (mLoader != null && mLoader?.isStarted == true && !isLoaderCompelte){
+            mapFragment?.changeProgress(true, getString(R.string.start_open_layer))
         }
 
     }
@@ -1267,8 +1566,10 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
             }
 
         } catch (ignored: Exception) {
+
         }
 
+        isActivityVisible = false
         super.onPause()
     }
 
@@ -1374,20 +1675,120 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult {
             mLayersFragment?.onResume()
     }
 
+    override fun refreshLayersFrarmentNew() {
+        super.refreshLayersFrarment()
+        if (mLayersFragment != null)
+            mLayersFragment?.refreshLayersListItems()
+    }
+
     public fun showToast( text: String ){
         Toast.makeText(this, text, Toast.LENGTH_LONG)
             .show()
     }
 
-//    override fun startLayerPropFragment(fragment: Fragment) {
-//        super.startLayerPropFragment(fragment)
-//
-//
-//        supportFragmentManager.beginTransaction()
-//            .replace(R.id.settingsFrame, fragment)
-//            .addToBackStack(null)
-//            .commit()
-//
-//
-//    }
+    override fun onCreateLoader(
+        p0: Int,
+        p1: Bundle?): Loader<TokenContainer?> {
+
+        val mUrlWithProtocol = AtomicReference<String?>(urlByUrlGuest)
+        return HTTPLoader(
+            getApplicationContext(),
+            mUrlWithProtocol,
+            NGW_ACCOUNT_GUEST,
+            "")
+    }
+
+    override fun onLoadFinished(
+        loader: Loader<TokenContainer?>,
+        token: TokenContainer?) {
+
+        isLoaderCompelte = true;
+        var accountName: String? = ""
+        try {
+            var url: String = urlByUrlGuest
+            if (!url.startsWith("http")) {
+                url = "http://" + url
+            }
+            val uri = URI(url)
+            if (uri.getHost() != null && uri.getHost().length > 0) {
+                accountName += uri.getHost()
+            }
+            if (uri.getPort() != 80 && uri.getPort() > 0) {
+                accountName += ":" + uri.getPort()
+            }
+            if (uri.getPath() != null && uri.getPath().length > 0) {
+                accountName += uri.getPath()
+            }
+        } catch (e: URISyntaxException) {
+            accountName = urlByUrlGuest
+        }
+
+        //urlByUrlGuest = mUrlWithProtocol.get()!!
+        val error404 = token != null && token.responseCode == HttpURLConnection.HTTP_NOT_FOUND
+        if (loader.getId() == com.nextgis.maplibui.R.id.auth_token_loader) {
+            if (token != null && token.token != null && token.token.length > 0)
+                onTokenReceived(accountName,token.token)
+            else {
+                Toast.makeText(
+                    this,
+                    if (error404) com.nextgis.maplibui.R.string.error_webgis_not_found else com.nextgis.maplibui.R.string.error_login,
+                    Toast.LENGTH_SHORT).show()
+            }
+
+        } else {
+            if (loader.getId() == com.nextgis.maplibui.R.id.non_auth_token_loader) {
+                if (token?.responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                    Toast.makeText(
+                    this,
+                    if (error404) com.nextgis.maplibui.R.string.error_webgis_not_found else com.nextgis.maplibui.R.string.error_login,
+                    Toast.LENGTH_SHORT).show()
+                    mapFragment?.changeProgress(false, "")
+                }
+                else
+                    onTokenReceived(accountName, NGW_ACCOUNT_GUEST)
+            }
+        }
+
+        runOnUiThread {
+            LoaderManager.getInstance(this).destroyLoader(com.nextgis.maplibui.R.id.non_auth_token_loader)
+            mLoader = null
+            isLoaderCompelte = true
+        }
+    }
+
+    fun onTokenReceived(
+        accountName: String?,
+        token: String ) {
+        val app = application as IGISApplication
+        var login: String? = NGW_ACCOUNT_GUEST
+        var password: String? = ""
+        if (token.equals( NGW_ACCOUNT_GUEST)) {
+            login = NGW_ACCOUNT_GUEST
+            password = null
+        }
+
+        val mForNewAccount = true
+        if (mForNewAccount) {
+            val accountAdded = app.addAccount(
+                accountName,
+                urlByUrlGuest,
+                //mUrlText.lowercase(Locale.getDefault()),
+                login,
+                password,
+                token
+            )
+
+            startNGWCreateforLaterCreation = false
+            if (accountAdded){
+                checkOpenByUrl( originalUrl,false)
+            }
+        }
+    }
+
+    override fun onLoaderReset(p0: Loader<TokenContainer?>) {
+        // no code needed
+        Log.d("zz", "zzz")
+    }
+
+
 }

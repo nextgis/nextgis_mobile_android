@@ -100,7 +100,6 @@ import com.nextgis.maplib.util.Constants.MESSAGE_INTENT_STYLING
 import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.maplib.util.LocationUtil
-import com.nextgis.maplib.util.MapUtil
 import com.nextgis.maplibui.GISApplication
 import com.nextgis.maplibui.api.EditEventListener
 import com.nextgis.maplibui.api.ILayerUI
@@ -168,7 +167,6 @@ public class MapFragment
 
     lateinit var mMapRef: WeakReference<MapViewOverlays>
 
-
     protected var mivZoomIn: FloatingActionButton? = null
     protected var mivZoomOut: FloatingActionButton? = null
     protected var mRuler: FloatingActionButton? = null
@@ -194,7 +192,6 @@ public class MapFragment
 
     private var mMessageStyling: MessageStyling? = null
     private var mMessageReload: MessageReloadLayer? = null
-
 
     protected var mMapRelativeLayout: RelativeLayout? = null
     protected var mGpsEventSource: GpsEventSource? = null
@@ -230,11 +227,7 @@ public class MapFragment
     private var mNeedSave = false
 
     var tmpFirstLocation: Location? = null
-
     var longClickProcessed = false
-
-
-
 
     interface onModeChange {
         fun onModeChangeListener()
@@ -375,6 +368,11 @@ public class MapFragment
         }
     }
 
+    override fun changeProgress(show: Boolean, text: String) {
+        changeProgress(show)
+        textStylingProgrerss?.text = text
+    }
+
     override fun checkCreateIfNeed() {
         // its from collector proj - no need do anything here
     }
@@ -388,14 +386,8 @@ public class MapFragment
         super.onViewCreated(view, savedInstanceState)
 
         val mapViewMaplibre = view.findViewById(R.id.mapViewMaplibre) as org.maplibre.android.maps.MapView
-
         mMapRef.get()!!.map!!.maplibreMapView = mapViewMaplibre
-
-
-
-
         mapViewMaplibre.onCreate(savedInstanceState)
-
         mapViewMaplibre.getMapAsync(this)
     }
 
@@ -420,7 +412,7 @@ public class MapFragment
 
         mapboxMaplibre.uiSettings.isRotateGesturesEnabled = false
         mapboxMaplibre.uiSettings.isCompassEnabled = false
-
+        mapboxMaplibre.uiSettings.isLogoEnabled = false
         mapboxMaplibre.addOnCameraIdleListener(this)
 
         val styleJson = loadJsonFromAssets(requireContext(), "ngwstyle.json")
@@ -3097,7 +3089,25 @@ public class MapFragment
 
     override fun onClick(v: View) {
         when (v.id) {
-            R.id.fl_compass -> showFullCompass()
+            R.id.fl_compass -> {
+
+                if ((requireActivity()  as MainActivity).mLayersFragment?.mLayersListView != null) {  // нужно передать ListView в адаптер!
+                    (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.post({
+                        (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.requestLayout()
+                        (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.invalidate()
+                    })
+                }
+
+                (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.invalidateViews()
+                val drawer = (requireActivity()  as MainActivity).mLayersFragment?.mDrawerLayout
+                if (drawer != null) {
+                    drawer.post( {
+                        drawer.requestLayout();
+                    })
+                }
+
+
+            }// showFullCompass()
             R.id.add_current_location -> {
                 if (v.isEnabled) addCurrentLocation(true)
                     mMainButton!!.collapse()

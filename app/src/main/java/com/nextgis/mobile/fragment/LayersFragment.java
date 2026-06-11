@@ -56,6 +56,7 @@ import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -507,11 +508,29 @@ public class LayersFragment
     }
 
 
+    public void forceLayoutRefresh() {
+        mListAdapter.notifyDataSetChanged();
+        mLayersListView.requestLayout();
+        mLayersListView.measure(
+                    View.MeasureSpec.makeMeasureSpec(mLayersListView.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(mLayersListView.getHeight(), View.MeasureSpec.EXACTLY) );
+        mLayersListView.layout(
+                mLayersListView.getLeft(),
+                mLayersListView.getTop(),
+                mLayersListView.getRight(),
+                mLayersListView.getBottom()            );
+        mLayersListView.invalidate();
+    }
+
+    public void refreshLayersListItems(){
+        forceLayoutRefresh();
+    }
+
     @Override
     public void onResume()
     {
         super.onResume();
-          mListAdapter.onResume();
+        mListAdapter.onResume();
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(SyncAdapter.SYNC_START);
@@ -708,6 +727,12 @@ public class LayersFragment
                 application.sendEvent(GA_LAYER, GA_CREATE, GA_IMPORT);
                 ((MainActivity) getActivity()).addLocalLayer();
                 return true;
+
+            case R.id.menu_add_by_url:
+                ((MainActivity) getActivity()).addLocalLayerByUrl();
+                mDrawerLayout.close();
+                return true;
+
             case R.id.menu_add_remote:
                 application.sendEvent(GA_LAYER, GA_CREATE, GA_GEOSERVICE);
                 ((MainActivity) getActivity()).addRemoteLayer();

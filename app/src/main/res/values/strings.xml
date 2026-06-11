@@ -185,6 +185,13 @@
 
     <string name="copied">Text copied to clipboard</string>
 
+    <string name="action_add_by_url">Open link</string>
+    <string name="error_empty_url">Error empty url</string>
+    <string name="check_resource">Check resource... </string>
+    <string name="resource_not_found_404">Resource not found </string>
+    <string name="resource_no_perm">No permission to open layer</string>
+    <string name="unsupported_res_type">Unsupported type of resource</string>
+    <string name="start_open_layer">Start open layer</string>
 
 
 </resources>

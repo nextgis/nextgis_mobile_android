@@ -30,6 +30,7 @@
     <string name="action_settings">Настройки</string>
     <string name="action_add">Новый слой</string>
     <string name="action_add_local">Открыть локальный</string>
+    <string name="action_add_by_url">Открыть по ссылке</string>
     <string name="general">Общие</string>
     <string name="general_summary">Общие настройки</string>
     <string name="keep_screen_on">Не отключать экран</string>
@@ -186,6 +187,10 @@
     <string name="support">Поддержка</string>
     <string name="manual">Документация</string>
     <string name="manual_url">https://docs.nextgis.ru/docs_ngmobile/source/</string>
-
-
+    <string name="error_empty_url">Ошибка - пустой url</string>
+    <string name="check_resource">Проверка ресурса...</string>
+    <string name="resource_not_found_404">Ресурс не найден</string>
+    <string name="resource_no_perm">Не хватает прав для открытия слоя</string>
+    <string name="unsupported_res_type">Неподдерживаемый тип ресурса</string>
+    <string name="start_open_layer">Проверяем слой...</string>
 </resources>
