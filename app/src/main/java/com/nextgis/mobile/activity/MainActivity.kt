@@ -91,6 +91,7 @@ import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.maplib.util.MapUtil
 import com.nextgis.maplib.util.NGWUtil
+import com.nextgis.maplib.util.NGWUtil.hasWritePerm
 import com.nextgis.maplib.util.NetworkUtil
 import com.nextgis.maplibui.activity.NGActivity
 import com.nextgis.maplibui.api.IChooseLayerResult
@@ -840,6 +841,19 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                 return@runAsync
                             }
 
+                            if (resourceResult.resource == null && resourceResult.respCode == 200){
+                                runOnUiThread {
+                                    if (isActivityVisible)
+                                        showSimpleOKAlert(this, getString(R.string.unsupported_res_type))
+                                    else
+                                        showSimpleToast(this, getString(R.string.unsupported_res_type))
+                                    mapFragment?.changeProgress(false, "")
+
+                                }
+                                return@runAsync
+                            }
+
+
                             if (resourceResult.resource == null){
                                 runOnUiThread {
                                     if (isActivityVisible)
@@ -850,6 +864,26 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
 
                                 }
                                 return@runAsync
+                            }
+
+                            if (resourceResult.resource != null){
+                                val type = (resourceResult.resource as INGWResource).type
+                                val supportedType =
+                                    Connection.NGWResourceTypeVectorLayer  or
+                                Connection.NGWResourceTypeRasterLayer       or
+                                Connection.NGWResourceTypeVectorLayerStyle  or
+                                Connection.NGWResourceTypeRasterLayerStyle
+
+                                if ((type and supportedType) ==  0) {
+                                    runOnUiThread {
+                                        if (isActivityVisible)
+                                            showSimpleOKAlert(this, getString(R.string.unsupported_res_type) )
+                                        else
+                                            showSimpleToast(this, getString(R.string.unsupported_res_type))
+                                        mapFragment?.changeProgress(false, "")
+                                    }
+                                    return@runAsync
+                                }
                             }
 
                             if (resourceResult.resource != null && resourceResult.resource.mPermissions!= null
@@ -868,7 +902,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                     return@runAsync
                                 } else {
                                     // start create
-
+                                    val writePerm = hasWritePerm(resourceResult.resource)
                                     val type= (resourceResult.resource as INGWResource).type
                                     val app = application as MainApplication
                                     if (type == NGWResourceTypeVectorLayer){
@@ -882,6 +916,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                             intent.putExtra(LayerFillService.KEY_REMOTE_ID, layer.getRemoteId())
                                             intent.putExtra(LayerFillService.KEY_LAYER_GROUP_ID, (app.map as MapDrawable).id) // mGroupLayer.getId())
                                             intent.putExtra(LayerFillService.KEY_INPUT_TYPE, LayerFillService.NGW_LAYER)
+                                            intent.putExtra(LayerFillService.KEY_WRITE_PERM, writePerm)
 
                                             if (layer.getFormCount() > 0) {
                                                 val path = NGWUtil.getFormUrl(connection.getURL(), layer.getFormId(0))
@@ -936,10 +971,12 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                                 (app.map as MapDrawable).addLayer(newLayer)
                                                 (app.map as MapDrawable).save()
 
+                                                if (isActivityVisible)
+                                                    refreshLayersFrarmentNew()
+
                                                 mapFragment?.changeProgress(false, "")
                                             }
                                         }
-
                                     } else {
                                         if (isActivityVisible)
                                             showSimpleOKAlert(this, getString(R.string.unsupported_res_type) )
@@ -957,7 +994,6 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                     mapFragment?.changeProgress(false, "")
                                 }
                             }
-
                         } else {
                             runOnUiThread {
                                 if (isActivityVisible)

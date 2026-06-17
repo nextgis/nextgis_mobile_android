@@ -27,6 +27,7 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -36,6 +37,7 @@ import android.content.IntentFilter;
 import android.content.PeriodicSync;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Build;
 import android.os.Bundle;
@@ -47,6 +49,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
 
 import android.preference.PreferenceManager;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -103,6 +109,7 @@ import static com.nextgis.maplibui.util.ConstantsUI.GA_LOCAL;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_MENU;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_NGW;
 import static com.nextgis.maplibui.util.SettingsConstantsUI.KEY_PREF_OFFLINE_SYNC_ON;
+import static com.nextgis.maplibui.util.UiUtil.showNoEditPermAlert;
 import static com.nextgis.mobile.util.AppSettingsConstants.AUTHORITY;
 
 /**
@@ -144,8 +151,16 @@ public class LayersFragment
 
         @Override
         public void onLayerEdit(ILayer layer) {
+            Activity activity = activityRef.get();
+            if (activity == null)
+                return;
+
+            if (layer instanceof VectorLayer && (!((VectorLayer)layer).isEditable())){
+                showNoEditPermAlert(activity);
+                return;
+            }
+
             LayersFragment fragment = fragmentRef.get();
-            MainActivity activity = activityRef.get();
             MapFragment mapFragment = mapFragmentRef.get();
 
             if (fragment == null || activity == null || mapFragment == null)

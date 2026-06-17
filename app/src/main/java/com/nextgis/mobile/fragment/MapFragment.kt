@@ -120,6 +120,8 @@ import com.nextgis.maplibui.util.ConstantsUI
 import com.nextgis.maplibui.util.ControlHelper
 import com.nextgis.maplibui.util.NotificationHelper
 import com.nextgis.maplibui.util.SettingsConstantsUI
+import com.nextgis.maplibui.util.UiUtil
+import com.nextgis.maplibui.util.UiUtil.showNoEditPermAlert
 import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.R
 import com.nextgis.mobile.activity.MainActivity
@@ -1785,6 +1787,13 @@ public class MapFragment
             val layer = layers[0] as VectorLayer
 
             mSelectedLayer = layer
+
+            if (layer is VectorLayer && (!layer.isEditable())){
+                UiUtil.showNoEditPermAlert(requireActivity())
+                return
+            }
+
+
             editLayerOverlay!!.setSelectedLayer(layer)
             setNewMode(MODE_SELECT_ACTION)
 
@@ -1880,6 +1889,10 @@ public class MapFragment
             val vectorLayer = layers[0]
             if (vectorLayer is ILayerUI) {
                 mSelectedLayer = vectorLayer as VectorLayer
+                if (mSelectedLayer?.isEditable == false){
+                    showNoEditPermAlert(requireActivity())
+                    return
+                }
                 editLayerOverlay!!.setSelectedLayer(mSelectedLayer)
 
                 if (useCreatePointFromOverlay)
@@ -1940,6 +1953,11 @@ public class MapFragment
         } else if (layers.size == 1) {
             //open form
             val layer = layers[0] as VectorLayer
+
+            if (!layer.isEditable){
+                showNoEditPermAlert(mActivity)
+                return
+            }
             mSelectedLayer = layer
             editLayerOverlay!!.setSelectedLayer(layer)
 
@@ -1977,6 +1995,10 @@ public class MapFragment
         val vectorLayer = layer as VectorLayer?
         if (layer == null) return  // TODO toast?
 
+        if (layer is VectorLayer && (!layer.isEditable())){
+            showNoEditPermAlert(requireActivity())
+            return
+        }
 
         if (mSelectedLayer != null) mSelectedLayer!!.isLocked = false
 
