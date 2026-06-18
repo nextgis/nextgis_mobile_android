@@ -93,6 +93,7 @@ import com.nextgis.maplib.map.MPLFeaturesUtils
 import com.nextgis.maplib.map.MPLFeaturesUtils.id_name
 import com.nextgis.maplib.map.MapDrawable
 import com.nextgis.maplib.map.MaplibreMapInteraction
+import com.nextgis.maplib.map.NGWVectorLayer
 import com.nextgis.maplib.map.VectorLayer
 import com.nextgis.maplib.util.Constants
 import com.nextgis.maplib.util.Constants.MESSAGE_INTENT_RELOAD
@@ -1788,8 +1789,8 @@ public class MapFragment
 
             mSelectedLayer = layer
 
-            if (layer is VectorLayer && (!layer.isEditable())){
-                UiUtil.showNoEditPermAlert(requireActivity())
+            if (layer is NGWVectorLayer && (!layer.isEditable())){
+                UiUtil.showNoEditPermAlert(requireActivity(), com.nextgis.maplib.R.string.layer_not_editable,(layer as NGWVectorLayer).getAccountName())
                 return
             }
 
@@ -1889,8 +1890,8 @@ public class MapFragment
             val vectorLayer = layers[0]
             if (vectorLayer is ILayerUI) {
                 mSelectedLayer = vectorLayer as VectorLayer
-                if (mSelectedLayer?.isEditable == false){
-                    showNoEditPermAlert(requireActivity())
+                if (mSelectedLayer is NGWVectorLayer && (mSelectedLayer?.isEditable == false)){
+                    showNoEditPermAlert(requireActivity(), com.nextgis.maplib.R.string.layer_not_editable,(mSelectedLayer as NGWVectorLayer).getAccountName())
                     return
                 }
                 editLayerOverlay!!.setSelectedLayer(mSelectedLayer)
@@ -1954,8 +1955,9 @@ public class MapFragment
             //open form
             val layer = layers[0] as VectorLayer
 
-            if (!layer.isEditable){
-                showNoEditPermAlert(mActivity)
+            if (layer != null && layer is NGWVectorLayer &&  !layer.isEditable){
+                showNoEditPermAlert(mActivity, com.nextgis.maplib.R.string.layer_not_editable,
+                    (mSelectedLayer as NGWVectorLayer).getAccountName())
                 return
             }
             mSelectedLayer = layer
@@ -1995,8 +1997,8 @@ public class MapFragment
         val vectorLayer = layer as VectorLayer?
         if (layer == null) return  // TODO toast?
 
-        if (layer is VectorLayer && (!layer.isEditable())){
-            showNoEditPermAlert(requireActivity())
+        if (layer is NGWVectorLayer && (!layer.isEditable())){
+            showNoEditPermAlert(requireActivity(), com.nextgis.maplib.R.string.layer_not_editable,(layer as NGWVectorLayer).getAccountName())
             return
         }
 

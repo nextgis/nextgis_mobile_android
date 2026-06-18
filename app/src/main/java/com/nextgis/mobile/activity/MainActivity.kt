@@ -116,6 +116,7 @@ import com.nextgis.maplibui.util.ControlHelper
 import com.nextgis.maplibui.util.NGIDUtils
 import com.nextgis.maplibui.util.SettingsConstantsUI
 import com.nextgis.maplibui.util.UiUtil
+import com.nextgis.maplibui.util.UiUtil.showNoEditPermAlert
 import com.nextgis.maplibui.util.UiUtil.showSimpleOKAlert
 import com.nextgis.maplibui.util.UiUtil.showSimpleToast
 import com.nextgis.mobile.MainApplication
@@ -833,7 +834,10 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                             if (resourceResult.respCode == -1 || resourceResult.respCode == 403){
                                 runOnUiThread {
                                     if (isActivityVisible)
-                                        showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                        showNoEditPermAlert(
+                                            this, R.string.resource_no_perm,
+                                            it.host)
+                                        //showSimpleOKAlert(this, getString( R.string.resource_no_perm))
                                     else
                                         showSimpleToast(this, getString( R.string.resource_no_perm))
                                     mapFragment?.changeProgress(false, "")
@@ -857,7 +861,10 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                             if (resourceResult.resource == null){
                                 runOnUiThread {
                                     if (isActivityVisible)
-                                        showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                        showNoEditPermAlert(
+                                            this, R.string.resource_no_perm,
+                                            it.host)
+                                        //showSimpleOKAlert(this, getString( R.string.resource_no_perm))
                                     else
                                         showSimpleToast(this, getString( R.string.resource_no_perm))
                                     mapFragment?.changeProgress(false, "")
@@ -893,8 +900,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                 val readPerm = resourceResult.resource.mPermissions.getJSONObject("data").get("read")
                                 if (readPerm == null || readPerm == false){
                                     runOnUiThread {
-                                        if (isActivityVisible)
-                                            showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                        if (isActivityVisible) {
+                                                showNoEditPermAlert(
+                                                    this, R.string.resource_no_perm,
+                                                    it.host)
+                                        }
                                         else
                                             showSimpleToast(this, getString( R.string.resource_no_perm))
                                         mapFragment?.changeProgress(false, "")
@@ -1039,8 +1049,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
 
 
     data class NextgisUrlParts(
-        val host: String,        // например: "company.nextgis.com" или "test.nextgis.ru"
-        val resourceId: String   // yyyy
+        val host: String,
+        val resourceId: String
     )
 
     fun parseNextgisUrl(url: String): Result<NextgisUrlParts> {

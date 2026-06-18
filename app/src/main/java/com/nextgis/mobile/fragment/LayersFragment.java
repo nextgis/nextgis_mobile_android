@@ -74,6 +74,7 @@ import com.nextgis.maplib.datasource.ngw.SyncAdapter;
 import com.nextgis.maplib.map.MapBase;
 import com.nextgis.maplib.map.MapContentProviderHelper;
 import com.nextgis.maplib.map.MapDrawable;
+import com.nextgis.maplib.map.NGWVectorLayer;
 import com.nextgis.maplib.map.TrackLayer;
 import com.nextgis.maplib.map.VectorLayer;
 import com.nextgis.maplib.service.NGWSyncService;
@@ -155,8 +156,8 @@ public class LayersFragment
             if (activity == null)
                 return;
 
-            if (layer instanceof VectorLayer && (!((VectorLayer)layer).isEditable())){
-                showNoEditPermAlert(activity);
+            if (layer instanceof NGWVectorLayer && (!((NGWVectorLayer)layer).isEditable())){
+                showNoEditPermAlert(activity, com.nextgis.maplib.R.string.layer_not_editable,((NGWVectorLayer)layer).getAccountName());
                 return;
             }
 
