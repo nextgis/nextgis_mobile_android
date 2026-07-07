@@ -1173,8 +1173,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             val layer = map.getLayer(i)
             if (layer is NGWVectorLayer) {
                 ngwVectorLayer = layer
-                val ver = NGWUtil.getNgwVersion(this, ngwVectorLayer.accountName)
-                ngwVectorLayer.sync(application.authority, ver, SyncResult())
+                // val ver = NGWUtil.getNgwVersion(this, ngwVectorLayer.accountName)
+                ngwVectorLayer.sync(application.authority,  SyncResult())
             }
         }
     }

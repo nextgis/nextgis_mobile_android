@@ -65,9 +65,6 @@ public class SyncAdapter extends com.nextgis.maplib.datasource.ngw.SyncAdapter {
 
     @Override
     public void onPerformSync(Account account, Bundle bundle, String authority, ContentProviderClient contentProviderClient, SyncResult syncResult) {
-
-//        Log.e("RRFRSH", "SyncAdapter datasource - onPerformSync for " + account.name);
-
         Log.d("SSYNC", "SyncAdapter/datasource  onPerformSync account - " + account.name);
 
         if(!AccountUtil.isUserExists(getContext())) {

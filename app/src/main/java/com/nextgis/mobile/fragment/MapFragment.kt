@@ -102,6 +102,7 @@ import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.maplib.util.LocationUtil
 import com.nextgis.maplibui.GISApplication
+import com.nextgis.maplibui.activity.VectorLayerSettingsActivity
 import com.nextgis.maplibui.api.EditEventListener
 import com.nextgis.maplibui.api.ILayerUI
 import com.nextgis.maplibui.api.IVectorLayerUI
@@ -1446,8 +1447,10 @@ public class MapFragment
         }
 
         val edit = mPreferences!!.edit()
-        if (null != mMapRef.get()) {
-            if (mMapRef.get()!!.map!!.maplibreMap != null) {
+        if (null != mMapRef.get() ) {
+            if (mMapRef.get()!!.map!!.maplibreMap != null &&
+                mMapRef.get()!!.map!!.maplibreMap.get()!!.cameraPosition != null &&
+                mMapRef.get()!!.map!!.maplibreMap.get()!!.cameraPosition!!.zoom != null) {
                 edit.putFloat(SettingsConstantsUI.KEY_PREF_ZOOM_LEVEL,
                     mMapRef.get()!!.map!!.maplibreMap.get()!!.cameraPosition!!.zoom!!.toFloat())
 
@@ -1507,7 +1510,7 @@ public class MapFragment
         }
 
         showControls =
-            mPreferences!!.getBoolean(AppSettingsConstants.KEY_PREF_SHOW_MEASURING, false)
+            mPreferences!!.getBoolean(AppSettingsConstants.KEY_PREF_SHOW_MEASURING, true)
         if (showControls) mRuler!!.visibility = View.VISIBLE
         else mRuler!!.visibility = View.GONE
 
@@ -2076,15 +2079,14 @@ public class MapFragment
             if (!(layer as ILayerView).isVisible) continue
             vectorLayer = layer as VectorLayer
 
-//            Log.e("CCLICK", "on long:")
-//            Log.e("CCLICK", clickeEnelope.toString())
+
+            val labelField: String = vectorLayer.getPreferences().getString(SettingsConstantsUI.KEY_PREF_LAYER_LABEL, Constants.FIELD_ID)!!
+
             items = vectorLayer.query(clickeEnelope)
             for (i in items.indices) {    // FIXME hack for bad RTree cache
                 featureId = items[i]
                 geometry = vectorLayer.getGeometryForId(featureId)
 
-//                Log.e("CCLICK", "on long check contains point:" + point.toString())
-//                Log.e("CCLICK", "on long check contains poly:" + geometry.toString())
                 if (EditLayerOverlay.notContains(geometry, point)) {
                     continue
                 }
@@ -2095,7 +2097,10 @@ public class MapFragment
                 }
                 originalFeatureForSelect = vectorLayer.getFeature(featureId)
                 if (originalFeatureForSelect != null) {
-                    val valueForHint = getHintText(vectorLayer, feature)
+
+
+
+                    val valueForHint = getHintText(vectorLayer, feature, labelField)
 
                     if (feature != null){
                         if (valueForHint == null)
@@ -2445,6 +2450,7 @@ public class MapFragment
                     if (!(layer as ILayerView).isVisible) continue
 
                     vectorLayer = layer as VectorLayer
+                    val labelField: String = vectorLayer.getPreferences().getString(SettingsConstantsUI.KEY_PREF_LAYER_LABEL, Constants.FIELD_ID)!!
                     items = vectorLayer.query(mapEnv)
 
                     var i = 0
@@ -2460,7 +2466,7 @@ public class MapFragment
 
 
                         val feature = vectorLayer.getFeature(featureId)
-                        val valueForHint = getHintText(vectorLayer, feature)
+                        val valueForHint = getHintText(vectorLayer, feature, labelField)
 
                         if (feature != null){
                             if (valueForHint == null)
@@ -2635,8 +2641,7 @@ public class MapFragment
                     if (!(layer as ILayerView).isVisible) continue
 
                     vectorLayer = layer as VectorLayer
-//                    Log.e("CCLICK", "on tapUp:")
-//                    Log.e("CCLICK", exactEnv.toString())
+                    val labelField: String = vectorLayer.getPreferences().getString(SettingsConstantsUI.KEY_PREF_LAYER_LABEL, Constants.FIELD_ID)!!
                     items = vectorLayer.query(exactEnv)
 
                     var i = 0
@@ -2654,7 +2659,7 @@ public class MapFragment
                         }
 
                         val feature = vectorLayer.getFeature(featureId)
-                        val valueForHint = getHintText(vectorLayer, feature)
+                        val valueForHint = getHintText(vectorLayer, feature, labelField)
 
                         if (feature != null){
                             if (valueForHint == null)
@@ -3091,7 +3096,7 @@ public class MapFragment
 
     fun refresh() {
         if (null != mMapRef.get()) {
-            mMapRef.get()!!.drawMapDrawable()
+            //mMapRef.get()!!.drawMapDrawable()
         }
     }
 
@@ -3113,25 +3118,7 @@ public class MapFragment
 
     override fun onClick(v: View) {
         when (v.id) {
-            R.id.fl_compass -> {
-
-                if ((requireActivity()  as MainActivity).mLayersFragment?.mLayersListView != null) {  // нужно передать ListView в адаптер!
-                    (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.post({
-                        (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.requestLayout()
-                        (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.invalidate()
-                    })
-                }
-
-                (requireActivity()  as MainActivity).mLayersFragment?.mLayersListView?.invalidateViews()
-                val drawer = (requireActivity()  as MainActivity).mLayersFragment?.mDrawerLayout
-                if (drawer != null) {
-                    drawer.post( {
-                        drawer.requestLayout();
-                    })
-                }
-
-
-            }// showFullCompass()
+            R.id.fl_compass -> showFullCompass()
             R.id.add_current_location -> {
                 if (v.isEnabled) addCurrentLocation(true)
                     mMainButton!!.collapse()
@@ -3490,12 +3477,13 @@ public class MapFragment
         return doubleArrayOf(lon, lat)
     }
 
-    fun getHintText(vectorLayer: VectorLayer, feature: Feature?):String? {
+    fun getHintText(vectorLayer: VectorLayer, feature: Feature?, fieldToDisplayConst: String ):String? {
 
+        var fieldToDisplay = fieldToDisplayConst
         if (feature == null)
             return null
 
-        var fieldToDisplay = ((vectorLayer.renderer as SimpleFeatureRenderer).style).field
+        // ((vectorLayer.renderer as SimpleFeatureRenderer).style).field
 
         if (!TextUtils.isEmpty(fieldToDisplay) && fieldToDisplay.equals(id_name)){ // id of feature
             return feature.id.toString()

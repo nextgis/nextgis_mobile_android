@@ -56,9 +56,9 @@ android {
         applicationId 'com.nextgis.mobile'
         minSdkVersion 26
         compileSdk 36
-        targetSdk7  Version 36
-        versionCode 187
-        versionName '3.1.0'
+        targetSdkVersion 36
+        versionCode 189
+        versionName '3.1.1'
         //archivesBaseName = "ngmobile-$versionName"
         buildConfigField "String", "SENTRY_DSN", "\"${sentryDsn}\""
 
@@ -132,6 +132,7 @@ dependencies {
 
     //implementation 'com.github.joshdholtz:Sentry-Android:1.6.0'
     //implementation 'io.sentry:sentry-android:1.7.30'
+    implementation 'androidx.work:work-runtime:2.11.2'
     implementation ('io.sentry:sentry-android:8.37.1'){
         exclude group: 'androidx.lifecycle', module: 'lifecycle-viewmodel-ktx'
     }

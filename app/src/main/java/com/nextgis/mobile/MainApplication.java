@@ -25,6 +25,7 @@ package com.nextgis.mobile;
 
 import android.accounts.Account;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -235,22 +236,22 @@ public class MainApplication extends GISApplication
                     break;
             }
 
-            if (savedVersionCode < 44) {
-                if (!AccountUtil.isProUser(this)) {
-                    if (isAccountManagerValid())
-                        for (final Account account : mAccountManager.getAccountsByType(getAccountsType()))
-                            setAccountSyncEnabled(account, getAuthority(), false);
-
-                    for (int i = 0; i < mMap.getLayerCount(); i++) {
-                        ILayer layer = mMap.getLayer(i);
-                        if (layer instanceof NGWVectorLayer) {
-                            NGWVectorLayer ngwLayer = (NGWVectorLayer) layer;
-                            ngwLayer.setSyncType(Constants.SYNC_NONE);
-                            ngwLayer.save();
-                        }
-                    }
-                }
-            }
+//            if (savedVersionCode < 44) {
+//                if (!AccountUtil.isProUser(this)) {
+//                    if (isAccountManagerValid())
+//                        for (final Account account : mAccountManager.getAccountsByType(getAccountsType()))
+//                            setAccountSyncEnabled(this, account, getAuthority(), false);
+//
+//                    for (int i = 0; i < mMap.getLayerCount(); i++) {
+//                        ILayer layer = mMap.getLayer(i);
+//                        if (layer instanceof NGWVectorLayer) {
+//                            NGWVectorLayer ngwLayer = (NGWVectorLayer) layer;
+//                            ngwLayer.setSyncType(Constants.SYNC_NONE);
+//                            ngwLayer.save();
+//                        }
+//                    }
+//                }
+//            }
 
             if(savedVersionCode < currentVersionCode) {
                 mSharedPreferences.edit().putInt(KEY_PREF_APP_VERSION, currentVersionCode).apply();
@@ -282,6 +283,11 @@ public class MainApplication extends GISApplication
     public int getPostponedLayerId() {
         // for collector part
         return 0;
+    }
+
+    @Override
+    public Context getSelfContext() {
+        return getApplicationContext();
     }
 
 

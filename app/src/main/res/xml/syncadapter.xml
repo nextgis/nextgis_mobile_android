@@ -26,10 +26,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:contentAuthority="@string/provider_auth"
     android:accountType="@string/nextgis_accounts_auth_type"
-    android:userVisible="true"
-    android:supportsUploading="true"
+    android:userVisible="false"
+    android:supportsUploading="false"
     android:allowParallelSyncs="false"
-    android:isAlwaysSyncable="true"
+    android:isAlwaysSyncable="false"
     />
 
 

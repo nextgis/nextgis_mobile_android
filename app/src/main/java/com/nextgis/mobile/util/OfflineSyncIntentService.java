@@ -31,12 +31,7 @@ import java.util.List;
  * helper methods.
  */
 public class OfflineSyncIntentService extends IntentService {
-
     private static final String ACTION_OFFSYNC = "com.nextgis.mobile.util.action.OFFSYNC";
-
-
-
-    private static final String ACTION_ACCOUNT_NAME = "com.nextgis.mobile.util.action.ACCOUNTNAME";
 
 
     public OfflineSyncIntentService() {
@@ -53,7 +48,6 @@ public class OfflineSyncIntentService extends IntentService {
         Intent intent = new Intent(context, OfflineSyncIntentService.class);
         intent.setAction(ACTION_OFFSYNC);
         intent.putExtra(ACTION_LPATH, lpath);
-//        intent.putExtra(ACTION_ACCOUNT_NAME, accName);
         context.startService(intent);
     }
 
@@ -78,19 +72,6 @@ public class OfflineSyncIntentService extends IntentService {
         List<INGWLayer> layers = new ArrayList<>();
 
         for (Account account : accountManager.getAccountsByType(application.getAccountsType())) {
-
-            List<PeriodicSync> periodicSyncsList = ContentResolver.getPeriodicSyncs(account, ((IGISApplication) getApplication()).getAuthority());
-            Log.d("SSYNC", "Number of sync for: " + account.name);
-            Log.d("SSYNC", "Number of sync: " + periodicSyncsList.size());
-            for (PeriodicSync p : periodicSyncsList) {
-                Log.d("SSYNC", "period: " + p.period + " sec, Extras: " + p.extras);
-
-                for (String key : p.extras.keySet()) {
-                    Object value = p.extras.get(key);
-                    Log.d("SSYNC", "Key: " + key + ", Value: " + value + " (" + (value != null ? value.getClass().getSimpleName() : "null") + ")");
-                }
-            }
-
             layers.clear();
             MapContentProviderHelper.getLayersByAccount(application.getMap(), account.name, layers);
 

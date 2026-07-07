@@ -84,6 +84,7 @@ import com.nextgis.maplib.util.SettingsConstants;
 import com.nextgis.maplibui.GISApplication;
 import com.nextgis.maplibui.fragment.LayersListAdapter;
 import com.nextgis.maplibui.fragment.ReorderedLayerView;
+import com.nextgis.maplibui.mapui.SyncAccountWorker;
 import com.nextgis.maplibui.util.ControlHelper;
 import com.nextgis.maplibui.util.HyperLogCrashHandler;
 import com.nextgis.maplibui.util.NGIDUtils;
@@ -99,8 +100,11 @@ import java.util.List;
 
 import static android.content.Context.MODE_MULTI_PROCESS;
 import static android.widget.Toast.LENGTH_LONG;
+import static com.nextgis.maplib.util.AccountUtil.saveSyncPeriodForAccount;
 import static com.nextgis.maplib.util.Constants.SYNC_NONE;
 import static com.nextgis.maplib.util.Constants.TAG;
+import static com.nextgis.maplibui.GISApplication.getAccountSyncTime;
+import static com.nextgis.maplibui.mapui.SyncAccountWorker.schedule;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_CREATE;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_EDIT;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_GEOSERVICE;
@@ -130,9 +134,6 @@ public class LayersFragment
     protected List<Account>         mAccounts;
 
     ObjectAnimator rotation;
-
-
-
 
     private static class LayerEditListener
             implements LayersListAdapter.onEdit {
@@ -523,7 +524,6 @@ public class LayersFragment
         }
     }
 
-
     public void forceLayoutRefresh() {
         mListAdapter.notifyDataSetChanged();
         mLayersListView.requestLayout();
@@ -557,11 +557,8 @@ public class LayersFragment
         } else {
             getActivity().registerReceiver(mSyncReceiver, intentFilter);
         }
-
         refreshSyncButtonAnimateState(NGWSyncService.isSyncStarted());
-
     }
-
 
     @Override
     public void onPause()
@@ -579,10 +576,14 @@ public class LayersFragment
             DialogInterface.OnClickListener onClickListener = new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    ContentResolver.setSyncAutomatically(account,
-                            //"com.nextgis.mobile.provider",
-                            context.getString(R.string.provider_auth),
-                            true);
+                    long period =  getAccountSyncTime(account,  (GISApplication)context.getApplicationContext());
+                    saveSyncPeriodForAccount(context, account.name, period );
+                    schedule(context, account.name, period);
+
+//                    ContentResolver.setSyncAutomatically(account,
+//                            //"com.nextgis.mobile.provider",
+//                            context.getString(R.string.provider_auth),
+//                            true);
 
                 }
             };
@@ -674,7 +675,7 @@ public class LayersFragment
 
                 final SharedPreferences mPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
                 String base = mPreferences.getString("ngid_url", NGIDUtils.NGID_MY);
-                boolean offlineSync = mPreferences.getBoolean(KEY_PREF_OFFLINE_SYNC_ON, false);
+                boolean offlineSync = true;  //mPreferences.getBoolean(KEY_PREF_OFFLINE_SYNC_ON, false);
 
                 if (offlineSync || !NGIDUtils.NGID_MY.equals(base)){
                     HyperLog.v(Constants.TAG, "onClick start on-premise sync");
@@ -701,12 +702,12 @@ public class LayersFragment
                         // attentd - no turned on sync
                         checkAccountForSync(v.getContext(), account);
 
-                        Bundle settingsBundle = new Bundle();
-                        settingsBundle.putBoolean(
-                                ContentResolver.SYNC_EXTRAS_MANUAL, true);
-                        settingsBundle.putBoolean(
-                                ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-                        ContentResolver.requestSync(account, AUTHORITY, settingsBundle);
+//                        Bundle settingsBundle = new Bundle();
+//                        settingsBundle.putBoolean(
+//                                ContentResolver.SYNC_EXTRAS_MANUAL, true);
+//                        settingsBundle.putBoolean(
+//                                ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+//                        ContentResolver.requestSync(account, AUTHORITY, settingsBundle);
                     }
                 }
 
