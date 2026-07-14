@@ -67,8 +67,9 @@ public class SyncAdapter extends com.nextgis.maplib.datasource.ngw.SyncAdapter {
     public void onPerformSync(Account account, Bundle bundle, String authority, ContentProviderClient contentProviderClient, SyncResult syncResult) {
         Log.d("SSYNC", "SyncAdapter/datasource  onPerformSync account - " + account.name);
 
+        HyperLog.v(Constants.TAG, "xxx onPerformSync for" + account.name );
         if(!AccountUtil.isUserExists(getContext())) {
-            HyperLog.v(Constants.TAG, "onPerformSync for" + account.name + " exit cos !AccountUtil.isUserExists");
+
             String alertMessage = getContext().getString(com.nextgis.maplibui.R.string.sync_need_login);
             String alertTitle = getContext().getString(com.nextgis.maplibui.R.string.sync_off_title);
             Intent msg = new Intent(MESSAGE_ALERT_INTENT);

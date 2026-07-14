@@ -1,0 +1,57 @@
+{
+  "resources":{
+    "resource":
+    {
+      "identity":"resource","label":"Р РµСЃСѓСЂСЃ",
+      "base_classes":[],"interfaces":[],"scopes":["resource"],"category":"miscellaneous","order":100},
+    "resource_group":
+    {"identity":"resource_group","label":"Р“СЂСѓРїРїР° СЂРµСЃСѓСЂСЃРѕРІ",
+      "base_classes":["resource"],"interfaces":[],"scopes":["resource"],"category":"miscellaneous","order":0},
+    "webmap":{"identity":"webmap","label":"Р’РµР±-РєР°СЂС‚Р°","base_classes":["resource"],"interfaces":[],"scopes":["webmap","resource"],"category":"maps_and_services","order":20},
+    "basemap_layer":{"identity":"basemap_layer","label":"РџРѕРґР»РѕР¶РєР° РІРµР±-РєР°СЂС‚С‹","base_classes":["resource"],"interfaces":[],"scopes":["data","resource"],"category":"layers_and_styles","order":100},
+    "lookup_table":{"identity":"lookup_table","label":"РЎРїСЂР°РІРѕС‡РЅРёРє","base_classes":["resource"],"interfaces":[],"scopes":["resource"],"category":"miscellaneous","order":100},
+    "raster_layer_storage":{"identity":"raster_layer_storage","label":"РҐСЂР°РЅРёР»РёС‰Рµ СЂР°СЃС‚СЂРѕРІС‹С… СЃР»РѕС‘РІ","base_classes":["resource"],"interfaces":[],"scopes":["connection","resource"],"category":"external_connections","order":100},
+    "raster_layer":{"identity":"raster_layer","label":"Р Р°СЃС‚СЂРѕРІС‹Р№ СЃР»РѕР№","base_classes":["resource"],"interfaces":["IBboxLayer"],"scopes":["data","resource"],"category":"layers_and_styles","order":65
+    },
+
+    "svg_marker_library":{"identity":"svg_marker_library","label":"Р‘РёР±Р»РёРѕС‚РµРєР° РјР°СЂРєРµСЂРѕРІ SVG","base_classes":["resource"],"interfaces":[],"scopes":["resource"],"category":"miscellaneous","order":100
+    },
+    "vector_layer":{"identity":"vector_layer","label":"Р’РµРєС‚РѕСЂРЅС‹Р№ СЃР»РѕР№","base_classes":["resource"],"interfaces":["IBboxLayer","IFilterableFeatureLayer","IFeatureLayer","IFieldEditableFeatureLayer","IGeometryEditableFeatureLayer","IWritableFeatureLayer","IVersionableFeatureLayer"],"scopes":["data","resource"],"category":"layers_and_styles","order":60
+    },
+    "postgis_connection":{"identity":"postgis_connection","label":"РЎРѕРµРґРёРЅРµРЅРёРµ PostGIS","base_classes":["resource"],"interfaces":[],"scopes":["connection","resource"],"category":"external_connections","order":100},
+    "postgis_layer":{"identity":"postgis_layer","label":"РЎР»РѕР№ PostGIS","base_classes":["resource"],"interfaces":["IBboxLayer","IFilterableFeatureLayer","IFeatureLayer","IWritableFeatureLayer"],"scopes":["data","resource"],"category":"layers_and_styles","order":100
+    },
+    "raster_style":{"identity":"raster_style","label":"Р Р°СЃС‚СЂРѕРІС‹Р№ СЃС‚РёР»СЊ","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle","ILegendableStyle"],"scopes":["data","resource"],"category":"layers_and_styles","order":100},
+    "wfsserver_service":{"identity":"wfsserver_service","label":"РЎРµСЂРІРёСЃ WFS","base_classes":["resource"],"interfaces":[],"scopes":["service","resource"],"category":"maps_and_services","order":100
+    },
+    "wfsclient_connection":{"identity":"wfsclient_connection","label":"РЎРѕРµРґРёРЅРµРЅРёРµ WFS","base_classes":["resource"],"interfaces":[],"scopes":["connection","resource"],"category":"external_connections","order":100
+    },
+    "wfsclient_layer":{"identity":"wfsclient_layer","label":"РЎР»РѕР№ WFS","base_classes":["resource"],"interfaces":["IBboxLayer","IFeatureLayer"],"scopes":["data","resource"],"category":"layers_and_styles","order":100},
+    "wmsclient_connection":{"identity":"wmsclient_connection","label":"РЎРѕРµРґРёРЅРµРЅРёРµ WMS","base_classes":["resource"],"interfaces":[],"scopes":["connection","resource"],"category":"external_connections","order":100},
+    "wmsclient_layer":{"identity":"wmsclient_layer","label":"РЎР»РѕР№ WMS","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle"],"scopes":["data","resource"],"category":"layers_and_styles","order":100
+    },
+    "wmsserver_service":{"identity":"wmsserver_service","label":"РЎРµСЂРІРёСЃ WMS","base_classes":["resource"],"interfaces":[],"scopes":["service","resource"],"category":"maps_and_services","order":100},
+    "ogcfserver_service":{"identity":"ogcfserver_service","label":"РЎРµСЂРІРёСЃ OGC API Features","base_classes":["resource"],"interfaces":[],"scopes":["service","resource"],"category":"maps_and_services","order":100},
+    "tmsclient_connection":{"identity":"tmsclient_connection","label":"РЎРѕРµРґРёРЅРµРЅРёРµ TMS","base_classes":["resource"],"interfaces":[],"scopes":["connection","resource"],"category":"external_connections","order":100
+    },
+    "tmsclient_layer":{"identity":"tmsclient_layer","label":"РЎР»РѕР№ TMS","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle"],"scopes":["data","resource"],"category":"layers_and_styles","order":100},
+    "tileset":{"identity":"tileset","label":"РќР°Р±РѕСЂ С‚Р°Р№Р»РѕРІ","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle","IRenderableNonCached"],"scopes":["data","resource"],"category":"layers_and_styles","order":100},
+    "demo_project":{"identity":"demo_project","label":"Р”РµРјРѕ-РїСЂРѕРµРєС‚","base_classes":["resource","resource_group"],"interfaces":[],"scopes":["resource"],"category":"miscellaneous","order":0
+    },
+    "formbuilder_form":{"identity":"formbuilder_form","label":"Р¤РѕСЂРјР°","base_classes":["resource"],"interfaces":[],"scopes":["data","resource"],"category":"field_data_collection","order":100
+    },
+    "gallery":{"identity":"gallery","label":"Р“Р°Р»РµСЂРµСЏ","base_classes":["resource"],"interfaces":[],"scopes":["resource"],"category":"miscellaneous","order":40
+    },
+    "mapserver_style":{"identity":"mapserver_style","label":"РЎС‚РёР»СЊ MapServer","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle","ILegendableStyle"],"scopes":["data","resource"],"category":"layers_and_styles","order":100
+    },
+    "qgis_raster_style":{"identity":"qgis_raster_style","label":"Р Р°СЃС‚СЂРѕРІС‹Р№ СЃС‚РёР»СЊ QGIS","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle","IRenderableScaleRange","ILegendSymbols"],"scopes":["data","resource"],"category":"layers_and_styles","order":60
+    },
+    "qgis_vector_style":{"identity":"qgis_vector_style","label":"Р’РµРєС‚РѕСЂРЅС‹Р№ СЃС‚РёР»СЊ QGIS","base_classes":["resource"],"interfaces":["IBboxLayer","IRenderableStyle","ILegendableStyle","IRenderableScaleRange","ILegendSymbols"],"scopes":["data","resource"],"category":"layers_and_styles","order":60
+    }
+  },
+
+  "scopes":{"resource":{"identity":"resource","label":"Р РµСЃСѓСЂСЃ","permissions":{"read":{"identity":"read","label":"Р§С‚РµРЅРёРµ"},"create":{"identity":"create","label":"РЎРѕР·РґР°РЅРёРµ"},"update":{"identity":"update","label":"РР·РјРµРЅРµРЅРёРµ"},"delete":{"identity":"delete","label":"РЈРґР°Р»РµРЅРёРµ"},"manage_children":{"identity":"manage_children","label":"РЈРїСЂР°РІР»РµРЅРёРµ РІР»РѕР¶РµРЅРЅС‹РјРё"},"change_permissions":{"identity":"change_permissions","label":"РќР°СЃС‚СЂРѕР№РєР° РїСЂР°РІ РґРѕСЃС‚СѓРїР°"}}},
+  "data":{"identity":"data","label":"Р”Р°РЅРЅС‹Рµ","permissions":{"read":{"identity":"read","label":"Р§С‚РµРЅРёРµ РґР°РЅРЅС‹С…"},"write":{"identity":"write","label":"РР·РјРµРЅРµРЅРёРµ РґР°РЅРЅС‹С…"}}},
+  "connection":{"identity":"connection","label":"Р’РЅРµС€РЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ","permissions":{"read":{"identity":"read","label":"Р§С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ СЃРѕРµРґРёРЅРµРЅРёСЏ"},"write":{"identity":"write","label":"РќР°СЃС‚СЂРѕР№РєР° СЃРѕРµРґРёРЅРµРЅРёСЏ"},"connect":{"identity":"connect","label":"РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ"}}},"service":{"identity":"service","label":"РЎРµСЂРІРёСЃС‹ Р’РµР± Р“РРЎ","permissions":{"connect":{"identity":"connect","label":"Р”РѕСЃС‚СѓРї Рє СЃРµСЂРІРёСЃСѓ"},"configure":{"identity":"configure","label":"РќР°СЃС‚СЂРѕР№РєР° СЃРµСЂРІРёСЃР°"}}},
+  "webmap":{"identity":"webmap","label":"Р’РµР±-РєР°СЂС‚Р°","permissions":{"annotation_read":{"identity":"annotation_read","label":"РџСЂРѕСЃРјРѕС‚СЂ Р°РЅРЅРѕС‚Р°С†РёР№"},"annotation_write":{"identity":"annotation_write","label":"Р РёСЃРѕРІР°РЅРёРµ Р°РЅРЅРѕС‚Р°С†РёР№"},"annotation_manage":{"identity":"annotation_manage","label":"РЈРїСЂР°РІР»РµРЅРёРµ Р°РЅРЅРѕС‚Р°С†РёСЏРјРё"}}}},"categories":{"layers_and_styles":{"identity":"layers_and_styles","label":"РЎР»РѕРё Рё СЃС‚РёР»Рё","order":20},"maps_and_services":{"identity":"maps_and_services","label":"РљР°СЂС‚С‹ Рё СЃРµСЂРІРёСЃС‹","order":40},"field_data_collection":{"identity":"field_data_collection","label":"РЎР±РѕСЂ РґР°РЅРЅС‹С…","order":60},"external_connections":{"identity":"external_connections","label":"Р’РЅРµС€РЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ","order":80},"miscellaneous":{"identity":"miscellaneous","label":"Р”СЂСѓРіРёРµ СЂРµСЃСѓСЂСЃС‹","order":100}}}
+

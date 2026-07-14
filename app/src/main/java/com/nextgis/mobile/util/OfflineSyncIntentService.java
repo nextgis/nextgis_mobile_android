@@ -13,10 +13,12 @@ import android.content.SyncResult;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.hypertrack.hyperlog.HyperLog;
 import com.nextgis.maplib.api.IGISApplication;
 import com.nextgis.maplib.api.INGWLayer;
 
 import com.nextgis.maplib.map.MapContentProviderHelper;
+import com.nextgis.maplib.util.Constants;
 import com.nextgis.mobile.datasource.SyncAdapter;
 
 import java.util.ArrayList;
@@ -88,6 +90,7 @@ public class OfflineSyncIntentService extends IntentService {
         for (Account account : mAccounts){
             Log.d("SSYNC", "onPerformSync call for: " + account.name);
 
+            HyperLog.v(Constants.TAG, "xxx OfflineSyncIntentService syncAdapter.onPerformSync for" + account.name );
             syncAdapter.onPerformSync(account,
                     bundle,
                     com.nextgis.mobile.util.AppSettingsConstants.AUTHORITY,
