@@ -43,6 +43,7 @@ import com.google.android.gms.analytics.StandardExceptionParser;
 import com.google.android.gms.analytics.Tracker;
 import com.nextgis.maplib.api.ILayer;
 import com.nextgis.maplib.datasource.Field;
+import com.nextgis.maplib.datasource.GeoEnvelope;
 import com.nextgis.maplib.map.LayerGroup;
 import com.nextgis.maplib.map.MapBase;
 import com.nextgis.maplib.map.MapDrawable;
@@ -283,6 +284,26 @@ public class MainApplication extends GISApplication
     public int getPostponedLayerId() {
         // for collector part
         return 0;
+    }
+
+    @Override
+    public void setBordersWasApply(boolean apply) {
+
+    }
+
+    @Override
+    public boolean getBordersWasApply() {
+        return false;
+    }
+
+    @Override
+    public void setPostponedExtent(GeoEnvelope geoEnvelope) {
+
+    }
+
+    @Override
+    public GeoEnvelope getPostponedExtent() {
+        return null;
     }
 
     @Override

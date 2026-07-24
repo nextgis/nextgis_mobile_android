@@ -141,6 +141,7 @@
     <string name="web">Сайт</string>
     <string name="not_installed">Приложение не установлено</string>
     <string name="action_help">Помощь</string>
+    <string name="action_goto">Перейти к координатам</string>
     <string name="location_distance_to">Расстояние до (м)</string>
     <string name="pref_ga">Собирать статистику</string>
     <string name="pref_ga_sum">Отправлять анонимные данные Google Analytics для улучшения приложения</string>
@@ -164,7 +165,7 @@
     <string name="intro_more">Получите больше:</string>
     <string name="intro_free">У вас бесплатная версия приложения</string>
     <string name="intro_get_pro">Получить NextGIS Mobile Pro</string>
-    <string name="track_uid">Ваш UID</string>
+    <string name="track_uid">ID Устройства</string>
     <string name="track_send">Отправлять местоположение на сервер</string>
     <string name="preferred_units">Система измерений</string>
     <string name="show_zoom_level">Показывать уровень зума</string>
@@ -193,4 +194,10 @@
     <string name="resource_no_perm">Не хватает прав для открытия слоя.</string>
     <string name="unsupported_res_type">Неподдерживаемый тип ресурса. Можно добавлять только слои или стили.</string>
     <string name="start_open_layer">Проверяем слой...</string>
+
+    <string name="goto_lat_lon_erro_fillboth">Заполните оба поля</string>
+    <string name="goto_error">Ошибка при парсинге широты/долготы</string>
+    <string name="goto_error_out">Координата за границами валидного значения</string>
+
+
 </resources>

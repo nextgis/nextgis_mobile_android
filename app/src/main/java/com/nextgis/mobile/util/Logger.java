@@ -29,6 +29,8 @@ import com.nextgis.maplibui.util.HyperLogCrashHandler;
 
 public final class Logger {
     public static void initialize(Context context) {
+
+        //By default, seven days older logs will get delete automatically from the database. You can change the expiry period of logs by defining expiryTimeInSeconds.
         HyperLog.initialize(context);
         HyperLog.setLogLevel(Log.VERBOSE);
         HyperLog.setLogFormat(new CustomLogMessageFormat(context));

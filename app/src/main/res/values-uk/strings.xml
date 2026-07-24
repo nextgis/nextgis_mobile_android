@@ -147,7 +147,7 @@
     <string name="intro_more">Отримайте більше:</string>
     <string name="intro_free">У вас безкоштовна версія застосунку</string>
     <string name="intro_get_pro">Отримати NextGIS Mobile Pro</string>
-    <string name="track_uid">Ваш UID</string>
+    <string name="track_uid">ID Устройства</string>
     <string name="track_send">Надіслати місцеположення на сервер</string>
     <string name="preferred_units">Система вимірів</string>
     <string name="show_zoom_level">Показати рівень наближення</string>

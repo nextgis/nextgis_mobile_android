@@ -94,7 +94,7 @@
 
     <CheckBoxPreference
         app:iconSpaceReserved="false"
-        android:defaultValue="false"
+        android:defaultValue="true"
         android:key="show_ruler_measuring"
         android:singleLineTitle="false"
         android:title="@string/show_ruler_measuring"/>

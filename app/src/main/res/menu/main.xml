@@ -59,6 +59,15 @@
         android:orderInCategory="85"
         app:showAsAction="never" />
 
+
+    <item
+        android:id="@+id/menu_goto"
+        android:orderInCategory="100"
+        android:title="@string/action_goto"
+        app:showAsAction="never"
+        />
+
+
     <item
         android:id="@+id/menu_about"
         android:orderInCategory="100"

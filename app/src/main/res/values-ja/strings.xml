@@ -148,7 +148,7 @@
     <string name="intro_more">Get more:</string>
     <string name="intro_free">Your app version is free</string>
     <string name="intro_get_pro">Get NextGIS Mobile Pro</string>
-    <string name="track_uid">Your UID</string>
+    <string name="track_uid">Device ID</string>
     <string name="track_send">Send location to server</string>
     <string name="preferred_units">Measurement system</string>
     <string name="show_zoom_level">Show zoom level</string>

@@ -2269,7 +2269,7 @@ public class MapFragment
     fun showRulerButton() {
         if (mPreferences!!.getBoolean(
                 AppSettingsConstants.KEY_PREF_SHOW_MEASURING,
-                false
+                true
             )
         ) mRuler!!.visibility =
             View.VISIBLE

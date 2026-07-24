@@ -50,6 +50,7 @@ import android.text.TextUtils
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -89,6 +90,7 @@ import com.nextgis.maplib.util.Constants
 import com.nextgis.maplib.util.Constants.NGW_ACCOUNT_GUEST
 import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
+import com.nextgis.maplib.util.GeoConstants.CRS_WGS84
 import com.nextgis.maplib.util.MapUtil
 import com.nextgis.maplib.util.NGWUtil
 import com.nextgis.maplib.util.NGWUtil.hasWritePerm
@@ -126,6 +128,9 @@ import com.nextgis.mobile.fragment.MapFragment
 import com.nextgis.mobile.util.AppSettingsConstants
 import com.nextgis.mobile.util.SDCardUtils
 import org.json.JSONObject
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -521,6 +526,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                 return true
             }
 
+            R.id.menu_goto -> {
+                showTwoFieldsDialog()
+                return true
+            }
+
             R.id.menu_locate -> {
                 locateCurrentPosition()
                 return true
@@ -551,6 +561,65 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             else -> return super.onOptionsItemSelected(item)
         }
     }
+
+    fun showTwoFieldsDialog() {
+            val dialogView = layoutInflater.inflate(R.layout.goto_coordinates, null)
+
+            val lat = dialogView.findViewById<EditText>(R.id.lat)
+            val lon = dialogView.findViewById<EditText>(R.id.lon)
+
+            AlertDialog.Builder(this)
+            .setTitle(R.string.action_goto)
+            .setView(dialogView)
+            .setPositiveButton(com.nextgis.maplibui.R.string.ok) { dialog, _ ->
+                val latVal = lat.text.toString()
+                val lonVal = lon.text.toString()
+                if (handleInput(latVal, lonVal))
+                    dialog.dismiss()
+            }
+            .setNegativeButton(com.nextgis.maplibui.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+        }
+
+        private fun handleInput(latStr: String, lonStr: String): Boolean {
+            if (latStr.isBlank() || lonStr.isBlank()) {
+                Toast.makeText(this, R.string.goto_lat_lon_erro_fillboth, Toast.LENGTH_SHORT).show()
+                return false
+            }
+
+            try {
+                val lat = latStr.toDouble()
+                val lon = lonStr.toDouble()
+
+                val  point = GeoPoint()
+                point.crs = CRS_WGS84
+                point.setCoordinates( lon, lat)
+                if (!point.inBounds()) {
+                    Toast.makeText(this, R.string.goto_error_out, Toast.LENGTH_SHORT).show()
+                    return false
+                }
+
+
+                val targetPosition = CameraPosition.Builder()
+                    .target(LatLng(lat, lon))
+                    .zoom(mapFragment?.mMapRef?.get()!!.map.maplibreMap.get()!!.cameraPosition.zoom)
+                    .bearing(0.0)
+                    .tilt(0.0)
+                    .build()
+
+                    mapFragment?.mMapRef?.get()!!.map.maplibreMap.get()?.animateCamera(
+                        CameraUpdateFactory.newCameraPosition(targetPosition),
+                        2000)
+                return  true
+            }catch (ex: Exception ){
+                Toast.makeText(this,
+                    getString(R.string.goto_error) + " " + ex.message,
+                    Toast.LENGTH_SHORT).show()
+                return false
+            }
+        }
 
     public fun askBackgroundPerm(item: MenuItem?) {
         TrackerService.showBackgroundDialog(this, object : BackgroundPermissionCallback {
