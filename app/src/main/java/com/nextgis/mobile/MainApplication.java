@@ -23,14 +23,11 @@
 
 package com.nextgis.mobile;
 
-import android.accounts.Account;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
@@ -46,10 +43,7 @@ import com.nextgis.maplib.datasource.Field;
 import com.nextgis.maplib.datasource.GeoEnvelope;
 import com.nextgis.maplib.map.LayerGroup;
 import com.nextgis.maplib.map.MapBase;
-import com.nextgis.maplib.map.MapDrawable;
-import com.nextgis.maplib.map.NGWVectorLayer;
 import com.nextgis.maplib.map.VectorLayer;
-import com.nextgis.maplib.util.AccountUtil;
 import com.nextgis.maplib.util.Constants;
 import com.nextgis.maplib.util.GeoConstants;
 import com.nextgis.maplib.util.NGException;
@@ -57,7 +51,6 @@ import com.nextgis.maplib.util.NGWUtil;
 import com.nextgis.maplib.util.NetworkUtil;
 import com.nextgis.maplib.util.SettingsConstants;
 import com.nextgis.maplibui.GISApplication;
-import com.nextgis.maplibui.mapui.LayerFactoryUI;
 import com.nextgis.maplibui.mapui.RemoteTMSLayerUI;
 import com.nextgis.maplibui.mapui.TrackLayerUI;
 import com.nextgis.maplibui.mapui.VectorLayerUI;
@@ -67,28 +60,16 @@ import com.nextgis.mobile.activity.SettingsActivity;
 import com.nextgis.mobile.util.Logger;
 import com.nextgis.mobile.util.OfflineSyncIntentService;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 import static com.nextgis.maplib.util.Constants.DEBUG_MODE;
-import static com.nextgis.maplib.util.Constants.MAP_EXT;
 import static com.nextgis.maplib.util.Constants.TAG;
 import static com.nextgis.maplib.util.GeoConstants.TMSTYPE_OSM;
-import static com.nextgis.maplibui.fragment.NGWSettingsFragment.setAccountSyncEnabled;
 import static com.nextgis.mobile.util.AppSettingsConstants.AUTHORITY;
 import static com.nextgis.mobile.util.AppSettingsConstants.KEY_PREF_APP_VERSION;
 import static com.nextgis.mobile.util.AppSettingsConstants.KEY_PREF_GA;
-
-
-import org.maplibre.android.MapLibre;
-import org.maplibre.android.MapStrictMode;
-import org.maplibre.android.WellKnownTileServer;
-
-import io.sentry.Sentry;
 
 /**
  * Main application class
@@ -241,7 +222,7 @@ public class MainApplication extends GISApplication
 //                if (!AccountUtil.isProUser(this)) {
 //                    if (isAccountManagerValid())
 //                        for (final Account account : mAccountManager.getAccountsByType(getAccountsType()))
-//                            setAccountSyncEnabled(this, account, getAuthority(), false);
+//                            setAccountAutoSyncEnabled(this, account, getAuthority(), false);
 //
 //                    for (int i = 0; i < mMap.getLayerCount(); i++) {
 //                        ILayer layer = mMap.getLayer(i);

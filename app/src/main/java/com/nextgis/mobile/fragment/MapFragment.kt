@@ -84,7 +84,6 @@ import com.nextgis.maplib.datasource.GeoMultiPoint
 import com.nextgis.maplib.datasource.GeoMultiPolygon
 import com.nextgis.maplib.datasource.GeoPoint
 import com.nextgis.maplib.datasource.GeoPolygon
-import com.nextgis.maplib.display.SimpleFeatureRenderer
 import com.nextgis.maplib.location.GpsEventSource
 import com.nextgis.maplib.map.Layer
 import com.nextgis.maplib.map.LayerGroup
@@ -102,7 +101,6 @@ import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.maplib.util.LocationUtil
 import com.nextgis.maplibui.GISApplication
-import com.nextgis.maplibui.activity.VectorLayerSettingsActivity
 import com.nextgis.maplibui.api.EditEventListener
 import com.nextgis.maplibui.api.ILayerUI
 import com.nextgis.maplibui.api.IVectorLayerUI
@@ -3561,6 +3559,11 @@ public class MapFragment
             return mMapRef.get()!!.map!!.getLayerFeatures(layer)
         }
 
+
+    override
+    fun getSelfContext(): Context?{
+        return this.activity
+    }
 
 
 

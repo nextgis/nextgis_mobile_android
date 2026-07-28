@@ -581,45 +581,49 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                 dialog.dismiss()
             }
             .show()
+    }
+
+    private fun handleInput(latStr: String, lonStr: String): Boolean {
+        if (latStr.isBlank() || lonStr.isBlank()) {
+            Toast.makeText(this, R.string.goto_lat_lon_erro_fillboth, Toast.LENGTH_SHORT).show()
+            return false
         }
 
-        private fun handleInput(latStr: String, lonStr: String): Boolean {
-            if (latStr.isBlank() || lonStr.isBlank()) {
-                Toast.makeText(this, R.string.goto_lat_lon_erro_fillboth, Toast.LENGTH_SHORT).show()
+        try {
+            val lat = latStr.toDouble()
+            val lon = lonStr.toDouble()
+
+            val  point = GeoPoint()
+            point.crs = CRS_WGS84
+            point.setCoordinates( lon, lat)
+            if (!point.inBounds()) {
+                Toast.makeText(this, R.string.goto_error_out, Toast.LENGTH_SHORT).show()
                 return false
             }
 
-            try {
-                val lat = latStr.toDouble()
-                val lon = lonStr.toDouble()
+            var zoom = mapFragment?.mMapRef?.get()!!.map.maplibreMap.get()!!.cameraPosition.zoom
+            if (zoom < 14.0)
+                zoom = 14.0
 
-                val  point = GeoPoint()
-                point.crs = CRS_WGS84
-                point.setCoordinates( lon, lat)
-                if (!point.inBounds()) {
-                    Toast.makeText(this, R.string.goto_error_out, Toast.LENGTH_SHORT).show()
-                    return false
-                }
+            val targetPosition = CameraPosition.Builder()
+                .target(LatLng(lat, lon))
+                .zoom(zoom)
+                .bearing(0.0)
+                .tilt(0.0)
+                .build()
 
-
-                val targetPosition = CameraPosition.Builder()
-                    .target(LatLng(lat, lon))
-                    .zoom(mapFragment?.mMapRef?.get()!!.map.maplibreMap.get()!!.cameraPosition.zoom)
-                    .bearing(0.0)
-                    .tilt(0.0)
-                    .build()
-
-                    mapFragment?.mMapRef?.get()!!.map.maplibreMap.get()?.animateCamera(
-                        CameraUpdateFactory.newCameraPosition(targetPosition),
-                        2000)
-                return  true
-            }catch (ex: Exception ){
-                Toast.makeText(this,
-                    getString(R.string.goto_error) + " " + ex.message,
-                    Toast.LENGTH_SHORT).show()
-                return false
-            }
+            mapFragment?.mMapRef?.get()!!
+                .map.maplibreMap.get()?.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(targetPosition),
+                    2000)
+            return  true
+        }catch (ex: Exception ){
+            Toast.makeText(this,
+                getString(R.string.goto_error) + " " + ex.message,
+                Toast.LENGTH_SHORT).show()
+            return false
         }
+    }
 
     public fun askBackgroundPerm(item: MenuItem?) {
         TrackerService.showBackgroundDialog(this, object : BackgroundPermissionCallback {
@@ -904,11 +908,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                 runOnUiThread {
                                     if (isActivityVisible)
                                         showNoEditPermAlert(
-                                            this, R.string.resource_no_perm,
+                                            this, com.nextgis.maplib.R.string.resource_no_perm,
                                             it.host)
                                         //showSimpleOKAlert(this, getString( R.string.resource_no_perm))
                                     else
-                                        showSimpleToast(this, getString( R.string.resource_no_perm))
+                                        showSimpleToast(this, getString( com.nextgis.maplib.R.string.resource_no_perm))
                                     mapFragment?.changeProgress(false, "")
                                 }
                                 return@runAsync
@@ -931,11 +935,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                 runOnUiThread {
                                     if (isActivityVisible)
                                         showNoEditPermAlert(
-                                            this, R.string.resource_no_perm,
+                                            this, com.nextgis.maplib.R.string.resource_no_perm,
                                             it.host)
                                         //showSimpleOKAlert(this, getString( R.string.resource_no_perm))
                                     else
-                                        showSimpleToast(this, getString( R.string.resource_no_perm))
+                                        showSimpleToast(this, getString( com.nextgis.maplib.R.string.resource_no_perm))
                                     mapFragment?.changeProgress(false, "")
 
                                 }
@@ -971,11 +975,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                                     runOnUiThread {
                                         if (isActivityVisible) {
                                                 showNoEditPermAlert(
-                                                    this, R.string.resource_no_perm,
+                                                    this, com.nextgis.maplib.R.string.resource_no_perm,
                                                     it.host)
                                         }
                                         else
-                                            showSimpleToast(this, getString( R.string.resource_no_perm))
+                                            showSimpleToast(this, getString( com.nextgis.maplib.R.string.resource_no_perm))
                                         mapFragment?.changeProgress(false, "")
                                     }
                                     return@runAsync
@@ -1067,9 +1071,9 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                             } else {
                                 runOnUiThread {
                                     if (isActivityVisible)
-                                        showSimpleOKAlert(this, getString( R.string.resource_no_perm))
+                                        showSimpleOKAlert(this, getString( com.nextgis.maplib.R.string.resource_no_perm))
                                     else
-                                        showSimpleToast(this, getString( R.string.resource_no_perm))
+                                        showSimpleToast(this, getString( com.nextgis.maplib.R.string.resource_no_perm))
                                     mapFragment?.changeProgress(false, "")
                                 }
                             }
@@ -1135,14 +1139,12 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
         val tld = match.groupValues[2]
         val resourceId = match.groupValues[3]
 
-        // Проверка: если resourceId пустой — значит нет /resource/ части
         if (resourceId.isBlank()) {
             return Result.failure(IllegalArgumentException("URL не содержит /resource/yyyy"))
         }
 
         val fullHost = "$subdomain.nextgis.$tld"
 
-        // Дополнительная проверка: после resourceId ничего не должно быть
         if (url.contains("/resource/$resourceId/") || url.endsWith("/resource/$resourceId/")) {
             return Result.failure(IllegalArgumentException("URL содержит лишний путь после resource/yyyy"))
         }
@@ -1172,7 +1174,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                 )
                 //check the file type from extension
                 val fileName = FileUtil.getFileNameByUri(this, uri, "")
-                if (fileName.lowercase(Locale.getDefault()).endsWith("ngrc") ||
+                if (fileName.lowercase(Locale.getDefault()).endsWith("mbtiles") ||
+                    fileName.lowercase(Locale.getDefault()).endsWith("ngrc") ||
                     fileName.lowercase(Locale.getDefault()).endsWith("zip")
                 ) { //create local tile layer
                     if (null != mapFragment) {
