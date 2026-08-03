@@ -86,10 +86,10 @@
             android:value="false" /> <!-- enable the performance API by setting a sample-rate, adjust in production env -->
         <meta-data
             android:name="io.sentry.traces.sample-rate"
-            android:value="0.05" /> <!-- enable profiling when starting transactions, adjust in production env -->
+            android:value="0.0" /> <!-- enable profiling when starting transactions, adjust in production env -->
         <meta-data
             android:name="io.sentry.traces.profiling.sample-rate"
-            android:value="0.05" />
+            android:value="0.0" />
 
         <activity
             android:name=".activity.MainActivity"

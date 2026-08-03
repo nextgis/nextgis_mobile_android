@@ -474,7 +474,35 @@ public class MapFragment
         val result: Boolean
         when (id) {
             android.R.id.home -> {
-                cancelEdits()
+                if (!hasEdits())
+                    cancelEdits()
+                else{
+                    val builder: AlertDialog = AlertDialog.Builder(requireActivity())
+                        .setTitle(com.nextgis.maplibui.R.string.save)
+                        .setMessage(com.nextgis.maplibui.R.string.has_edits)
+                        .setPositiveButton(com.nextgis.maplibui.R.string.save, object : DialogInterface.OnClickListener {
+                            override fun onClick(dialog: DialogInterface?, which: Int) {
+                                saveEdits()
+
+                            }
+                        })
+                        .setNegativeButton(
+                            com.nextgis.maplibui.R.string.discard,
+                            object : DialogInterface.OnClickListener {
+                                override fun onClick(dialog: DialogInterface?, which: Int) {
+                                    cancelEdits()
+                                }
+                            })
+                        .setNeutralButton(
+                            com.nextgis.maplibui.R.string.cancel,
+                            object : DialogInterface.OnClickListener {
+                                override fun onClick(dialog: DialogInterface?, which: Int) {
+                                }
+                            })
+                        .create()
+                    builder.show()
+                }
+
                 return true
             }
 
