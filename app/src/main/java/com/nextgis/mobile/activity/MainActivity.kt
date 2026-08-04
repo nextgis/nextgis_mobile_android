@@ -73,6 +73,7 @@ import com.nextgis.maplib.api.GpsEventListener
 import com.nextgis.maplib.api.IGISApplication
 import com.nextgis.maplib.api.ILayer
 import com.nextgis.maplib.datasource.GeoMultiPoint
+import com.nextgis.maplib.datasource.GeoEnvelope
 import com.nextgis.maplib.datasource.GeoPoint
 import com.nextgis.maplib.datasource.ngw.Connection
 import com.nextgis.maplib.datasource.ngw.Connection.NGWResourceTypeRasterLayer
@@ -125,6 +126,13 @@ import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.R
 import com.nextgis.mobile.fragment.LayersFragment
 import com.nextgis.mobile.fragment.MapFragment
+import com.nextgis.mobile.mapsafe.ui.AccessFeaturesDialog
+import com.nextgis.mobile.mapsafe.ui.DonutMaskingDialog
+import com.nextgis.mobile.mapsafe.ui.EncryptDialog
+import com.nextgis.mobile.mapsafe.ui.HexabinningDialog
+import com.nextgis.mobile.mapsafe.ui.MapSafeMainDialog
+import com.nextgis.mobile.mapsafe.ui.MapSafeOpenPgpActivity
+import com.nextgis.mobile.mapsafe.ui.SafeguardFeaturesDialog
 import com.nextgis.mobile.util.AppSettingsConstants
 import com.nextgis.mobile.util.SDCardUtils
 import org.json.JSONObject
@@ -240,6 +248,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             progressFragment = LayerFillProgressDialogFragment()
             fm.beginTransaction().add(progressFragment, TAG_FRAGMENT_PROGRESS).commit()
         }
+
+        handleMapSafeImportIntent(intent)
 
 
         if (!hasLocationPermissions()) {
@@ -541,6 +551,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                 return true
             }
 
+            R.id.action_mapsafe -> {
+                showMapSafeDialog()
+                return true
+            }
+
 //            R.id.menu_refresh -> {
 //                if (null != mapFragment) {
 //                    mapFragment!!.refreshSyncButtonAnimateState()
@@ -560,6 +575,91 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
 
             else -> return super.onOptionsItemSelected(item)
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleMapSafeImportIntent(intent)
+    }
+
+    private fun handleMapSafeImportIntent(intent: Intent?) {
+        when (intent?.action) {
+            ACTION_MAPSAFE_LAYER_IMPORTED -> {
+                val layerName = intent.getStringExtra(EXTRA_MAPSAFE_LAYER_NAME) ?: return
+                if (!intent.hasExtra(EXTRA_MAPSAFE_MIN_X) ||
+                    !intent.hasExtra(EXTRA_MAPSAFE_MAX_X) ||
+                    !intent.hasExtra(EXTRA_MAPSAFE_MIN_Y) ||
+                    !intent.hasExtra(EXTRA_MAPSAFE_MAX_Y)
+                ) return
+
+                val extent = GeoEnvelope(
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MIN_X, 0.0),
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MAX_X, 0.0),
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MIN_Y, 0.0),
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MAX_Y, 0.0)
+                )
+                val featureCount = intent.getIntExtra(EXTRA_MAPSAFE_FEATURE_COUNT, 0)
+                mapFragment?.showMapSafeImportedLayer(layerName, extent, featureCount)
+                intent.action = null
+            }
+            ACTION_MAPSAFE_SHOW_PARENT -> {
+                registerMapSafeResultListeners()
+                if (intent.getBooleanExtra(EXTRA_MAPSAFE_ACCESS_PARENT, false)) {
+                    AccessFeaturesDialog()
+                        .show(supportFragmentManager, "AccessFeaturesDialog")
+                } else {
+                    SafeguardFeaturesDialog()
+                        .show(supportFragmentManager, "SafeguardFeaturesDialog")
+                }
+                intent.action = null
+            }
+        }
+    }
+
+    private fun showMapSafeDialog() {
+        registerMapSafeResultListeners()
+        MapSafeMainDialog().show(supportFragmentManager, MapSafeMainDialog.TAG)
+    }
+
+    private fun registerMapSafeResultListeners() {
+        supportFragmentManager.setFragmentResultListener(
+            MapSafeMainDialog.REQUEST_LOAD_SAMPLE_POINTS,
+            this
+        ) { _, _ ->
+            mapFragment?.loadMapSafeSamplePoints()
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            DonutMaskingDialog.REQUEST_KEY,
+            this
+        ) { _, result ->
+            mapFragment?.runMapSafeDonutMasking(
+                result.getDouble(DonutMaskingDialog.RESULT_MIN_DISTANCE),
+                result.getDouble(DonutMaskingDialog.RESULT_MAX_DISTANCE)
+            )
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            HexabinningDialog.REQUEST_KEY,
+            this
+        ) { _, result ->
+            mapFragment?.runMapSafeHexabinning(
+                result.getInt(HexabinningDialog.RESULT_RESOLUTION)
+            )
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            EncryptDialog.REQUEST_OPEN_ENCRYPTION,
+            this
+        ) { _, result ->
+            if (result.getBoolean(EncryptDialog.RESULT_SELECTED_LAYER)) {
+                mapFragment?.openMapSafeEncryptionForSelectedLayer()
+            } else {
+                startActivity(MapSafeOpenPgpActivity.intent(this))
+            }
+        }
+
     }
 
     fun showTwoFieldsDialog() {
@@ -1767,6 +1867,18 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
     }
 
     companion object {
+        const val ACTION_MAPSAFE_LAYER_IMPORTED =
+            "com.nextgis.mobile.action.MAPSAFE_LAYER_IMPORTED"
+        const val ACTION_MAPSAFE_SHOW_PARENT =
+            "com.nextgis.mobile.action.MAPSAFE_SHOW_PARENT"
+        const val EXTRA_MAPSAFE_ACCESS_PARENT = "mapsafe_access_parent"
+        const val EXTRA_MAPSAFE_LAYER_NAME = "mapsafe_imported_layer_name"
+        const val EXTRA_MAPSAFE_FEATURE_COUNT = "mapsafe_imported_feature_count"
+        const val EXTRA_MAPSAFE_MIN_X = "mapsafe_imported_min_x"
+        const val EXTRA_MAPSAFE_MAX_X = "mapsafe_imported_max_x"
+        const val EXTRA_MAPSAFE_MIN_Y = "mapsafe_imported_min_y"
+        const val EXTRA_MAPSAFE_MAX_Y = "mapsafe_imported_max_y"
+
         protected const val PERMISSIONS_REQUEST_ZERO: Int = 0
         protected const val PERMISSIONS_REQUEST_LOC: Int = 1
         protected const val PERMISSIONS_REQUEST_ACCOUNT: Int = 2

@@ -201,4 +201,5 @@
     <string name="goto_error">Error on parse lat/lon values</string>
     <string name="goto_error_out">Point out on valid values</string>
 
+    <string name="mapsafe_menu_title">MapSafe</string>
 </resources>

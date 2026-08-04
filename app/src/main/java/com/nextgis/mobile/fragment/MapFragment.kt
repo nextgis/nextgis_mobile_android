@@ -66,6 +66,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
+import androidx.lifecycle.lifecycleScope
 import com.getbase.floatingactionbutton.FloatingActionButton
 import com.getbase.floatingactionbutton.FloatingActionsMenu
 import com.google.android.material.snackbar.Snackbar
@@ -125,8 +126,14 @@ import com.nextgis.maplibui.util.UiUtil.showNoEditPermAlert
 import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.R
 import com.nextgis.mobile.activity.MainActivity
+import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
+import com.nextgis.mobile.mapsafe.service.MapSafeWorkflowRunner
+import com.nextgis.mobile.mapsafe.ui.MapSafeOpenPgpActivity
 import com.nextgis.mobile.util.AppConstants
 import com.nextgis.mobile.util.AppSettingsConstants
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import org.maplibre.android.camera.CameraPosition
@@ -3123,6 +3130,138 @@ public class MapFragment
     fun refresh() {
         if (null != mMapRef.get()) {
             //mMapRef.get()!!.drawMapDrawable()
+        }
+    }
+
+    fun runMapSafeDonutMasking(minDistanceMetres: Double, maxDistanceMetres: Double) {
+        val app = mApp ?: return
+        val result = MapSafeWorkflowRunner.runDonutMasking(
+            context = requireContext(),
+            app = app,
+            selectedLayer = mSelectedLayer,
+            minDistanceMetres = minDistanceMetres,
+            maxDistanceMetres = maxDistanceMetres
+        )
+        showMapSafeResult(result)
+    }
+
+    fun loadMapSafeSamplePoints() {
+        val app = mApp ?: return
+        val result = MapSafeWorkflowRunner.loadSamplePoints(
+            context = requireContext(),
+            app = app
+        )
+
+        if (result is MapSafeWorkflowRunner.WorkflowMessage.Success) {
+            result.selectedLayer?.let { layer ->
+                mSelectedLayer?.isLocked = false
+                mSelectedLayer = layer
+                editLayerOverlay?.setSelectedLayer(layer)
+            }
+        }
+
+        showMapSafeResult(result)
+    }
+
+    fun runMapSafeHexabinning(resolution: Int) {
+        val app = mApp ?: return
+        val result = MapSafeWorkflowRunner.runHexabinning(
+            context = requireContext(),
+            app = app,
+            selectedLayer = mSelectedLayer,
+            resolution = resolution
+        )
+        showMapSafeResult(result)
+    }
+
+    fun openMapSafeEncryptionForSelectedLayer() {
+        val sourceLayer = mSelectedLayer
+        if (sourceLayer == null) {
+            Toast.makeText(requireContext(), "Select a vector layer first.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        Toast.makeText(
+            requireContext(),
+            "Preparing ${sourceLayer.name} for encryption...",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val exportDirectory = java.io.File(
+                        requireContext().cacheDir,
+                        "mapsafe/exports/${System.currentTimeMillis()}"
+                    )
+                    MapSafeGeoJsonWorkflow.exportLayer(sourceLayer, exportDirectory)
+                }
+            }
+
+            result.onSuccess { exported ->
+                Toast.makeText(
+                    requireContext(),
+                    "Prepared ${exported.featureCount} feature(s). Select recipients next.",
+                    Toast.LENGTH_LONG
+                ).show()
+                startActivity(
+                    MapSafeOpenPgpActivity.intent(
+                        requireContext(),
+                        sourceFile = exported.file,
+                        sourceDisplayName = exported.fileName
+                    )
+                )
+            }.onFailure { error ->
+                Toast.makeText(
+                    requireContext(),
+                    "Layer export failed: ${error.message ?: error.javaClass.simpleName}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    fun showMapSafeImportedLayer(layerName: String, extent: GeoEnvelope, featureCount: Int) {
+        val layer = mApp?.map?.getLayerByName(layerName) as? VectorLayer
+        if (layer == null) {
+            Toast.makeText(
+                requireContext(),
+                "The decrypted layer was imported, but could not be selected.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        mSelectedLayer?.isLocked = false
+        mSelectedLayer = layer
+        editLayerOverlay?.setSelectedLayer(layer)
+        showMapSafeResult(
+            MapSafeWorkflowRunner.WorkflowMessage.Success(
+                message = "Imported $featureCount decrypted feature(s) into $layerName.",
+                selectedLayer = layer,
+                zoomExtent = extent
+            )
+        )
+    }
+
+    private fun showMapSafeResult(result: MapSafeWorkflowRunner.WorkflowMessage) {
+        val message = when (result) {
+            is MapSafeWorkflowRunner.WorkflowMessage.Success -> result.message
+            is MapSafeWorkflowRunner.WorkflowMessage.Failure -> result.message
+        }
+
+        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+
+        if (result is MapSafeWorkflowRunner.WorkflowMessage.Success) {
+            mMapRef.get()?.buffer()
+            mActivity?.refreshLayersFrarmentNew()
+
+            result.zoomExtent?.let { extent ->
+                view?.postDelayed(
+                    { mMapRef.get()?.zoomToExtent(extent) },
+                    250L
+                ) ?: mMapRef.get()?.zoomToExtent(extent)
+            }
         }
     }
 

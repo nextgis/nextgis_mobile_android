@@ -27,12 +27,55 @@ apply plugin: 'kotlin-android'
 //apply plugin: 'kotlin-android-extensions'
 //apply plugin: 'kotlin-kapt'
 
+configurations {
+    h3AndroidNatives
+}
+
+def localSigningProperties = new Properties()
+def localSigningPropertiesFile = rootProject.file('local.properties')
+if (localSigningPropertiesFile.exists()) {
+    localSigningPropertiesFile.withInputStream { localSigningProperties.load(it) }
+}
+
+def generatedH3JniLibs = layout.buildDirectory.dir('generated/h3JniLibs')
+def extractH3AndroidNatives = tasks.register('extractH3AndroidNatives', Sync) {
+    from({ configurations.h3AndroidNatives.collect { zipTree(it) } }) {
+        include 'android-arm/libh3-java.so'
+        include 'android-arm64/libh3-java.so'
+        eachFile { details ->
+            if (details.path.startsWith('android-arm64/')) {
+                details.path = 'arm64-v8a/libh3-java.so'
+            } else if (details.path.startsWith('android-arm/')) {
+                details.path = 'armeabi-v7a/libh3-java.so'
+            }
+        }
+        includeEmptyDirs = false
+    }
+    into generatedH3JniLibs
+}
 
 android {
     namespace "com.nextgis.mobile"
 
     buildFeatures {
         buildConfig = true
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDir "$buildDir/generated/h3JniLibs"
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += [
+                    'darwin-arm64/libh3-java.dylib',
+                    'darwin-x64/libh3-java.dylib',
+                    'windows-x64/libh3-java.dll',
+                    'windows-x86/libh3-java.dll'
+            ]
+        }
     }
 
     // Setup the Sentry DSN from the file 'sentry.properties', which should contain
@@ -70,19 +113,32 @@ android {
     productFlavors {
     }
 
-    signingConfigs {
-        debug {
-            storeFile file('../../keystore_google')
-            storePassword ANDROID_STORE_PASSWORD
-            keyAlias ANDROID_KEY
-            keyPassword ANDROID_KEY_PASSWORD
+    def customKeystore = file('../../keystore_google')
+    def signingValue = { String name ->
+        project.findProperty(name) ?:
+                System.getenv(name) ?:
+                localSigningProperties.getProperty(name)
+    }
+    def signingAlias = signingValue('ANDROID_KEY') ?: signingValue('ANDROID_KEY_ALIAS')
+    def hasCustomSigning = customKeystore.exists() &&
+            signingValue('ANDROID_STORE_PASSWORD') &&
+            signingAlias &&
+            signingValue('ANDROID_KEY_PASSWORD')
 
-        }
-        release {
-            storeFile file('../../keystore_google')
-            storePassword ANDROID_STORE_PASSWORD
-            keyAlias ANDROID_KEY
-            keyPassword ANDROID_KEY_PASSWORD
+    signingConfigs {
+        if (hasCustomSigning) {
+            debug {
+                storeFile customKeystore
+                storePassword signingValue('ANDROID_STORE_PASSWORD')
+                keyAlias signingAlias
+                keyPassword signingValue('ANDROID_KEY_PASSWORD')
+            }
+            release {
+                storeFile customKeystore
+                storePassword signingValue('ANDROID_STORE_PASSWORD')
+                keyAlias signingAlias
+                keyPassword signingValue('ANDROID_KEY_PASSWORD')
+            }
         }
     }
 
@@ -97,7 +153,9 @@ android {
             resValue 'string', 'nextgis_accounts_auth_type', 'com.nextgis.account'
             buildConfigField "String", "providerAuth", '"com.nextgis.mobile.provider"'
             buildConfigField "String", "nextgismobile_accounts_auth", '"com.nextgis.account"'
-            signingConfig signingConfigs.release
+            if (hasCustomSigning) {
+                signingConfig signingConfigs.release
+            }
         }
         debug {
             minifyEnabled false
@@ -112,7 +170,9 @@ android {
             resValue 'string', 'nextgis_accounts_auth_type', 'com.nextgis.account.debug'
             buildConfigField "String", "providerAuth", '"com.nextgis.mobile.provider.debug"'
             buildConfigField "String", "nextgismobile_accounts_auth", '"com.nextgis.account.debug"'
-            signingConfig signingConfigs.debug
+            if (hasCustomSigning) {
+                signingConfig signingConfigs.debug
+            }
             debuggable true
         }
     }
@@ -151,12 +211,26 @@ dependencies {
     implementation 'com.github.barsrb:hyperlog-android:master-SNAPSHOT'
 
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'org.maplibre.gl:android-sdk:13.4.1'
+    implementation 'org.maplibre.gl:android-sdk-opengl:13.4.1'
     implementation 'com.squareup.okhttp3:okhttp:5.3.2'
+    implementation 'com.uber:h3:4.1.1'
+    h3AndroidNatives 'com.uber:h3:4.1.1'
+
+    // MapSafe OpenPGP. Keep these modules on the exact same version.
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.84'
+    implementation 'org.bouncycastle:bcpg-jdk18on:1.84'
+    implementation 'org.bouncycastle:bcutil-jdk18on:1.84'
+
+    testImplementation 'junit:junit:4.13.2'
 
 //    debugImplementation "com.squareup.leakcanary:leakcanary-android:2.14"
 //    debugImplementation "com.squareup.leakcanary:leakcanary-android-core:2.14"
 
     implementation project(path: ':wizardpager')
+}
+
+tasks.named('preBuild').configure {
+    dependsOn extractH3AndroidNatives
 }

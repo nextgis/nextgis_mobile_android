@@ -52,4 +52,10 @@ allprojects {
         maven { url "https://www.jitpack.io" }
         google()
     }
+
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute module('org.maplibre.gl:android-sdk') using module('org.maplibre.gl:android-sdk-opengl:13.4.1')
+        }
+    }
 }
