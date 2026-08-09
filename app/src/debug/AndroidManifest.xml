@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".mapsafe.test.MapSafeTestDashboardActivity"
+            android:exported="false"
+            android:label="MapSafe Tier 1 Test"
+            android:theme="@style/AppTheme" />
+
+        <provider
+            android:name=".mapsafe.test.MapSafeTestDocumentProvider"
+            android:authorities="${applicationId}.mapsafe.test.documents"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>

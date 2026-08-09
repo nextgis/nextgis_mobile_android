@@ -128,6 +128,7 @@ import com.nextgis.mobile.R
 import com.nextgis.mobile.activity.MainActivity
 import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
 import com.nextgis.mobile.mapsafe.service.MapSafeWorkflowRunner
+import com.nextgis.mobile.mapsafe.ui.DonutMaskingResultDialog
 import com.nextgis.mobile.mapsafe.ui.MapSafeOpenPgpActivity
 import com.nextgis.mobile.util.AppConstants
 import com.nextgis.mobile.util.AppSettingsConstants
@@ -3133,20 +3134,50 @@ public class MapFragment
         }
     }
 
-    fun runMapSafeDonutMasking(minDistanceMetres: Double, maxDistanceMetres: Double) {
+    fun runMapSafeDonutMasking(
+        minDistanceMetres: Double,
+        maxDistanceMetres: Double,
+        continueToEncryption: Boolean = false,
+        sourceLayerName: String? = null
+    ) {
         val app = mApp ?: return
+        val sourceLayer = if (sourceLayerName == null) {
+            mSelectedLayer
+        } else {
+            app.map.getLayerByName(sourceLayerName) as? VectorLayer
+        }
         val result = MapSafeWorkflowRunner.runDonutMasking(
             context = requireContext(),
             app = app,
-            selectedLayer = mSelectedLayer,
+            selectedLayer = sourceLayer,
             minDistanceMetres = minDistanceMetres,
             maxDistanceMetres = maxDistanceMetres
         )
-        showMapSafeResult(result)
+        val hasResultPanel = result is MapSafeWorkflowRunner.WorkflowMessage.Success &&
+            result.donutMaskingDetails != null
+        showMapSafeResult(result, showToast = !hasResultPanel)
+        if (result is MapSafeWorkflowRunner.WorkflowMessage.Success) {
+            result.donutMaskingDetails?.let { details ->
+                DonutMaskingResultDialog.newInstance(
+                    sourceLayerName = details.sourceLayerName,
+                    outputLayerName = details.outputLayerName,
+                    minDistanceMetres = details.minDistanceMetres,
+                    maxDistanceMetres = details.maxDistanceMetres,
+                    totalPoints = details.totalPoints,
+                    maskedPoints = details.maskedPoints,
+                    averageDistanceMetres = details.averageDistanceMetres,
+                    disclosureRiskPercent = details.disclosureRiskPercent,
+                    privacyRatingPercent = details.privacyRatingPercent,
+                    parentNearestCount = details.parentNearestCount,
+                    evaluatedPoints = details.evaluatedPoints,
+                    continueToEncryption = continueToEncryption
+                ).show(parentFragmentManager, DonutMaskingResultDialog.TAG)
+            }
+        }
     }
 
-    fun loadMapSafeSamplePoints() {
-        val app = mApp ?: return
+    fun loadMapSafeSamplePoints(): Boolean {
+        val app = mApp ?: return false
         val result = MapSafeWorkflowRunner.loadSamplePoints(
             context = requireContext(),
             app = app
@@ -3161,9 +3192,10 @@ public class MapFragment
         }
 
         showMapSafeResult(result)
+        return result is MapSafeWorkflowRunner.WorkflowMessage.Success
     }
 
-    fun runMapSafeHexabinning(resolution: Int) {
+    fun runMapSafeHexabinning(resolution: Int, continueToEncryption: Boolean = false) {
         val app = mApp ?: return
         val result = MapSafeWorkflowRunner.runHexabinning(
             context = requireContext(),
@@ -3172,6 +3204,11 @@ public class MapFragment
             resolution = resolution
         )
         showMapSafeResult(result)
+        if (continueToEncryption && result is MapSafeWorkflowRunner.WorkflowMessage.Success) {
+            result.selectedLayer?.let { protectedLayer ->
+                openMapSafeEncryptionForLayer(protectedLayer, "Hexagonal binning")
+            }
+        }
     }
 
     fun openMapSafeEncryptionForSelectedLayer() {
@@ -3180,6 +3217,23 @@ public class MapFragment
             Toast.makeText(requireContext(), "Select a vector layer first.", Toast.LENGTH_LONG).show()
             return
         }
+        openMapSafeEncryptionForLayer(sourceLayer, null)
+    }
+
+    fun continueMapSafeEncryptionForLayer(layerName: String) {
+        val layer = mApp?.map?.getLayerByName(layerName) as? VectorLayer
+        if (layer == null) {
+            Toast.makeText(
+                requireContext(),
+                "The accepted masked layer is no longer available.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        openMapSafeEncryptionForLayer(layer, "Halo masking")
+    }
+
+    private fun openMapSafeEncryptionForLayer(sourceLayer: VectorLayer, representation: String?) {
 
         Toast.makeText(
             requireContext(),
@@ -3208,7 +3262,8 @@ public class MapFragment
                     MapSafeOpenPgpActivity.intent(
                         requireContext(),
                         sourceFile = exported.file,
-                        sourceDisplayName = exported.fileName
+                        sourceDisplayName = exported.fileName,
+                        sourceRepresentation = representation
                     )
                 )
             }.onFailure { error ->
@@ -3244,15 +3299,25 @@ public class MapFragment
         )
     }
 
-    private fun showMapSafeResult(result: MapSafeWorkflowRunner.WorkflowMessage) {
+    private fun showMapSafeResult(
+        result: MapSafeWorkflowRunner.WorkflowMessage,
+        showToast: Boolean = true
+    ) {
         val message = when (result) {
             is MapSafeWorkflowRunner.WorkflowMessage.Success -> result.message
             is MapSafeWorkflowRunner.WorkflowMessage.Failure -> result.message
         }
 
-        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        if (showToast) {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        }
 
         if (result is MapSafeWorkflowRunner.WorkflowMessage.Success) {
+            result.selectedLayer?.let { protectedLayer ->
+                mSelectedLayer?.isLocked = false
+                mSelectedLayer = protectedLayer
+                editLayerOverlay?.setSelectedLayer(protectedLayer)
+            }
             mMapRef.get()?.buffer()
             mActivity?.refreshLayersFrarmentNew()
 

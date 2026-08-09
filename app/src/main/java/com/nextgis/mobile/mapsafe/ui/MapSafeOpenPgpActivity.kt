@@ -12,7 +12,6 @@ import android.text.method.PasswordTransformationMethod
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -30,9 +29,11 @@ import com.nextgis.mobile.mapsafe.access.decrypt.DecryptFile
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpDecryptionResult
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpException
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
-import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyGenerator
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpSignatureStatus
+import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
+import com.nextgis.mobile.mapsafe.keys.PublicKeyExchangeRepository
+import com.nextgis.mobile.mapsafe.keys.PublicKeyTrustState
 import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
 import com.nextgis.mobile.mapsafe.safeguard.encryption.EncryptFile
 import kotlinx.coroutines.Dispatchers
@@ -49,10 +50,11 @@ import javax.crypto.spec.SecretKeySpec
 /** Self-contained MapSafe OpenPGP identity, recipient, encryption and decryption screen. */
 class MapSafeOpenPgpActivity : AppCompatActivity() {
     private lateinit var repository: OpenPgpKeyRepository
+    private lateinit var exchangeRepository: PublicKeyExchangeRepository
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
     private lateinit var controls: LinearLayout
-    private lateinit var backButton: Button
+    private var resultPanel: View? = null
 
     private var pendingEncryptInput: Uri? = null
     private var pendingInternalEncryptSource: File? = null
@@ -118,14 +120,15 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        MapSafeUi.configureActivity(
+            this,
+            if (intent.getStringExtra(EXTRA_MODE) == MODE_DECRYPT) "Decrypt & access" else "Encrypt & protect"
+        )
         repository = OpenPgpKeyRepository(applicationContext)
+        exchangeRepository = PublicKeyExchangeRepository(applicationContext)
         loadInternalEncryptSource()
-        setContentView(buildContent())
+        setContentView(MapSafeUi.activityFrame(this, buildContent(), onBack =(::returnToParentMenu)))
         refreshStatus()
-        if (pendingInternalEncryptSource != null) {
-            controls.post { beginEncrypt() }
-        }
     }
 
     override fun onDestroy() {
@@ -134,67 +137,131 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::statusText.isInitialized) refreshStatus()
+    }
+
     private fun buildContent(): View {
-        val padding = dp(20)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, padding)
-        }
-
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        backButton = Button(this).apply {
-            text = "Back"
-            isAllCaps = false
-            setOnClickListener { returnToParentMenu() }
-        }
-        header.addView(backButton)
-        header.addView(TextView(this).apply {
-            text = if (intent.getStringExtra(EXTRA_MODE) == MODE_DECRYPT) {
-                "MapSafe Decryption"
-            } else {
-                "MapSafe Encryption"
-            }
-            textSize = 24f
-            setPadding(dp(12), 0, 0, 0)
-        })
-        root.addView(header)
-        statusText = TextView(this).apply {
-            setPadding(0, dp(12), 0, dp(12))
-        }
-        root.addView(statusText)
-        progress = ProgressBar(this).apply { visibility = View.GONE }
-        root.addView(progress)
-
-        controls = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        controls = MapSafeUi.page(this)
         val preferredDecrypt = intent.getStringExtra(EXTRA_MODE) == MODE_DECRYPT
         if (preferredDecrypt) {
-            controls.addAction("Decrypt OpenPGP file", ::beginDecrypt)
-            controls.addAction("Encrypt file for recipients", ::beginEncrypt)
+            controls.addView(MapSafeUi.screenHeading(
+                this,
+                "Decrypt & Access",
+                "Decrypt a protected dataset you are authorised to access."
+            ))
+            controls.addView(MapSafeUi.card(
+                this,
+                MapSafeUi.sectionTitle(this, "Select Encrypted File"),
+                MapSafeUi.text(this, "Choose an OpenPGP MapSafe package from this device.", 14f),
+                MapSafeUi.outlineButton(this, "Browse protected files", ::beginDecrypt)
+            ))
+            statusText = MapSafeUi.text(this, "", 14f)
+            controls.addView(MapSafeUi.card(
+                this,
+                MapSafeUi.sectionTitle(this, "Your Private Key"),
+                statusText,
+                MapSafeUi.outlineButton(this, "Change / manage identity") {
+                    startActivity(Intent(this, MapSafeSecurityActivity::class.java))
+                }
+            ))
+            controls.addView(MapSafeUi.card(
+                this,
+                MapSafeUi.valueRow(this, "Encryption", "AES-256-GCM", strongValue = true),
+                MapSafeUi.valueRow(this, "Protected by", "OpenPGP"),
+                MapSafeUi.valueRow(this, "Integrity", "Verified before output")
+            ))
+            controls.addView(MapSafeUi.primaryButton(this, "🔓  Choose Package & Decrypt", ::beginDecrypt))
         } else {
-            controls.addAction("Encrypt file for recipients", ::beginEncrypt)
-            controls.addAction("Decrypt OpenPGP file", ::beginDecrypt)
+            controls.addView(MapSafeUi.screenHeading(
+                this,
+                "Encrypt & Protect",
+                "Encrypt the protected dataset before it leaves this device."
+            ))
+            val representation = intent.getStringExtra(EXTRA_SOURCE_REPRESENTATION)
+                ?: "User-selected representation"
+            controls.addView(MapSafeUi.card(
+                this,
+                MapSafeUi.sectionTitle(this, "Protected Dataset"),
+                MapSafeUi.text(this, pendingInternalEncryptName ?: "Choose another file during encryption", 15f, MapSafeUi.TEXT, bold = true),
+                MapSafeUi.text(this, "Representation: $representation", 13f, MapSafeUi.MUTED),
+                MapSafeUi.divider(this),
+                MapSafeUi.valueRow(this, "Encryption", "AES-256-GCM", strongValue = true)
+            ))
+            statusText = MapSafeUi.text(this, "", 14f)
+            val setupIdentity = MapSafeUi.outlineButton(this, "Security & sharing setup") {
+                startActivity(Intent(this, MapSafeSecurityActivity::class.java))
+            }
+            controls.addView(
+                if (repository.hasLocalIdentity()) {
+                    MapSafeUi.card(
+                        this,
+                        MapSafeUi.sectionTitle(this, "Your Encryption Identity"),
+                        statusText,
+                        setupIdentity
+                    )
+                } else {
+                    MapSafeUi.card(
+                        this,
+                        MapSafeUi.sectionTitle(this, "Your Encryption Identity"),
+                        statusText,
+                        setupIdentity,
+                        MapSafeUi.outlineButton(this, "Create local identity", ::confirmCreateIdentity)
+                    )
+                }
+            )
+            val selection = MapSafeSecurityPreferences.read(this)
+            val groupRecords = if (selection.hasGroup) {
+                exchangeRepository.records(requireNotNull(selection.serverUrl), requireNotNull(selection.groupId))
+            } else emptyList()
+            val accepted = groupRecords.count { it.trustState == PublicKeyTrustState.ACCEPTED }
+            controls.addView(MapSafeUi.card(
+                this,
+                MapSafeUi.sectionTitle(this, "Recipients"),
+                MapSafeUi.valueRow(this, selection.groupName ?: "Trusted recipients", "$accepted verified"),
+                MapSafeUi.text(this, "Accepted group keys are selected by default. Missing or changed keys remain blocked.", 13f, MapSafeUi.MUTED),
+                MapSafeUi.outlineButton(this, "+  Import individual recipient") {
+                    importPublicKey.launch(arrayOf("application/pgp-keys", "application/octet-stream", "text/plain"))
+                },
+                MapSafeUi.outlineButton(this, "View keys & fingerprints", ::showKeys)
+            ))
+            controls.addView(MapSafeUi.card(
+                this,
+                MapSafeUi.sectionTitle(this, "Access Protection"),
+                MapSafeUi.text(this, "◉  Encrypt for selected recipients", 14f, MapSafeUi.GREEN_TEXT, bold = true),
+                MapSafeUi.divider(this),
+                MapSafeUi.valueRow(this, "Content encryption", "AES-256-GCM"),
+                MapSafeUi.valueRow(this, "Session-key protection", "OpenPGP"),
+                MapSafeUi.valueRow(this, "Source data leaves device", "No", strongValue = true)
+            ))
+            controls.addView(MapSafeUi.primaryButton(this, "🔒  Select Recipients & Encrypt", ::beginEncrypt))
         }
-        controls.addSection("Identity")
-        controls.addAction("Create local identity", ::confirmCreateIdentity)
-        controls.addAction("Import secret-key backup", ::confirmImportSecretIdentity)
-        controls.addAction("Export my public key") { beginExport(secret = false) }
-        controls.addAction("Export protected secret-key backup") { beginExport(secret = true) }
-        controls.addSection("Recipients")
-        controls.addAction("Import recipient public key") {
-            importPublicKey.launch(arrayOf("application/pgp-keys", "application/octet-stream", "text/plain"))
+        controls.addView(MapSafeUi.card(
+            this,
+            MapSafeUi.sectionTitle(this, "Key Backup & Recovery"),
+            MapSafeUi.outlineButton(this, "Import protected key backup", ::confirmImportSecretIdentity),
+            MapSafeUi.outlineButton(this, "Export my public key") { beginExport(secret = false) },
+            MapSafeUi.outlineButton(this, "Export protected private-key backup") { beginExport(secret = true) }
+        ))
+        progress = ProgressBar(this).apply { visibility = View.GONE }
+        controls.addView(progress, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        return ScrollView(this).apply {
+            setBackgroundColor(MapSafeUi.PAGE)
+            addView(controls)
         }
-        controls.addAction("View keys and fingerprints", ::showKeys)
-        root.addView(controls)
-
-        return ScrollView(this).apply { addView(root) }
     }
 
     private fun refreshStatus(message: String? = null) {
         val identity = runCatching { repository.localIdentityInfo() }.getOrNull()
-        val recipients = runCatching { repository.listKeyInfo().count { !it.hasSecretKey } }.getOrDefault(0)
+        val recipients = runCatching {
+            selectableEncryptionKeyRings().count { ring ->
+                OpenPgpKeyCodec.fingerprint(ring.publicKey.fingerprint) != identity?.fingerprint
+            }
+        }.getOrDefault(0)
+        val awaitingReview = runCatching {
+            exchangeRepository.records().count { it.needsUserReview }
+        }.getOrDefault(0)
         statusText.text = buildString {
             message?.let { append(it).append("\n\n") }
             if (identity == null) {
@@ -203,7 +270,8 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 append("Identity: ${identity.displayName}\n")
                 append("Fingerprint: ${formatFingerprint(identity.fingerprint)}")
             }
-            append("\nRecipient keys: $recipients")
+            append("\nAvailable recipient keys: $recipients")
+            if (awaitingReview > 0) append("\nDirectory fingerprints awaiting review: $awaitingReview")
         }
     }
 
@@ -224,58 +292,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     }
 
     private fun showCreateIdentityDialog() {
-        val name = inputField("Name")
-        val email = inputField("Email (optional)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        val passphrase = passwordField("Recovery passphrase")
-        val confirm = passwordField("Confirm passphrase")
-        val form = verticalForm(name, email, passphrase, confirm)
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Create OpenPGP identity")
-            .setMessage("Use a strong passphrase and export a protected backup after creation.")
-            .setView(form)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton("Create", null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val displayName = name.text.toString().trim()
-                val emailAddress = email.text.toString().trim()
-                val secret = passphrase.text.toString().toCharArray()
-                val repeated = confirm.text.toString().toCharArray()
-                var handedToGenerator = false
-                when {
-                    displayName.isBlank() -> toast("Enter a name for the identity.")
-                    secret.size < 12 -> toast("Use a recovery passphrase of at least 12 characters.")
-                    !secret.contentEquals(repeated) -> toast("The passphrases do not match.")
-                    else -> {
-                        dialog.dismiss()
-                        repeated.fill('\u0000')
-                        passphrase.text?.clear()
-                        confirm.text?.clear()
-                        val userId = if (emailAddress.isBlank()) displayName else "$displayName <$emailAddress>"
-                        handedToGenerator = true
-                        runBusy(
-                            message = "Generating a 3072-bit OpenPGP identity…",
-                            operation = {
-                                try {
-                                    val material = OpenPgpKeyGenerator.generate(userId, secret)
-                                    repository.saveLocalIdentity(material)
-                                    material.info
-                                } finally {
-                                    secret.fill('\u0000')
-                                }
-                            },
-                            onSuccess = { info ->
-                                refreshStatus("Identity created: ${info.displayName}")
-                            }
-                        )
-                    }
-                }
-                if (!handedToGenerator) secret.fill('\u0000')
-                if (repeated.isNotEmpty()) repeated.fill('\u0000')
-            }
-        }
-        dialog.show()
+        startActivity(Intent(this, MapSafeIdentityActivity::class.java))
     }
 
     private fun confirmImportSecretIdentity() {
@@ -363,18 +380,46 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     }
 
     private fun beginEncrypt() {
-        val rings = repository.listPublicKeyRings().filter { OpenPgpKeyCodec.findEncryptionKey(it) != null }
+        val rings = selectableEncryptionKeyRings()
         if (rings.isEmpty()) {
             toast("Create an identity or import at least one recipient public key first.")
             return
         }
 
-        val checks = rings.map { ring ->
+        val selection = MapSafeSecurityPreferences.read(this)
+        val groupRecords = if (selection.hasGroup) {
+            exchangeRepository.records(requireNotNull(selection.serverUrl), requireNotNull(selection.groupId))
+        } else {
+            emptyList()
+        }
+        val acceptedGroupNames = groupRecords
+            .filter { it.trustState == PublicKeyTrustState.ACCEPTED }
+            .associate { it.observedFingerprint to it.displayName }
+        val localFingerprint = repository.localIdentityInfo()?.fingerprint
+        val orderedRings = rings.sortedWith(
+            compareBy<org.bouncycastle.openpgp.PGPPublicKeyRing> {
+                val fingerprint = OpenPgpKeyCodec.fingerprint(it.publicKey.fingerprint)
+                when {
+                    fingerprint == localFingerprint -> 0
+                    fingerprint in acceptedGroupNames -> 1
+                    else -> 2
+                }
+            }.thenBy { OpenPgpKeyCodec.keyInfo(it).displayName.lowercase() }
+        )
+
+        val checks = orderedRings.map { ring ->
             val info = OpenPgpKeyCodec.keyInfo(ring, repository.localIdentityInfo()?.fingerprint ==
                 OpenPgpKeyCodec.fingerprint(ring.publicKey.fingerprint))
+            val groupMemberName = acceptedGroupNames[info.fingerprint]
             CheckBox(this).apply {
-                text = "${info.displayName}\n${formatFingerprint(info.fingerprint)}"
-                isChecked = info.hasSecretKey
+                text = when {
+                    info.hasSecretKey -> "Only me - ${info.displayName}\n${formatFingerprint(info.fingerprint)}"
+                    groupMemberName != null ->
+                        "${selection.groupName ?: "Selected group"} / $groupMemberName\n" +
+                            "${formatFingerprint(info.fingerprint)} - available offline"
+                    else -> "Individual recipient - ${info.displayName}\n${formatFingerprint(info.fingerprint)}"
+                }
+                isChecked = info.hasSecretKey || groupMemberName != null
                 tag = info.fingerprint
                 setPadding(0, dp(5), 0, dp(5))
             }
@@ -385,10 +430,41 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             isChecked = isEnabled
             setPadding(0, dp(12), 0, 0)
         }
-        val form = verticalForm(*checks.toTypedArray(), sign)
+        val form = MapSafeUi.page(this).apply {
+            setPadding(dp(4), dp(4), dp(4), 0)
+            addView(MapSafeUi.card(
+                this@MapSafeOpenPgpActivity,
+                MapSafeUi.sectionTitle(this@MapSafeOpenPgpActivity, "Verified recipients"),
+                *checks.toTypedArray()
+            ))
+            addView(MapSafeUi.card(
+                this@MapSafeOpenPgpActivity,
+                MapSafeUi.sectionTitle(this@MapSafeOpenPgpActivity, "Package authenticity"),
+                sign
+            ))
+        }
+        val availableMemberIds = groupRecords
+            .filter { it.trustState == PublicKeyTrustState.ACCEPTED }
+            .mapTo(mutableSetOf()) { it.identity.userId }
+            .apply {
+                if (localFingerprint != null) selection.currentUserId?.let(::add)
+            }
+        val missingMembers = (selection.groupMemberCount - availableMemberIds.size).coerceAtLeast(0)
+        val pendingMembers = groupRecords.count { it.needsUserReview }
         val dialog = AlertDialog.Builder(this)
             .setTitle("Select recipients")
-            .setMessage("The file is encrypted once. Each selected recipient receives an encrypted session key.")
+            .setMessage(buildString {
+                append("The dataset is encrypted once. Each checked recipient receives a separately encrypted session key.")
+                if (selection.hasGroup) {
+                    append("\n\nGroup: ").append(selection.groupName ?: selection.groupId)
+                    append("\nAvailable member keys: ").append(availableMemberIds.size)
+                    if (missingMembers > 0) append("\nMissing member keys: ").append(missingMembers)
+                    if (pendingMembers > 0) append("\nFingerprints awaiting review: ").append(pendingMembers)
+                    if (missingMembers > 0 || pendingMembers > 0) {
+                        append("\n\nUnchecked or unavailable members will not be able to decrypt this package.")
+                    }
+                }
+            })
             .setView(form)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(
@@ -437,7 +513,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             message = "Encrypting for ${selected.size} recipient${if (selected.size == 1) "" else "s"}…",
             operation = {
                 try {
-                    val ringsByFingerprint = repository.listPublicKeyRings().associateBy {
+                    val ringsByFingerprint = selectableEncryptionKeyRings().associateBy {
                         OpenPgpKeyCodec.fingerprint(it.publicKey.fingerprint)
                     }
                     val recipients = selected.mapNotNull(ringsByFingerprint::get)
@@ -471,7 +547,14 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             },
             onSuccess = { result ->
                 val signing = if (result.signerFingerprint == null) "Unsigned" else "Signed"
-                refreshStatus("Encrypted for ${result.recipientFingerprints.size} recipient(s). $signing package saved.")
+                val message = "Encrypted once with ${result.contentProtection.displayName} for " +
+                    "${result.recipientFingerprints.size} recipient(s). $signing package saved."
+                refreshStatus(message)
+                showResultPanel(
+                    "✓  Dataset protected",
+                    "${result.contentProtection.displayName} encryption",
+                    "${result.recipientFingerprints.size} authorised recipient(s) · Ready to share"
+                )
             }
         )
     }
@@ -534,6 +617,11 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             },
             onSuccess = { result ->
                 refreshStatus(decryptionMessage(result))
+                showResultPanel(
+                    "✓  Decryption successful",
+                    "${result.originalFileName} is ready to view",
+                    "Integrity verified · ${result.signatureStatus.name.lowercase().replace('_', ' ')}"
+                )
                 offerGeoJsonImport(outputUri, result)
             }
         )
@@ -612,11 +700,20 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
 
     @Deprecated("AndroidX dispatch remains compatible with this activity's existing back behavior")
     override fun onBackPressed() {
-        if (::backButton.isInitialized && !backButton.isEnabled) return
+        if (::controls.isInitialized && !controls.isEnabled) return
         returnToParentMenu()
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        if (controls.isEnabled) returnToParentMenu()
+        return true
+    }
+
     private fun returnToParentMenu() {
+        if (intent.getBooleanExtra(EXTRA_RETURN_TO_SECURITY, false)) {
+            finish()
+            return
+        }
         startActivity(
             Intent(this, MainActivity::class.java)
                 .setAction(MainActivity.ACTION_MAPSAFE_SHOW_PARENT)
@@ -636,7 +733,8 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             OpenPgpSignatureStatus.INVALID -> "WARNING: Signature is invalid."
             OpenPgpSignatureStatus.UNKNOWN_SIGNER -> "Signature could not be checked because the signer key is unknown."
         }
-        return "Decrypted ${result.originalFileName}. Integrity check passed. $signature"
+        return "Decrypted ${result.originalFileName} (${result.contentProtection.displayName}). " +
+            "Integrity check passed. $signature"
     }
 
     private fun showKeys() {
@@ -650,6 +748,9 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     append(info.displayName).append('\n')
                     append(formatFingerprint(info.fingerprint))
                     if (!info.canEncrypt) append("\nNo usable encryption key")
+                    exchangeRepository.trustStateForFingerprint(info.fingerprint)?.let { state ->
+                        append("\nDirectory trust: ").append(state.displayLabel())
+                    }
                 }
             }
         }
@@ -660,7 +761,27 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun selectableEncryptionKeyRings(): List<org.bouncycastle.openpgp.PGPPublicKeyRing> {
+        val localFingerprint = repository.localIdentityInfo()?.fingerprint
+        val blocked = exchangeRepository.nonSelectableFingerprints()
+        return repository.listPublicKeyRings().filter { ring ->
+            val fingerprint = OpenPgpKeyCodec.fingerprint(ring.publicKey.fingerprint)
+            OpenPgpKeyCodec.findEncryptionKey(ring) != null &&
+                (fingerprint == localFingerprint || fingerprint !in blocked)
+        }
+    }
+
+    private fun PublicKeyTrustState.displayLabel(): String = when (this) {
+        PublicKeyTrustState.DISCOVERED -> "discovered — confirmation required"
+        PublicKeyTrustState.ACCEPTED -> "accepted"
+        PublicKeyTrustState.CHANGE_PENDING -> "changed — confirmation required"
+        PublicKeyTrustState.SUPERSEDED -> "superseded"
+        PublicKeyTrustState.REVOKED -> "revoked"
+        PublicKeyTrustState.MEMBER_REMOVED -> "member removed"
+    }
+
     private fun promptForPassphrase(title: String, onPassphrase: (CharArray) -> Unit) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         val input = passwordField("Recovery passphrase")
         val dialog = AlertDialog.Builder(this)
             .setTitle(title)
@@ -680,7 +801,26 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 }
             }
         }
+        dialog.setOnDismissListener {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
         dialog.show()
+    }
+
+    private fun showResultPanel(title: String, subtitle: String, details: String) {
+        resultPanel?.let(controls::removeView)
+        resultPanel = MapSafeUi.card(
+            this,
+            MapSafeUi.text(this, title, 18f, MapSafeUi.GREEN_TEXT, bold = true),
+            MapSafeUi.text(this, subtitle, 15f, MapSafeUi.TEXT, bold = true).apply {
+                setPadding(0, dp(5), 0, 0)
+            },
+            MapSafeUi.text(this, details, 14f, MapSafeUi.GREEN_TEXT).apply {
+                setPadding(0, dp(5), 0, 0)
+            },
+            pale = true
+        )
+        controls.addView(resultPanel, 1)
     }
 
     private fun <T> runBusy(message: String, operation: suspend () -> T, onSuccess: (T) -> Unit) {
@@ -706,7 +846,6 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     private fun setBusy(busy: Boolean, message: String?) {
         progress.visibility = if (busy) View.VISIBLE else View.GONE
         controls.isEnabled = !busy
-        backButton.isEnabled = !busy
         for (index in 0 until controls.childCount) controls.getChildAt(index).isEnabled = !busy
         if (message != null) statusText.text = message
     }
@@ -790,21 +929,6 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         }
     }
 
-    private fun LinearLayout.addAction(label: String, action: () -> Unit) {
-        addView(Button(this@MapSafeOpenPgpActivity).apply {
-            text = label
-            setOnClickListener { action() }
-        })
-    }
-
-    private fun LinearLayout.addSection(label: String) {
-        addView(TextView(this@MapSafeOpenPgpActivity).apply {
-            text = label
-            textSize = 18f
-            setPadding(0, dp(18), 0, dp(4))
-        })
-    }
-
     private fun formatFingerprint(fingerprint: String): String {
         return fingerprint.chunked(4).joinToString(" ")
     }
@@ -819,6 +943,8 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         private const val EXTRA_MODE = "mapsafe_openpgp_mode"
         private const val EXTRA_INTERNAL_SOURCE_PATH = "mapsafe_openpgp_internal_source_path"
         private const val EXTRA_INTERNAL_SOURCE_NAME = "mapsafe_openpgp_internal_source_name"
+        private const val EXTRA_SOURCE_REPRESENTATION = "mapsafe_openpgp_source_representation"
+        private const val EXTRA_RETURN_TO_SECURITY = "mapsafe_openpgp_return_to_security"
         private const val MODE_ENCRYPT = "encrypt"
         private const val MODE_DECRYPT = "decrypt"
 
@@ -826,14 +952,18 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             context: Context,
             decrypt: Boolean = false,
             sourceFile: File? = null,
-            sourceDisplayName: String? = null
+            sourceDisplayName: String? = null,
+            sourceRepresentation: String? = null,
+            returnToSecurity: Boolean = false
         ): Intent {
             return Intent(context, MapSafeOpenPgpActivity::class.java)
                 .putExtra(EXTRA_MODE, if (decrypt) MODE_DECRYPT else MODE_ENCRYPT)
+                .putExtra(EXTRA_RETURN_TO_SECURITY, returnToSecurity)
                 .apply {
                     if (sourceFile != null) {
                         putExtra(EXTRA_INTERNAL_SOURCE_PATH, sourceFile.absolutePath)
                         putExtra(EXTRA_INTERNAL_SOURCE_NAME, sourceDisplayName ?: sourceFile.name)
+                        sourceRepresentation?.let { putExtra(EXTRA_SOURCE_REPRESENTATION, it) }
                     }
                 }
         }

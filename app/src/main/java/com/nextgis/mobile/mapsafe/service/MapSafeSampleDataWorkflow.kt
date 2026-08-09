@@ -46,32 +46,53 @@ object MapSafeSampleDataWorkflow {
             GeoConstants.GTPoint,
             fields
         )
-        map.addLayer(layer)
-        map.save()
+        require(layer.geometryType == GeoConstants.GTPoint) {
+            "The sample layer was not created as a point-vector layer."
+        }
 
-        val insertResult = MapSafeLayerWriter.insertFeatures(
-            context.contentResolver,
-            MapSafeLayerWriter.buildLayerUri(app, layer),
-            features
-        )
+        var addedToMap = false
+        try {
+            map.addLayer(layer)
+            addedToMap = true
+            map.save()
 
-        layer.notifyLayerChanged()
-        map.save()
+            val insertResult = MapSafeLayerWriter.insertFeatures(
+                context.contentResolver,
+                MapSafeLayerWriter.buildLayerUri(app, layer),
+                features
+            )
+            require(insertResult.attempted == features.size) {
+                "Expected ${features.size} sample points but attempted ${insertResult.attempted}."
+            }
+            require(insertResult.inserted == features.size && insertResult.failed == 0) {
+                "Only ${insertResult.inserted}/${features.size} sample points were inserted."
+            }
 
-        require(insertResult.inserted > 0) { "No sample points could be inserted." }
+            layer.notifyLayerChanged()
+            map.save()
 
-        val extent = GeoEnvelope()
-        features.forEach { feature -> extent.merge(feature.geometry.envelope) }
-        require(extent.isInit) { "The sample dataset extent could not be calculated." }
+            val extent = GeoEnvelope()
+            features.forEach { feature -> extent.merge(feature.geometry.envelope) }
+            require(extent.isInit) { "The sample dataset extent could not be calculated." }
 
-        return WorkflowResult(
-            layer = layer,
-            layerName = layerName,
-            attempted = insertResult.attempted,
-            inserted = insertResult.inserted,
-            failed = insertResult.failed,
-            extent = extent
-        )
+            return WorkflowResult(
+                layer = layer,
+                layerName = layerName,
+                attempted = insertResult.attempted,
+                inserted = insertResult.inserted,
+                failed = insertResult.failed,
+                extent = extent
+            )
+        } catch (error: Throwable) {
+            if (addedToMap) {
+                runCatching {
+                    map.removeLayer(layer)
+                    map.save()
+                }
+            }
+            runCatching { layer.delete(true) }
+            throw error
+        }
     }
 
     private fun readFeatures(context: Context): List<MapSafeLayerWriter.FeatureToInsert> {

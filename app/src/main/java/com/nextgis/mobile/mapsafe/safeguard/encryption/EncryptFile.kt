@@ -1,6 +1,7 @@
 package com.nextgis.mobile.mapsafe.safeguard.encryption
 
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpEncryptionResult
+import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpContentProtection
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpEngine
 import org.bouncycastle.openpgp.PGPPublicKeyRing
 import org.bouncycastle.openpgp.PGPSecretKeyRing
@@ -19,7 +20,8 @@ object EncryptFile {
         originalFileName: String,
         recipients: Collection<PGPPublicKeyRing>,
         signingKeyRing: PGPSecretKeyRing? = null,
-        signingPassphrase: CharArray? = null
+        signingPassphrase: CharArray? = null,
+        contentProtection: OpenPgpContentProtection = OpenPgpContentProtection.AES_256_GCM
     ): OpenPgpEncryptionResult {
         return OpenPgpEngine.encrypt(
             input = input,
@@ -27,7 +29,8 @@ object EncryptFile {
             originalFileName = originalFileName,
             recipients = recipients,
             signingKeyRing = signingKeyRing,
-            signingPassphrase = signingPassphrase
+            signingPassphrase = signingPassphrase,
+            contentProtection = contentProtection
         )
     }
 }

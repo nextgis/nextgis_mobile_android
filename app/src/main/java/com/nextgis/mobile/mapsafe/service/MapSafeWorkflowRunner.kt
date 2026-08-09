@@ -13,11 +13,26 @@ import com.nextgis.mobile.MainApplication
  */
 object MapSafeWorkflowRunner {
 
+    data class DonutMaskingDetails(
+        val sourceLayerName: String,
+        val outputLayerName: String,
+        val minDistanceMetres: Double,
+        val maxDistanceMetres: Double,
+        val totalPoints: Int,
+        val maskedPoints: Int,
+        val averageDistanceMetres: Double,
+        val disclosureRiskPercent: Double,
+        val privacyRatingPercent: Double,
+        val parentNearestCount: Int,
+        val evaluatedPoints: Int
+    )
+
     sealed class WorkflowMessage {
         data class Success(
             val message: String,
             val selectedLayer: VectorLayer? = null,
-            val zoomExtent: GeoEnvelope? = null
+            val zoomExtent: GeoEnvelope? = null,
+            val donutMaskingDetails: DonutMaskingDetails? = null
         ) : WorkflowMessage()
         data class Failure(val message: String, val error: Throwable? = null) : WorkflowMessage()
     }
@@ -47,7 +62,9 @@ object MapSafeWorkflowRunner {
         maxDistanceMetres: Double
     ): WorkflowMessage {
         if (selectedLayer == null) {
-            return WorkflowMessage.Failure("No vector layer selected.")
+            return WorkflowMessage.Failure(
+                "No compatible point-vector layer is selected. Choose a point layer or use the bundled MapSafe sample dataset."
+            )
         }
 
         return try {
@@ -60,10 +77,31 @@ object MapSafeWorkflowRunner {
             )
 
             WorkflowMessage.Success(
-                "Created ${result.outputLayerName}. " +
+                message = "Created ${result.outputLayerName}. " +
                     "Masked ${result.maskedPoints}/${result.totalPoints} points. " +
                     "Inserted ${result.inserted}, failed ${result.failed}. " +
-                    "Average distance: ${String.format("%.2f", result.averageDistanceMetres)} m"
+                    "Average distance: ${String.format("%.2f", result.averageDistanceMetres)} m. " +
+                    "Spruill privacy rating: " +
+                    "${String.format("%.2f", result.spruillMeasure.privacyRatingPercent)}/100 " +
+                    "(higher is better). Disclosure risk: " +
+                    "${String.format("%.2f", result.spruillMeasure.disclosureRiskPercent)}% " +
+                    "(${result.spruillMeasure.parentNearestCount}/" +
+                    "${result.spruillMeasure.evaluatedPoints} parent-nearest).",
+                selectedLayer = result.outputLayer,
+                zoomExtent = GeoEnvelope(result.outputLayer.extents),
+                donutMaskingDetails = DonutMaskingDetails(
+                    sourceLayerName = selectedLayer.name,
+                    outputLayerName = result.outputLayerName,
+                    minDistanceMetres = minDistanceMetres,
+                    maxDistanceMetres = maxDistanceMetres,
+                    totalPoints = result.totalPoints,
+                    maskedPoints = result.maskedPoints,
+                    averageDistanceMetres = result.averageDistanceMetres,
+                    disclosureRiskPercent = result.spruillMeasure.disclosureRiskPercent,
+                    privacyRatingPercent = result.spruillMeasure.privacyRatingPercent,
+                    parentNearestCount = result.spruillMeasure.parentNearestCount,
+                    evaluatedPoints = result.spruillMeasure.evaluatedPoints
+                )
             )
         } catch (e: Throwable) {
             WorkflowMessage.Failure("Donut masking failed: ${e.message}", e)
@@ -77,7 +115,9 @@ object MapSafeWorkflowRunner {
         resolution: Int
     ): WorkflowMessage {
         if (selectedLayer == null) {
-            return WorkflowMessage.Failure("No vector layer selected.")
+            return WorkflowMessage.Failure(
+                "No compatible point-vector layer is selected. Choose a point layer or use the bundled MapSafe sample dataset."
+            )
         }
 
         return try {
@@ -89,9 +129,11 @@ object MapSafeWorkflowRunner {
             )
 
             WorkflowMessage.Success(
-                "Created ${result.outputLayerName} using ${result.engine.displayName} " +
+                message = "Created ${result.outputLayerName} using ${result.engine.displayName} " +
                     "at resolution ${result.resolution}. " +
-                    "Grouped ${result.sourcePoints} points into ${result.hexagons} blue hexagons."
+                    "Grouped ${result.sourcePoints} points into ${result.hexagons} blue hexagons.",
+                selectedLayer = result.outputLayer,
+                zoomExtent = GeoEnvelope(result.outputLayer.extents)
             )
         } catch (e: Throwable) {
             WorkflowMessage.Failure("Hexabinning failed: ${e.message}", e)

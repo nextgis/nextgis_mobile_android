@@ -127,7 +127,10 @@ import com.nextgis.mobile.R
 import com.nextgis.mobile.fragment.LayersFragment
 import com.nextgis.mobile.fragment.MapFragment
 import com.nextgis.mobile.mapsafe.ui.AccessFeaturesDialog
+import com.nextgis.mobile.mapsafe.ui.AnonymiseDialog
+import com.nextgis.mobile.mapsafe.ui.CombinedWorkflowDialog
 import com.nextgis.mobile.mapsafe.ui.DonutMaskingDialog
+import com.nextgis.mobile.mapsafe.ui.DonutMaskingResultDialog
 import com.nextgis.mobile.mapsafe.ui.EncryptDialog
 import com.nextgis.mobile.mapsafe.ui.HexabinningDialog
 import com.nextgis.mobile.mapsafe.ui.MapSafeMainDialog
@@ -626,8 +629,16 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
         supportFragmentManager.setFragmentResultListener(
             MapSafeMainDialog.REQUEST_LOAD_SAMPLE_POINTS,
             this
-        ) { _, _ ->
-            mapFragment?.loadMapSafeSamplePoints()
+        ) { _, result ->
+            val loaded = mapFragment?.loadMapSafeSamplePoints() == true
+            if (loaded) {
+                when {
+                    result.getBoolean(MapSafeMainDialog.RESULT_OPEN_COMBINED) ->
+                        CombinedWorkflowDialog().show(supportFragmentManager, "CombinedWorkflowDialog")
+                    result.getBoolean(MapSafeMainDialog.RESULT_OPEN_ANONYMISE) ->
+                        AnonymiseDialog().show(supportFragmentManager, "AnonymiseDialog")
+                }
+            }
         }
 
         supportFragmentManager.setFragmentResultListener(
@@ -636,8 +647,21 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
         ) { _, result ->
             mapFragment?.runMapSafeDonutMasking(
                 result.getDouble(DonutMaskingDialog.RESULT_MIN_DISTANCE),
-                result.getDouble(DonutMaskingDialog.RESULT_MAX_DISTANCE)
+                result.getDouble(DonutMaskingDialog.RESULT_MAX_DISTANCE),
+                result.getBoolean(DonutMaskingDialog.RESULT_CONTINUE_TO_ENCRYPT),
+                result.getString(DonutMaskingDialog.RESULT_SOURCE_LAYER_NAME)
             )
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            DonutMaskingResultDialog.REQUEST_USE_RESULT,
+            this
+        ) { _, result ->
+            if (result.getBoolean(DonutMaskingResultDialog.RESULT_CONTINUE_TO_ENCRYPT)) {
+                result.getString(DonutMaskingResultDialog.RESULT_OUTPUT_LAYER_NAME)?.let {
+                    mapFragment?.continueMapSafeEncryptionForLayer(it)
+                }
+            }
         }
 
         supportFragmentManager.setFragmentResultListener(
@@ -645,7 +669,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             this
         ) { _, result ->
             mapFragment?.runMapSafeHexabinning(
-                result.getInt(HexabinningDialog.RESULT_RESOLUTION)
+                result.getInt(HexabinningDialog.RESULT_RESOLUTION),
+                result.getBoolean(HexabinningDialog.RESULT_CONTINUE_TO_ENCRYPT)
             )
         }
 

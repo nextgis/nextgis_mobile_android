@@ -58,8 +58,9 @@
     <application
         android:name=".MainApplication"
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/mapsafe_logo"
         android:label="@string/APP_NAME"
+        android:roundIcon="@drawable/mapsafe_logo"
         android:usesCleartextTraffic="true"
         tools:ignore="GoogleAppIndexingWarning"
         tools:replace="android:allowBackup, label"
@@ -106,6 +107,18 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false"
             android:label="MapSafe OpenPGP"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".mapsafe.ui.MapSafeSecurityActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:label="MapSafe Security &amp; Sharing"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".mapsafe.ui.MapSafeIdentityActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:label="MapSafe Encryption Identity"
             android:theme="@style/AppTheme" />
         <activity
             android:name=".activity.IntroActivity"

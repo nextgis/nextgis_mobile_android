@@ -1,7 +1,9 @@
 package com.nextgis.mobile.mapsafe.crypto.openpgp
 
+import org.bouncycastle.bcpg.AEADAlgorithmTags
 import org.bouncycastle.bcpg.CompressionAlgorithmTags
 import org.bouncycastle.bcpg.HashAlgorithmTags
+import org.bouncycastle.bcpg.SymmetricEncIntegrityPacket
 import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags
 import org.bouncycastle.openpgp.PGPCompressedData
 import org.bouncycastle.openpgp.PGPCompressedDataGenerator
@@ -36,6 +38,7 @@ import java.util.Date
 
 object OpenPgpEngine {
     private const val BUFFER_SIZE = 64 * 1024
+    private const val AEAD_CHUNK_SIZE = 16
 
     fun encrypt(
         input: InputStream,
@@ -44,6 +47,7 @@ object OpenPgpEngine {
         recipients: Collection<PGPPublicKeyRing>,
         signingKeyRing: PGPSecretKeyRing? = null,
         signingPassphrase: CharArray? = null,
+        contentProtection: OpenPgpContentProtection = OpenPgpContentProtection.AES_256_GCM,
         secureRandom: SecureRandom = SecureRandom()
     ): OpenPgpEncryptionResult {
         val recipientKeys = recipients
@@ -91,11 +95,17 @@ object OpenPgpEngine {
         }
 
         try {
-            val encryptor = PGPEncryptedDataGenerator(
-                BcPGPDataEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256)
+            val dataEncryptor = BcPGPDataEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256)
+                .setSecureRandom(secureRandom)
+            when (contentProtection) {
+                OpenPgpContentProtection.AES_256_GCM -> dataEncryptor
+                    .setWithAEAD(AEADAlgorithmTags.GCM, AEAD_CHUNK_SIZE)
+                    .setUseV6AEAD()
+
+                OpenPgpContentProtection.AES_256_CFB_MDC -> dataEncryptor
                     .setWithIntegrityPacket(true)
-                    .setSecureRandom(secureRandom)
-            )
+            }
+            val encryptor = PGPEncryptedDataGenerator(dataEncryptor)
             recipientKeys.forEach { (_, key) ->
                 encryptor.addMethod(
                     BcPublicKeyKeyEncryptionMethodGenerator(key).setSecureRandom(secureRandom)
@@ -133,7 +143,8 @@ object OpenPgpEngine {
                 recipientFingerprints = recipientKeys.map { (ring, _) ->
                     OpenPgpKeyCodec.fingerprint(ring.publicKey.fingerprint)
                 },
-                signerFingerprint = signerFingerprint
+                signerFingerprint = signerFingerprint,
+                contentProtection = contentProtection
             )
         } catch (error: OpenPgpException) {
             throw error
@@ -167,7 +178,10 @@ object OpenPgpEngine {
                 .forEach { encryptedData ->
                     if (selectedData != null) return@forEach
                     secretKeyRings.forEach { ring ->
-                        val candidate = ring.getSecretKey(encryptedData.keyID)
+                        // RFC 9580 v6 PKESK packets identify recipients by
+                        // fingerprint. Legacy v3 PKESK packets still resolve
+                        // through the same KeyIdentifier API by key ID.
+                        val candidate = ring.getSecretKey(encryptedData.keyIdentifier)
                         if (candidate != null) {
                             selectedData = encryptedData
                             selectedSecretKey = candidate
@@ -188,7 +202,14 @@ object OpenPgpEngine {
                 throw OpenPgpException("The private key could not be unlocked. Check the passphrase.", error)
             } ?: throw OpenPgpException("The matching OpenPGP private key is unavailable.")
 
-            val clearStream = encryptedData.getDataStream(BcPublicKeyDataDecryptorFactory(privateKey))
+            val dataDecryptorFactory = BcPublicKeyDataDecryptorFactory(privateKey)
+            val symmetricAlgorithm = encryptedData.getSymmetricAlgorithm(dataDecryptorFactory)
+            val contentProtection = detectContentProtection(encryptedData, symmetricAlgorithm)
+            val integrityProtected = encryptedData.isAEAD || encryptedData.isIntegrityProtected
+            if (!integrityProtected) {
+                throw OpenPgpException("The encrypted package has no integrity protection and was rejected.")
+            }
+            val clearStream = encryptedData.getDataStream(dataDecryptorFactory)
             var messageFactory = PGPObjectFactory(clearStream, BcKeyFingerprintCalculator())
             var message = messageFactory.nextObject()
             if (message is PGPCompressedData) {
@@ -236,10 +257,6 @@ object OpenPgpEngine {
                 else -> OpenPgpSignatureStatus.INVALID
             }
 
-            val integrityProtected = encryptedData.isIntegrityProtected
-            if (!integrityProtected) {
-                throw OpenPgpException("The encrypted package has no integrity protection and was rejected.")
-            }
             if (!encryptedData.verify()) {
                 throw OpenPgpException("The encrypted package failed its integrity check and may have been modified.")
             }
@@ -248,6 +265,7 @@ object OpenPgpEngine {
                 originalFileName = sanitizeFileName(literalData.fileName),
                 recipientKeyId = secretKey.keyID,
                 integrityProtected = true,
+                contentProtection = contentProtection,
                 signatureStatus = signatureStatus,
                 signerFingerprint = verificationKey?.let { OpenPgpKeyCodec.fingerprint(it.fingerprint) },
                 signerUserIds = verificationKey?.userIDs?.asSequence()?.toList().orEmpty()
@@ -255,7 +273,10 @@ object OpenPgpEngine {
         } catch (error: OpenPgpException) {
             throw error
         } catch (error: Exception) {
-            throw OpenPgpException("OpenPGP decryption failed.", error)
+            throw OpenPgpException(
+                "The protected package is corrupted, unsupported, or could not be authenticated.",
+                error
+            )
         }
     }
 
@@ -267,6 +288,26 @@ object OpenPgpEngine {
             }
         }
         return null
+    }
+
+    private fun detectContentProtection(
+        encryptedData: PGPPublicKeyEncryptedData,
+        symmetricAlgorithm: Int
+    ): OpenPgpContentProtection {
+        if (symmetricAlgorithm != SymmetricKeyAlgorithmTags.AES_256) {
+            throw OpenPgpException("The encrypted package does not use the required AES-256 cipher.")
+        }
+        if (!encryptedData.isAEAD) {
+            return OpenPgpContentProtection.AES_256_CFB_MDC
+        }
+
+        val packet = encryptedData.encData as? SymmetricEncIntegrityPacket
+        if (packet?.version != SymmetricEncIntegrityPacket.VERSION_2 ||
+            packet.aeadAlgorithm != AEADAlgorithmTags.GCM
+        ) {
+            throw OpenPgpException("The encrypted package uses an unsupported OpenPGP AEAD profile.")
+        }
+        return OpenPgpContentProtection.AES_256_GCM
     }
 
     private fun sanitizeFileName(fileName: String): String {

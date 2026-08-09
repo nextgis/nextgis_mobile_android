@@ -21,6 +21,7 @@ import com.nextgis.mobile.mapsafe.safeguard.anonymise.Hexabinning
 object HexabinningWorkflow {
 
     data class WorkflowResult(
+        val outputLayer: VectorLayer,
         val outputLayerName: String,
         val sourcePoints: Int,
         val hexagons: Int,
@@ -91,6 +92,7 @@ object HexabinningWorkflow {
         map.save()
 
         return WorkflowResult(
+            outputLayer = outputLayer,
             outputLayerName = outputLayerName,
             sourcePoints = groupedCells.values.sum(),
             hexagons = groupedCells.size,

@@ -1,9 +1,12 @@
 package com.nextgis.mobile.mapsafe.crypto.openpgp
 
+import org.bouncycastle.bcpg.AEADAlgorithmTags
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.bcpg.PublicKeyAlgorithmTags
 import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags
+import org.bouncycastle.bcpg.sig.Features
 import org.bouncycastle.bcpg.sig.KeyFlags
+import org.bouncycastle.bcpg.sig.PreferredAEADCiphersuites
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair
 import org.bouncycastle.crypto.generators.RSAKeyPairGenerator
 import org.bouncycastle.crypto.params.RSAKeyGenerationParameters
@@ -20,6 +23,7 @@ import java.util.Date
 
 object OpenPgpKeyGenerator {
     const val DEFAULT_RSA_BITS = 3072
+    private const val SECRET_KEY_S2K_COUNT = 0xE0
 
     fun generate(
         userId: String,
@@ -58,6 +62,15 @@ object OpenPgpKeyGenerator {
                     false,
                     intArrayOf(HashAlgorithmTags.SHA256, HashAlgorithmTags.SHA512)
                 )
+                setFeature(
+                    false,
+                    (Features.FEATURE_MODIFICATION_DETECTION.toInt() or
+                        Features.FEATURE_SEIPD_V2.toInt()).toByte()
+                )
+                setPreferredAEADCiphersuites(
+                    PreferredAEADCiphersuites.builder(false)
+                        .addCombination(SymmetricKeyAlgorithmTags.AES_256, AEADAlgorithmTags.GCM)
+                )
             }.generate()
 
             val encryptionPackets = PGPSignatureSubpacketGenerator().apply {
@@ -68,7 +81,8 @@ object OpenPgpKeyGenerator {
                 .setSecureRandom(secureRandom)
             val secretKeyEncryptor = BcPBESecretKeyEncryptorBuilder(
                 SymmetricKeyAlgorithmTags.AES_256,
-                sha256
+                sha256,
+                SECRET_KEY_S2K_COUNT
             ).setSecureRandom(secureRandom).build(passphrase)
 
             val generator = PGPKeyRingGenerator(
@@ -108,4 +122,3 @@ object OpenPgpKeyGenerator {
         }.generateKeyPair()
     }
 }
-

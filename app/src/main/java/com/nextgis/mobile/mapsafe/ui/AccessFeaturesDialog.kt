@@ -12,6 +12,11 @@ import androidx.fragment.app.DialogFragment
  */
 class AccessFeaturesDialog : DialogFragment() {
 
+    override fun onCancel(dialog: android.content.DialogInterface) {
+        super.onCancel(dialog)
+        showParent()
+    }
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         return AlertDialog.Builder(requireContext())
             .setTitle("Access Features")
@@ -29,9 +34,11 @@ class AccessFeaturesDialog : DialogFragment() {
                         .show(parentFragmentManager, "DecryptDialog")
                 }
             }
-            .setNegativeButton("Back") { _, _ ->
-                MapSafeMainDialog().show(parentFragmentManager, MapSafeMainDialog.TAG)
-            }
+            .setNegativeButton("Back") { _, _ -> showParent() }
             .create()
+    }
+
+    private fun showParent() {
+        MapSafeMainDialog().show(parentFragmentManager, MapSafeMainDialog.TAG)
     }
 }

@@ -9,17 +9,19 @@ format.
 - OpenPGP version 4 transferable keys
 - RSA-3072 signing/certification primary key
 - RSA-3072 encryption subkey
-- AES-256 content encryption
+- AES-256-GCM content encryption using the RFC 9580 v2 SEIPD profile
 - SHA-256 signatures
 - ZIP compression
-- integrity-protected encrypted data packets
+- chunked authenticated-encryption packets with a final summary tag
 - binary `.pgp` encrypted packages
 - ASCII-armoured public and protected secret-key exports
 
-The content is encrypted once with a fresh random AES session key. Bouncy Castle
-adds one public-key-encrypted session-key packet for every selected recipient.
-AEAD/version-6 output is deliberately disabled until interoperability has been
-validated with the organisation's supported GnuPG and OpenKeychain versions.
+New packages use RFC 9580 v6 PKESK packets and a v2 SEIPD AES-256-GCM payload.
+The content is still encrypted once, with one recipient-specific encrypted
+session-key packet for every selected recipient. Decryption remains compatible
+with the earlier AES-256/OpenPGP-MDC MapSafe packages. External GnuPG and
+OpenKeychain clients must support RFC 9580 before they can open newly created
+packages, so cross-client validation remains a release gate.
 
 ## Local key custody
 
@@ -27,9 +29,11 @@ The transferable OpenPGP secret keyring is encrypted with the user's recovery
 passphrase. MapSafe's app-private copy is additionally encrypted using AES-GCM
 with a non-exportable key held by Android Keystore.
 
-The recovery passphrase is not stored. A passphrase-protected secret-key export
-is therefore essential before an app uninstall, device reset, or device loss.
-MapSafe cannot recover a forgotten passphrase.
+New identities use an explicitly strengthened iterated-and-salted SHA-256 S2K
+for the transferable secret key. The recovery passphrase is not stored. A
+passphrase-protected secret-key export is therefore essential before an app
+uninstall, device reset, or device loss. MapSafe cannot recover a forgotten
+passphrase.
 
 Private-key material must be unlocked in application memory for signing and
 decryption. Byte and character arrays are cleared where practical, but the
@@ -67,6 +71,38 @@ MapSafe reports these states independently from successful decryption:
 Importing a public key does not establish human or organisational trust. Users
 must compare the complete displayed fingerprint through an independent channel.
 
+## NextGIS public-key exchange
+
+MapSafe can use an existing NextGIS account to publish and discover public keys
+for a NextGIS authentication group. Authentication and storage remain separate:
+the authentication group supplies the current member IDs, while a resource group
+named `mapsafe_keys_<group-id>` stores one `file_bucket` per publishing member.
+Each bucket contains only `public-key.asc` and `key-metadata.json`. Private keys
+and passphrases are rejected from this workflow and are never uploaded.
+
+The directory resource grants the authentication group propagated resource/data
+read access and permission to create child resources. Each member-owned bucket
+can only be updated by its owner under normal NextGIS ownership rules. During
+synchronisation, MapSafe verifies all of the following before caching a key:
+
+- the manifest group is the selected authentication group;
+- the manifest user is a current group member;
+- the same user owns the NextGIS file bucket;
+- there is exactly one bucket for the user;
+- the downloaded OpenPGP fingerprint matches the manifest;
+- the key has a currently usable encryption key.
+
+Server storage is discovery, not trust. A newly discovered fingerprint must be
+confirmed through an independent channel before it is offered for encryption.
+An accepted fingerprint is pinned locally. A different fingerprint, a removed
+member, a missing bucket, a revoked entry, or duplicate buckets blocks that
+identity from new encryption until the state is resolved. Superseded key files
+remain locally available for historical signature verification.
+
+Offline encryption can use the last accepted cache. Group membership and key
+changes affect future packages and cannot revoke access to packages already
+encrypted for an earlier recipient.
+
 ## Manual two-recipient test
 
 1. On device A, create an identity and export its public key and protected
@@ -88,8 +124,10 @@ disposable identities at runtime.
 
 - one local identity per MapSafe installation;
 - no revocation-certificate UI yet;
-- no organisation trust or key-certification database yet;
-- no automatic key directory or server upload;
+- NextGIS directory fingerprints still require explicit out-of-band confirmation;
+- no organisation certification authority or centrally signed-key policy yet;
+- NextGIS `file_bucket` availability and permissions depend on the server edition
+  and administrator configuration;
 - selected-layer sharing currently uses GeoJSON and does not include attachments,
   renderer configuration, or edit-form definitions;
 - external GnuPG/OpenKeychain interoperability still requires manual validation.

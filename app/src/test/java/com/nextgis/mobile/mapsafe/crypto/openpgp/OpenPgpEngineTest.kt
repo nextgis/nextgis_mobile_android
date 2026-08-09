@@ -1,5 +1,14 @@
 package com.nextgis.mobile.mapsafe.crypto.openpgp
 
+import org.bouncycastle.bcpg.AEADAlgorithmTags
+import org.bouncycastle.bcpg.SymmetricEncIntegrityPacket
+import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags
+import org.bouncycastle.bcpg.sig.PreferredAEADCiphersuites
+import org.bouncycastle.openpgp.PGPEncryptedDataList
+import org.bouncycastle.openpgp.PGPObjectFactory
+import org.bouncycastle.openpgp.PGPPublicKeyEncryptedData
+import org.bouncycastle.openpgp.PGPUtil
+import org.bouncycastle.openpgp.operator.bc.BcKeyFingerprintCalculator
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,6 +33,14 @@ class OpenPgpEngineTest {
 
         assertEquals(2, encryptedResult.recipientFingerprints.size)
         assertEquals(alice.info.fingerprint, encryptedResult.signerFingerprint)
+        assertEquals(OpenPgpContentProtection.AES_256_GCM, encryptedResult.contentProtection)
+
+        val encryptedData = encryptedData(encrypted.toByteArray())
+        val packet = encryptedData.encData as SymmetricEncIntegrityPacket
+        assertTrue(encryptedData.isAEAD)
+        assertEquals(SymmetricKeyAlgorithmTags.AES_256, packet.cipherAlgorithm)
+        assertEquals(AEADAlgorithmTags.GCM, packet.aeadAlgorithm)
+        assertEquals(SymmetricEncIntegrityPacket.VERSION_2, packet.version)
 
         listOf(alice to ALICE_PASSPHRASE, bob to BOB_PASSPHRASE).forEach { (recipient, passphrase) ->
             val decrypted = ByteArrayOutputStream()
@@ -38,6 +55,7 @@ class OpenPgpEngineTest {
             assertArrayEquals(plainText, decrypted.toByteArray())
             assertEquals("sample-points.geojson", result.originalFileName)
             assertTrue(result.integrityProtected)
+            assertEquals(OpenPgpContentProtection.AES_256_GCM, result.contentProtection)
             assertEquals(OpenPgpSignatureStatus.VALID, result.signatureStatus)
             assertEquals(alice.info.fingerprint, result.signerFingerprint)
         }
@@ -120,6 +138,54 @@ class OpenPgpEngineTest {
     }
 
     @Test
+    fun legacyMdcPackageRemainsDecryptable() {
+        val plainText = "legacy MapSafe package".toByteArray()
+        val encrypted = ByteArrayOutputStream()
+        OpenPgpEngine.encrypt(
+            input = ByteArrayInputStream(plainText),
+            output = encrypted,
+            originalFileName = "legacy.txt",
+            recipients = listOf(alice.publicKeyRing),
+            contentProtection = OpenPgpContentProtection.AES_256_CFB_MDC
+        )
+
+        val decrypted = ByteArrayOutputStream()
+        val result = OpenPgpEngine.decrypt(
+            input = ByteArrayInputStream(encrypted.toByteArray()),
+            output = decrypted,
+            secretKeyRings = listOf(alice.secretKeyRing),
+            passphrase = ALICE_PASSPHRASE.copyOf()
+        )
+
+        assertArrayEquals(plainText, decrypted.toByteArray())
+        assertEquals(OpenPgpContentProtection.AES_256_CFB_MDC, result.contentProtection)
+    }
+
+    @Test
+    fun generatedSecretKeysUseStrengthenedIteratedS2k() {
+        val iterationCount = alice.secretKeyRing.secretKey.s2K.iterationCount
+        assertTrue("Expected at least 16 MiB of S2K hashing", iterationCount >= 16L * 1024L * 1024L)
+    }
+
+    @Test
+    fun generatedCertificateAdvertisesRfc9580AesGcmSupport() {
+        val primary = alice.publicKeyRing.publicKey
+        val userId = primary.userIDs.asSequence().first()
+        val certification = primary.getSignaturesForID(userId).asSequence().first()
+        val subpackets = certification.hashedSubPackets
+
+        assertTrue(subpackets.features.supportsSEIPDv2())
+        assertTrue(
+            subpackets.preferredAEADCiphersuites.isSupported(
+                PreferredAEADCiphersuites.Combination(
+                    SymmetricKeyAlgorithmTags.AES_256,
+                    AEADAlgorithmTags.GCM
+                )
+            )
+        )
+    }
+
+    @Test
     fun publicAndSecretKeyArmorRoundTrip() {
         val publicEncoded = OpenPgpKeyCodec.encodePublicKeyRing(alice.publicKeyRing)
         val secretEncoded = OpenPgpKeyCodec.encodeSecretKeyRing(alice.secretKeyRing)
@@ -161,6 +227,17 @@ class OpenPgpEngineTest {
                 passphrase = CHARLIE_PASSPHRASE.copyOf(),
                 rsaBits = 2048
             )
+        }
+
+        private fun encryptedData(encoded: ByteArray): PGPPublicKeyEncryptedData {
+            val decoder = PGPUtil.getDecoderStream(ByteArrayInputStream(encoded))
+            val factory = PGPObjectFactory(decoder, BcKeyFingerprintCalculator())
+            val encryptedList = generateSequence(factory::nextObject)
+                .filterIsInstance<PGPEncryptedDataList>()
+                .first()
+            return encryptedList.encryptedDataObjects.asSequence()
+                .filterIsInstance<PGPPublicKeyEncryptedData>()
+                .first()
         }
     }
 }

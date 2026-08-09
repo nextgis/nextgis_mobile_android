@@ -8,6 +8,7 @@ import com.nextgis.maplib.map.VectorLayer
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.mapsafe.MapSafeConstants
+import com.nextgis.mobile.mapsafe.safeguard.anonymise.SpruillMeasure
 
 /**
  * High-level donut masking workflow for NextGIS Mobile.
@@ -18,10 +19,12 @@ import com.nextgis.mobile.mapsafe.MapSafeConstants
 object DonutMaskingWorkflow {
 
     data class WorkflowResult(
+        val outputLayer: VectorLayer,
         val outputLayerName: String,
         val totalPoints: Int,
         val maskedPoints: Int,
         val averageDistanceMetres: Double,
+        val spruillMeasure: SpruillMeasure.Result,
         val inserted: Int,
         val failed: Int
     )
@@ -92,10 +95,12 @@ object DonutMaskingWorkflow {
         map.save()
 
         return WorkflowResult(
+            outputLayer = outputLayer,
             outputLayerName = outputLayerName,
             totalPoints = processed.statistics.totalPoints,
             maskedPoints = processed.statistics.maskedPoints,
             averageDistanceMetres = processed.statistics.averageDistanceMetres,
+            spruillMeasure = processed.statistics.spruillMeasure,
             inserted = insertResult.inserted,
             failed = insertResult.failed
         )
