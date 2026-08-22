@@ -12,11 +12,25 @@ import android.view.Window
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.lifecycleScope
+import com.nextgis.maplib.map.VectorLayer
+import com.nextgis.mobile.MainApplication
+import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
+import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 /** Shows one halo-masking privacy result and offers a safe retry from the precise source. */
 class DonutMaskingResultDialog : DialogFragment() {
+
+    private var expandablePanel: MapSafeExpandableResultPanel? = null
+    private lateinit var saveLocationText: TextView
+    private lateinit var saveLocationRow: View
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val context = requireContext()
@@ -25,23 +39,20 @@ class DonutMaskingResultDialog : DialogFragment() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.TRANSPARENT)
         }
-        val panel = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(MapSafeUi.PAGE)
-        }
-        panel.addView(MapSafeUi.appBar(context, ::returnToMaskingSettings))
+        val panel = MapSafeExpandableResultPanel(
+            context = context,
+            title = "Halo Masking Applied",
+            onBack = ::returnToMaskingSettings,
+            expandedHeight = resources.displayMetrics.heightPixels / 2,
+            initiallyExpanded = savedInstanceState?.getBoolean(STATE_RESULTS_EXPANDED) ?: true
+        ).also { expandablePanel = it }
 
         val content = MapSafeUi.page(context).apply {
             setPadding(dp(16), dp(12), dp(16), dp(12))
         }
-        content.addView(MapSafeUi.screenHeading(
-            context,
-            "Halo Masking Applied",
-            "Review the privacy result on the masked layer before accepting it or remasking."
-        ))
+        content.addView(MapSafeUi.safeguardStepStrip(context, MapSafeUi.SafeguardStep.ANONYMISE))
 
         val privacyRating = requireArguments().getDouble(ARG_PRIVACY_RATING)
-        val disclosureRisk = requireArguments().getDouble(ARG_DISCLOSURE_RISK)
         val scoreBar = ProgressBar(
             context,
             null,
@@ -74,75 +85,45 @@ class DonutMaskingResultDialog : DialogFragment() {
             background = MapSafeUi.rounded(context, MapSafeUi.GREEN_PALE, MapSafeUi.BORDER, 7)
         })
 
-        val evaluatedPoints = requireArguments().getInt(ARG_EVALUATED_POINTS)
-        val parentNearest = requireArguments().getInt(ARG_PARENT_NEAREST)
-        content.addView(MapSafeUi.card(
-            context,
-            MapSafeUi.sectionTitle(context, "How this score was calculated"),
-            MapSafeUi.valueRow(context, "Spruill disclosure risk", "${format(disclosureRisk)}%"),
-            MapSafeUi.valueRow(context, "Parent remains nearest", "$parentNearest / $evaluatedPoints"),
-            MapSafeUi.valueRow(
+        val workflowActions = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(4), dp(16), dp(10))
+            addView(MapSafeUi.pairedOutlineActions(
                 context,
-                "Points masked",
-                "${requireArguments().getInt(ARG_MASKED_POINTS)} / ${requireArguments().getInt(ARG_TOTAL_POINTS)}"
-            ),
-            MapSafeUi.valueRow(
+                leftLabel = "Remask",
+                onLeft = ::remask,
+                rightLabel = "Save Layer",
+                onRight = ::saveOutputLayer
+            ))
+            saveLocationText = MapSafeUi.text(context, "", 13f, MapSafeUi.GREEN_TEXT, bold = true)
+            saveLocationRow = MapSafeUi.savedLocationRow(
                 context,
-                "Average displacement",
-                "${format(requireArguments().getDouble(ARG_AVERAGE_DISTANCE))} m"
-            ),
-            MapSafeUi.divider(context),
-            MapSafeUi.text(
+                saveLocationText,
+                ::openSaveFolder
+            ).apply { visibility = View.GONE }
+            addView(saveLocationRow)
+            addView(MapSafeUi.nextStopActions(
                 context,
-                "A parent-nearest point is one whose masked position is still closest to its " +
-                    "own original location. Fewer parent-nearest points produce a higher inverted score.",
-                13f,
-                MapSafeUi.MUTED
-            )
-        ))
+                nextLabel = "Next: Encrypt",
+                onNext = ::nextToEncryption,
+                onStop = ::stopWorkflow
+            ))
+        }
 
-        content.addView(MapSafeUi.card(
-            context,
-            MapSafeUi.sectionTitle(context, "Masking result"),
-            MapSafeUi.valueRow(context, "Precise source", sourceLayerName()),
-            MapSafeUi.valueRow(context, "Masked layer", outputLayerName(), strongValue = true),
-            MapSafeUi.valueRow(
-                context,
-                "Halo range",
-                "${formatDistance(minDistance())} - ${formatDistance(maxDistance())}"
-            )
-        ))
-
-        content.addView(LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(MapSafeUi.outlineButton(context, "Remask", ::remask),
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    setMargins(0, 0, dp(6), 0)
-                })
-            addView(MapSafeUi.primaryButton(
-                context,
-                if (continueToEncryption()) "Use & Continue" else "Use This Result",
-                ::useResult
-            ), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                setMargins(dp(6), 0, 0, 0)
-            })
-        })
-        content.addView(MapSafeUi.text(
-            context,
-            "Remask always starts from the precise source, never from an already masked layer.",
-            12f,
-            MapSafeUi.MUTED
-        ).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(6), 0, dp(4))
-        })
-
-        panel.addView(ScrollView(context).apply { addView(content) })
-        root.addView(panel)
+        panel.body.addView(
+            ScrollView(context).apply { addView(content) },
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+        panel.body.addView(workflowActions)
+        root.addView(panel.view)
         root.addView(View(context), LinearLayout.LayoutParams(-1, 0, 1f))
         dialog.setContentView(root)
         return dialog
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(STATE_RESULTS_EXPANDED, expandablePanel?.isExpanded ?: true)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onStart() {
@@ -173,17 +154,65 @@ class DonutMaskingResultDialog : DialogFragment() {
         DonutMaskingDialog.forRemask(
             sourceLayerName = sourceLayerName(),
             minDistanceMetres = minDistance(),
-            maxDistanceMetres = maxDistance(),
-            continueToEncryption = continueToEncryption()
+            maxDistanceMetres = maxDistance()
         ).show(parentFragmentManager, DonutMaskingDialog.TAG)
     }
 
-    private fun useResult() {
+    private fun stopWorkflow() {
+        dismiss()
+    }
+
+    private fun saveOutputLayer() {
+        saveLayerToFolder()
+    }
+
+    private fun saveLayerToFolder() {
+        val context = requireContext()
+        val app = context.applicationContext as MainApplication
+        val layer = app.map.getLayerByName(outputLayerName()) as? VectorLayer
+        if (layer == null) {
+            Toast.makeText(context, "The masked layer is no longer available.", Toast.LENGTH_LONG).show()
+            return
+        }
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    MapSafeSaveFolderRepository.save(
+                        context,
+                        "application/geo+json",
+                        safeGeoJsonName(outputLayerName())
+                    ) { uri ->
+                        context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                            MapSafeGeoJsonWorkflow.exportLayer(layer, output)
+                        } ?: error("The Save Folder did not open the new file.")
+                    }
+                }
+            }
+            result.onSuccess { saved ->
+                saveLocationText.text = "Saved: ${saved.fileName}"
+                saveLocationRow.visibility = View.VISIBLE
+            }.onFailure { error ->
+                Toast.makeText(
+                    context,
+                    "Saving the masked layer failed: ${error.message ?: error.javaClass.simpleName}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun openSaveFolder() {
+        if (!MapSafeSaveFolderRepository.openFolder(requireContext())) {
+            Toast.makeText(requireContext(), "Downloads/MapSafe could not be opened.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun nextToEncryption() {
         parentFragmentManager.setFragmentResult(
-            REQUEST_USE_RESULT,
+            EncryptDialog.REQUEST_OPEN_ENCRYPTION,
             Bundle().apply {
-                putString(RESULT_OUTPUT_LAYER_NAME, outputLayerName())
-                putBoolean(RESULT_CONTINUE_TO_ENCRYPT, continueToEncryption())
+                putBoolean(EncryptDialog.RESULT_SELECTED_LAYER, true)
+                putString(EncryptDialog.RESULT_SOURCE_LAYER_NAME, encryptionSourceLayerName())
             }
         )
         dismiss()
@@ -191,11 +220,10 @@ class DonutMaskingResultDialog : DialogFragment() {
 
     private fun sourceLayerName(): String = requireArguments().getString(ARG_SOURCE_LAYER_NAME).orEmpty()
     private fun outputLayerName(): String = requireArguments().getString(ARG_OUTPUT_LAYER_NAME).orEmpty()
+    private fun encryptionSourceLayerName(): String =
+        requireArguments().getString(ARG_ENCRYPTION_SOURCE_LAYER_NAME) ?: sourceLayerName()
     private fun minDistance(): Double = requireArguments().getDouble(ARG_MIN_DISTANCE)
     private fun maxDistance(): Double = requireArguments().getDouble(ARG_MAX_DISTANCE)
-    private fun continueToEncryption(): Boolean =
-        requireArguments().getBoolean(ARG_CONTINUE_TO_ENCRYPT, false)
-
     private fun privacyBand(score: Double): String = when {
         score >= 80.0 -> "High privacy"
         score >= 60.0 -> "Good privacy"
@@ -204,17 +232,16 @@ class DonutMaskingResultDialog : DialogFragment() {
     }
 
     private fun format(value: Double): String = String.format(Locale.US, "%.2f", value)
-    private fun formatDistance(value: Double): String = String.format(Locale.US, "%,.0f m", value)
+    private fun safeGeoJsonName(layerName: String): String =
+        layerName.replace(Regex("[^A-Za-z0-9._ -]+"), "_").trim('.', ' ')
+            .ifBlank { "mapsafe-masked-layer" } + ".geojson"
     private fun dp(value: Int): Int = MapSafeUi.dp(requireContext(), value)
 
     companion object {
         const val TAG = "DonutMaskingResultDialog"
-        const val REQUEST_USE_RESULT = "mapsafe_use_donut_masking_result"
-        const val RESULT_OUTPUT_LAYER_NAME = "output_layer_name"
-        const val RESULT_CONTINUE_TO_ENCRYPT = "continue_to_encryption"
-
         private const val ARG_SOURCE_LAYER_NAME = "source_layer_name"
         private const val ARG_OUTPUT_LAYER_NAME = "output_layer_name"
+        private const val ARG_ENCRYPTION_SOURCE_LAYER_NAME = "encryption_source_layer_name"
         private const val ARG_MIN_DISTANCE = "min_distance_metres"
         private const val ARG_MAX_DISTANCE = "max_distance_metres"
         private const val ARG_TOTAL_POINTS = "total_points"
@@ -224,8 +251,7 @@ class DonutMaskingResultDialog : DialogFragment() {
         private const val ARG_PRIVACY_RATING = "privacy_rating_percent"
         private const val ARG_PARENT_NEAREST = "parent_nearest_count"
         private const val ARG_EVALUATED_POINTS = "evaluated_points"
-        private const val ARG_CONTINUE_TO_ENCRYPT = "continue_to_encrypt"
-
+        private const val STATE_RESULTS_EXPANDED = "results_expanded"
         fun newInstance(
             sourceLayerName: String,
             outputLayerName: String,
@@ -238,11 +264,12 @@ class DonutMaskingResultDialog : DialogFragment() {
             privacyRatingPercent: Double,
             parentNearestCount: Int,
             evaluatedPoints: Int,
-            continueToEncryption: Boolean
+            encryptionSourceLayerName: String = sourceLayerName
         ) = DonutMaskingResultDialog().apply {
             arguments = Bundle().apply {
                 putString(ARG_SOURCE_LAYER_NAME, sourceLayerName)
                 putString(ARG_OUTPUT_LAYER_NAME, outputLayerName)
+                putString(ARG_ENCRYPTION_SOURCE_LAYER_NAME, encryptionSourceLayerName)
                 putDouble(ARG_MIN_DISTANCE, minDistanceMetres)
                 putDouble(ARG_MAX_DISTANCE, maxDistanceMetres)
                 putInt(ARG_TOTAL_POINTS, totalPoints)
@@ -252,7 +279,6 @@ class DonutMaskingResultDialog : DialogFragment() {
                 putDouble(ARG_PRIVACY_RATING, privacyRatingPercent)
                 putInt(ARG_PARENT_NEAREST, parentNearestCount)
                 putInt(ARG_EVALUATED_POINTS, evaluatedPoints)
-                putBoolean(ARG_CONTINUE_TO_ENCRYPT, continueToEncryption)
             }
         }
     }

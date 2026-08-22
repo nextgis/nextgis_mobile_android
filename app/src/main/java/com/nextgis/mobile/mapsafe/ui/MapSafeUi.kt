@@ -21,6 +21,18 @@ import com.nextgis.mobile.R
 
 /** Shared visual language used only by MapSafe screens. */
 object MapSafeUi {
+    enum class SafeguardStep(val label: String) {
+        ANONYMISE("Anonymise"),
+        ENCRYPT("Encrypt"),
+        NOTARISE("Notarise")
+    }
+
+    enum class AccessStep(val label: String) {
+        VERIFY("Verify"),
+        DECRYPT("Decrypt"),
+        ACCESS("Access")
+    }
+
     const val GREEN = 0xff256b2b.toInt()
     const val GREEN_DARK = 0xff174e20.toInt()
     const val GREEN_TEXT = 0xff174f25.toInt()
@@ -196,12 +208,104 @@ object MapSafeUi {
         textSize = 14f
         setTypeface(typeface, Typeface.BOLD)
         setTextColor(GREEN_TEXT)
-        background = rounded(context, Color.WHITE, GREEN, radiusDp = 6)
+        backgroundTintList = null
+        background = rounded(context, Color.WHITE, GREEN, radiusDp = 6, strokeWidthDp = 2)
         stateListAnimator = null
         elevation = 0f
         minHeight = dp(context, 46)
         setPadding(dp(context, 12), dp(context, 6), dp(context, 12), dp(context, 6))
         setOnClickListener { action() }
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { setMargins(0, dp(context, 4), 0, dp(context, 8)) }
+    }
+
+    fun compactOutlineButton(context: Context, label: String, action: () -> Unit): Button =
+        Button(context).apply {
+            text = label
+            isAllCaps = false
+            textSize = 13f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(GREEN_TEXT)
+            backgroundTintList = null
+            background = rounded(context, Color.WHITE, GREEN, radiusDp = 6, strokeWidthDp = 2)
+            stateListAnimator = null
+            elevation = 0f
+            minHeight = dp(context, 36)
+            minimumWidth = 0
+            minWidth = 0
+            setPadding(dp(context, 10), dp(context, 3), dp(context, 10), dp(context, 3))
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, dp(context, 6), 0, dp(context, 6)) }
+        }
+
+    fun savedLocationRow(
+        context: Context,
+        locationText: TextView,
+        onOpenFolder: () -> Unit
+    ): LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(context, 6), 0, 0)
+        addView(locationText, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(
+            compactOutlineButton(context, "Open Folder", onOpenFolder),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(dp(context, 10), 0, 0, 0) }
+        )
+    }
+
+    /** Two equal-width secondary actions used where vertical map space is limited. */
+    fun pairedOutlineActions(
+        context: Context,
+        leftLabel: String,
+        onLeft: () -> Unit,
+        rightLabel: String,
+        onRight: () -> Unit
+    ): LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(
+            outlineButton(context, leftLabel, onLeft),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                setMargins(0, dp(context, 4), dp(context, 6), dp(context, 8))
+            }
+        )
+        addView(
+            outlineButton(context, rightLabel, onRight),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                setMargins(dp(context, 6), dp(context, 4), 0, dp(context, 8))
+            }
+        )
+    }
+
+    /** Consistent optional-workflow handoff: stop safely or continue to the next stage. */
+    fun nextStopActions(
+        context: Context,
+        nextLabel: String,
+        onNext: () -> Unit,
+        onStop: () -> Unit
+    ): LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(
+            outlineButton(context, "Stop", onStop),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                setMargins(0, 0, dp(context, 6), 0)
+            }
+        )
+        addView(
+            primaryButton(context, nextLabel, onNext),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                setMargins(dp(context, 6), 0, 0, 0)
+            }
+        )
     }
 
     fun stepStrip(context: Context, active: Int, vararg labels: String): LinearLayout =
@@ -243,6 +347,22 @@ object MapSafeUi {
             }
         }
 
+    fun safeguardStepStrip(context: Context, active: SafeguardStep): LinearLayout {
+        val steps = SafeguardStep.values()
+        return stepStrip(context, active.ordinal, *steps.map { it.label }.toTypedArray()).apply {
+            contentDescription =
+                "Safeguard progress: ${active.ordinal + 1} of ${steps.size}, ${active.label}"
+        }
+    }
+
+    fun accessStepStrip(context: Context, active: AccessStep): LinearLayout {
+        val steps = AccessStep.values()
+        return stepStrip(context, active.ordinal, *steps.map { it.label }.toTypedArray()).apply {
+            contentDescription =
+                "Access progress: ${active.ordinal + 1} of ${steps.size}, ${active.label}"
+        }
+    }
+
     fun divider(context: Context): View = View(context).apply {
         setBackgroundColor(0xffdde3dd.toInt())
         layoutParams = LinearLayout.LayoutParams(-1, dp(context, 1)).apply {
@@ -254,11 +374,12 @@ object MapSafeUi {
         context: Context,
         fill: Int,
         stroke: Int = fill,
-        radiusDp: Int = 8
+        radiusDp: Int = 8,
+        strokeWidthDp: Int = 1
     ): GradientDrawable = GradientDrawable().apply {
         setColor(fill)
         cornerRadius = dp(context, radiusDp).toFloat()
-        setStroke(dp(context, 1), stroke)
+        setStroke(dp(context, strokeWidthDp), stroke)
     }
 
     fun dp(context: Context, value: Int): Int =

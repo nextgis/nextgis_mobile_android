@@ -27,12 +27,21 @@ object MapSafeWorkflowRunner {
         val evaluatedPoints: Int
     )
 
+    data class HexabinningDetails(
+        val sourceLayerName: String,
+        val outputLayerName: String,
+        val sourcePoints: Int,
+        val hexagons: Int,
+        val resolution: Int
+    )
+
     sealed class WorkflowMessage {
         data class Success(
             val message: String,
             val selectedLayer: VectorLayer? = null,
             val zoomExtent: GeoEnvelope? = null,
-            val donutMaskingDetails: DonutMaskingDetails? = null
+            val donutMaskingDetails: DonutMaskingDetails? = null,
+            val hexabinningDetails: HexabinningDetails? = null
         ) : WorkflowMessage()
         data class Failure(val message: String, val error: Throwable? = null) : WorkflowMessage()
     }
@@ -133,7 +142,14 @@ object MapSafeWorkflowRunner {
                     "at resolution ${result.resolution}. " +
                     "Grouped ${result.sourcePoints} points into ${result.hexagons} blue hexagons.",
                 selectedLayer = result.outputLayer,
-                zoomExtent = GeoEnvelope(result.outputLayer.extents)
+                zoomExtent = GeoEnvelope(result.outputLayer.extents),
+                hexabinningDetails = HexabinningDetails(
+                    sourceLayerName = selectedLayer.name,
+                    outputLayerName = result.outputLayerName,
+                    sourcePoints = result.sourcePoints,
+                    hexagons = result.hexagons,
+                    resolution = result.resolution
+                )
             )
         } catch (e: Throwable) {
             WorkflowMessage.Failure("Hexabinning failed: ${e.message}", e)

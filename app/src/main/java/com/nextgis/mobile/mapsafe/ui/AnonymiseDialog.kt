@@ -22,6 +22,7 @@ class AnonymiseDialog : DialogFragment() {
         val context = requireContext()
         val content = MapSafeUi.page(context).apply {
             setPadding(MapSafeUi.dp(context, 4), MapSafeUi.dp(context, 4), MapSafeUi.dp(context, 4), 0)
+            addView(MapSafeUi.safeguardStepStrip(context, MapSafeUi.SafeguardStep.ANONYMISE))
             addView(MapSafeUi.screenHeading(
                 context,
                 "Anonymise",

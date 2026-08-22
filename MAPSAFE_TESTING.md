@@ -27,6 +27,9 @@ the MapSafe workflow stages emitted by the scenario tests, and writes an HTML re
 # Require an already-connected device; do not start an emulator.
 .\scripts\run-mapsafe-tests.ps1 -Suite Device -NoStartEmulator
 
+# Deliberately erase app data and local identities before a clean device run.
+.\scripts\run-mapsafe-tests.ps1 -Suite Device -ResetAppData
+
 # Run JVM tests followed by connected-device tests.
 .\scripts\run-mapsafe-tests.ps1 -Suite All
 
@@ -37,7 +40,10 @@ the MapSafe workflow stages emitted by the scenario tests, and writes an HTML re
 For `Device` and `All`, the runner reads `sdk.dir` from `local.properties`. If no
 device is connected, it starts the selected AVD in a visible window, waits for Android
 to boot, streams `[PASS]` and `[SIMULATED]` stages from logcat, and leaves the emulator
-open when the run finishes. JVM suites do not require a device.
+open when the run finishes. Existing app data and MapSafe identities are preserved by
+default. Use `-ResetAppData` only when a deliberately clean installation is required;
+it removes the app-private identity files and their Android Keystore state. JVM suites
+do not require a device.
 
 ## Tier 1 device coverage
 
@@ -46,9 +52,14 @@ instrumentation workflows:
 
 - Real MainActivity controls: MapSafe > Safeguard Features > Anonymise >
   Use sample dataset > Donut Masking and Hexabinning. The test checks
+  that both top-level workflows show the early dataset-selection prompt when needed,
+  and that loading the sample continues to the originally requested workflow. It checks
   that the bundled sample is created and selected as a compatible vector layer, then checks the resulting vector
   layers, the visible inverted Spruill result, and a second remasking attempt that
   is explicitly anchored to the original precise layer rather than the first output.
+  It also checks the compact halo/hexbin overlays, removed controls, result screens,
+  their visible retry, Stop, and Next actions, and automatic GeoJSON saves to the
+  MapSafe output folder.
 - MapSafe activities and map-overlay screens assert that the fixed Back control is
   visible; Security & Sharing also asserts the supplied compact logo in its header.
 - A dedicated navigation audit exercises every major MapSafe dialog and activity,
@@ -61,7 +72,13 @@ instrumentation workflows:
 - Real secure OpenPGP screen: locally generated identity, Android Keystore-wrapped
   secret-key reload, recipient selection, signed AES-256-GCM encryption, file
   decryption, integrity/signature confirmation, and exact recovered-byte comparison.
-  Only the Android system document picker is replaced with a controlled debug provider.
+  The fixed MapSafe output folder is represented by a controlled debug provider.
+- Selected-map-layer round trip: the UI loads and selects the bundled 30-point layer,
+  exports it through `Encrypt selected map layer`, encrypts and decrypts it through the
+  production OpenPGP activity, imports all 30 recovered features, and returns to the map
+  with the decrypted layer selected. Its automatic output folder is controlled.
+- Shared storage: a production-path device check writes and reads a real file through
+  Android shared storage and verifies its relative location is `Download/MapSafe/`.
 - Complete production-core chain: sample layer, donut masking, Spruill, hexbin,
   WGS84 GeoJSON export, multi-recipient encryption, tamper rejection, decryption,
   signature validation, real layer import, selection, map handoff, and viewing.

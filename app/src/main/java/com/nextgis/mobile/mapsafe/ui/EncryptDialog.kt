@@ -17,6 +17,7 @@ class EncryptDialog : DialogFragment() {
         val context = requireContext()
         val content = MapSafeUi.page(context).apply {
             setPadding(MapSafeUi.dp(context, 4), MapSafeUi.dp(context, 4), MapSafeUi.dp(context, 4), 0)
+            addView(MapSafeUi.safeguardStepStrip(context, MapSafeUi.SafeguardStep.ENCRYPT))
             addView(MapSafeUi.screenHeading(
                 context,
                 "Encrypt & Protect",
@@ -61,5 +62,6 @@ class EncryptDialog : DialogFragment() {
     companion object {
         const val REQUEST_OPEN_ENCRYPTION = "mapsafe_open_encryption_request"
         const val RESULT_SELECTED_LAYER = "encrypt_selected_layer"
+        const val RESULT_SOURCE_LAYER_NAME = "encrypt_source_layer_name"
     }
 }

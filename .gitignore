@@ -1,6 +1,7 @@
 # Android studio
 .idea/
 .gradle/
+/.kotlin/
 build/
 local.properties
 captures/
@@ -11,6 +12,7 @@ captures/
 
 # Temp files
 *~
+/tmp/
 
 # OSX files
 .DS_Store

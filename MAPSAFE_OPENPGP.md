@@ -41,14 +41,22 @@ Android/JVM runtime cannot guarantee removal of every transient memory copy.
 
 ## Plaintext handling
 
-Encryption streams directly from the selected source document to the selected
-encrypted output. When a map layer is selected, MapSafe first exports it as
+Encryption streams directly from the selected source document to the fixed shared
+`Files > Downloads > MapSafe` folder. When a map layer is selected, MapSafe first exports it as
 WGS84 GeoJSON in app-private cache storage, supplies that file to the same
 OpenPGP workflow, and deletes the temporary export after use. Decryption first
 streams to an app-cache temporary file. Only after OpenPGP integrity verification
-succeeds is that temporary plaintext copied to the user's selected destination.
-The temporary file is deleted in `finally`. Failed/cancelled output documents
-are truncated where their document provider supports it.
+succeeds is that temporary plaintext copied to `Downloads/MapSafe`. The temporary
+file is deleted in `finally`, and failed partial shared-storage outputs are removed.
+Masking and hex-binning exports use the same folder; Android destination pickers are
+therefore not shown for normal MapSafe dataset outputs.
+
+After a successful on-chain hash comparison, Verify can hand the same encrypted
+document URI and expected SHA-256 directly to Decrypt. The continuation remains
+disabled for pending, invalid, or mismatched records. Decrypt hashes the carried
+document again before requesting the private-key passphrase and binds the final
+decryption stream to that hash; if the document changes, no plaintext output is
+released and the user must verify it again.
 
 After a `.geojson` or `.json` package passes the integrity check, MapSafe offers
 to import it as a local NextGIS vector layer and zoom to its extent. A package

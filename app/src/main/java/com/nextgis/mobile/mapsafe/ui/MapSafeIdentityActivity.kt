@@ -1,5 +1,6 @@
 package com.nextgis.mobile.mapsafe.ui
 
+import android.app.Activity
 import android.os.Bundle
 import android.text.InputType
 import android.text.method.PasswordTransformationMethod
@@ -179,6 +180,7 @@ class MapSafeIdentityActivity : AppCompatActivity() {
     }
 
     private fun showSuccessScreen(info: OpenPgpKeyInfo) {
+        setResult(Activity.RESULT_OK)
         passphrase.text?.clear()
         confirmation.text?.clear()
         window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)

@@ -22,6 +22,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.nextgis.maplibui.activity.NGWSettingsActivity
+import com.nextgis.mobile.mapsafe.blockchain.BlockchainNetworkPresets
+import com.nextgis.mobile.mapsafe.blockchain.BlockchainNetworkProfileRepository
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpException
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
 import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
@@ -31,6 +33,7 @@ import com.nextgis.mobile.mapsafe.keys.NextGisPublicKeyDirectoryClient
 import com.nextgis.mobile.mapsafe.keys.PublicKeyExchangeRepository
 import com.nextgis.mobile.mapsafe.keys.PublicKeySyncReport
 import com.nextgis.mobile.mapsafe.keys.PublicKeyTrustState
+import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,11 +48,14 @@ class MapSafeSecurityActivity : AppCompatActivity() {
     private lateinit var keyRepository: OpenPgpKeyRepository
     private lateinit var exchangeRepository: PublicKeyExchangeRepository
     private lateinit var directoryClient: NextGisPublicKeyDirectoryClient
+    private lateinit var networkRepository: BlockchainNetworkProfileRepository
 
     private lateinit var accountText: TextView
     private lateinit var groupText: TextView
     private lateinit var identityText: TextView
     private lateinit var directoryText: TextView
+    private lateinit var saveFolderText: TextView
+    private lateinit var networkText: TextView
     private lateinit var progress: ProgressBar
     private lateinit var controls: LinearLayout
     private lateinit var chooseGroupButton: Button
@@ -57,6 +63,7 @@ class MapSafeSecurityActivity : AppCompatActivity() {
     private lateinit var publishButton: Button
     private lateinit var syncButton: Button
     private lateinit var reviewButton: Button
+    private lateinit var openSaveFolderButton: Button
 
     private var selectedAccount: NextGisAccountSummary? = null
     private var selectedGroup: NextGisGroupSummary? = null
@@ -77,12 +84,12 @@ class MapSafeSecurityActivity : AppCompatActivity() {
             )
         }
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         MapSafeUi.configureActivity(this, "Security & sharing")
         keyRepository = OpenPgpKeyRepository(applicationContext)
         exchangeRepository = PublicKeyExchangeRepository(applicationContext)
+        networkRepository = BlockchainNetworkProfileRepository(applicationContext)
         directoryClient = NextGisPublicKeyDirectoryClient(
             applicationContext,
             keyRepository,
@@ -90,6 +97,10 @@ class MapSafeSecurityActivity : AppCompatActivity() {
         )
         setContentView(MapSafeUi.activityFrame(this, buildContent(), onBack =(::finish)))
         restoreSelection()
+        supportFragmentManager.setFragmentResultListener(
+            BlockchainNetworkSettingsDialog.REQUEST_NETWORK_PROFILE_CHANGED,
+            this
+        ) { _, _ -> updateUi() }
     }
 
     override fun onResume() {
@@ -142,6 +153,27 @@ class MapSafeSecurityActivity : AppCompatActivity() {
         syncButton = actionButton("Download group member keys", ::synchroniseGroupKeys)
         reviewButton = actionButton("Review changed / new fingerprints", ::reviewFingerprints)
         controls.addView(card("4. Group public keys", directoryText, publishButton, syncButton, reviewButton))
+
+        saveFolderText = bodyText()
+        openSaveFolderButton = actionButton("Open Save Folder", ::openSaveFolder)
+        controls.addView(card(
+            "5. Save Folder",
+            saveFolderText,
+            actionButton("Create MapSafe Folder", ::createSaveFolder),
+            openSaveFolderButton
+        ))
+
+        networkText = bodyText()
+        controls.addView(card(
+            "6. Blockchain network",
+            networkText,
+            actionButton("Configure blockchain network") {
+                BlockchainNetworkSettingsDialog().show(
+                    supportFragmentManager,
+                    BlockchainNetworkSettingsDialog.TAG
+                )
+            }
+        ))
 
         controls.addView(TextView(this).apply {
             text = "Encryption becomes available offline after recipient fingerprints are checked and accepted. A changed key is quarantined; it is never silently substituted."
@@ -216,11 +248,38 @@ class MapSafeSecurityActivity : AppCompatActivity() {
         }
         directoryText.text = directorySummary(group, records, lastSyncReport)
 
+        val saveFolder = MapSafeSaveFolderRepository.read(this)
+        saveFolderText.text = "Fixed shared location:\n${saveFolder.displayLocation}\n" +
+            "Open it in Files > Downloads > MapSafe. MapSafe creates it automatically and uses it for anonymised, encrypted, and decrypted files."
+
+        val network = runCatching { networkRepository.load().activeProfile }
+            .getOrElse { BlockchainNetworkPresets.defaults().activeProfile }
+        networkText.text = "Active: ${network.displayName} · ${network.environment.displayName}\n" +
+            "Chain ID: ${network.chainId}"
+
         chooseGroupButton.isEnabled = account != null
         createGroupButton.isEnabled = account != null
         publishButton.isEnabled = account != null && group != null && identity != null
         syncButton.isEnabled = account != null && group != null
         reviewButton.isEnabled = records.any { it.needsUserReview }
+        openSaveFolderButton.isEnabled = true
+    }
+
+    private fun createSaveFolder() {
+        runBusy(
+            message = "Creating MapSafe folder...",
+            operation = { MapSafeSaveFolderRepository.ensureFolder(this).displayLocation },
+            onSuccess = { location ->
+                updateUi()
+                toast("MapSafe folder is ready at $location.")
+            }
+        )
+    }
+
+    private fun openSaveFolder() {
+        if (!MapSafeSaveFolderRepository.openFolder(this)) {
+            toast("Downloads/MapSafe could not be opened in the Files app.")
+        }
     }
 
     private fun chooseAccount() {

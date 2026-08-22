@@ -10,9 +10,8 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
-import android.widget.SeekBar
+import android.widget.ScrollView
 import android.widget.Spinner
-import android.widget.Switch
 import androidx.fragment.app.DialogFragment
 
 /** Map-overlay controls for H3 aggregation. */
@@ -34,19 +33,12 @@ class HexabinningDialog : DialogFragment() {
         val content = MapSafeUi.page(context).apply {
             setPadding(dp(16), dp(12), dp(16), dp(12))
         }
-        content.addView(LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(MapSafeUi.screenHeading(
-                context,
-                "Hexagonal Binning",
-                "Aggregate points into hexagonal cells to reduce spatial detail."
-            ), LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Switch(context).apply {
-                isChecked = true
-                contentDescription = "Hexagonal binning enabled"
-            })
-        })
+        content.addView(MapSafeUi.safeguardStepStrip(context, MapSafeUi.SafeguardStep.ANONYMISE))
+        content.addView(MapSafeUi.screenHeading(
+            context,
+            "Hexagonal Binning",
+            "Choose the hexagon size for the aggregated output."
+        ))
 
         resolution = Spinner(context).apply {
             adapter = ArrayAdapter(
@@ -54,7 +46,7 @@ class HexabinningDialog : DialogFragment() {
                 android.R.layout.simple_spinner_dropdown_item,
                 RESOLUTION_LABELS
             )
-            setSelection(DEFAULT_RESOLUTION - MIN_RESOLUTION)
+            setSelection(initialResolution() - MIN_RESOLUTION)
         }
         content.addView(MapSafeUi.card(
             context,
@@ -63,24 +55,15 @@ class HexabinningDialog : DialogFragment() {
             MapSafeUi.divider(context),
             MapSafeUi.valueRow(context, "Aggregation", "Count", strongValue = true)
         ))
-        content.addView(MapSafeUi.card(
-            context,
-            MapSafeUi.sectionTitle(context, "Privacy Rating  ⓘ"),
-            SeekBar(context).apply {
-                max = 100
-                progress = 84
-                isEnabled = false
-            },
-            MapSafeUi.valueRow(context, "Low Privacy", "High Privacy")
-        ))
-        content.addView(MapSafeUi.infoCard(
-            context,
-            "Spatial aggregation",
-            "Larger hexagons provide stronger privacy. The output contains cell counts, not the original point locations."
-        ))
         content.addView(MapSafeUi.primaryButton(context, "Apply Hexagonal Binning", ::applyHexbin))
-        panel.addView(content)
-        root.addView(panel)
+        panel.addView(
+            ScrollView(context).apply { addView(content) },
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+        root.addView(
+            panel,
+            LinearLayout.LayoutParams(-1, resources.displayMetrics.heightPixels / 2)
+        )
         root.addView(View(context), LinearLayout.LayoutParams(-1, 0, 1f))
         dialog.setContentView(root)
         return dialog
@@ -107,11 +90,7 @@ class HexabinningDialog : DialogFragment() {
     }
 
     private fun showParent() {
-        if (continueToEncryption()) {
-            CombinedWorkflowDialog().show(parentFragmentManager, "CombinedWorkflowDialog")
-        } else {
-            AnonymiseDialog().show(parentFragmentManager, "AnonymiseDialog")
-        }
+        AnonymiseDialog().show(parentFragmentManager, "AnonymiseDialog")
     }
 
     private fun applyHexbin() {
@@ -120,23 +99,37 @@ class HexabinningDialog : DialogFragment() {
             REQUEST_KEY,
             Bundle().apply {
                 putInt(RESULT_RESOLUTION, selectedResolution)
-                putBoolean(RESULT_CONTINUE_TO_ENCRYPT, continueToEncryption())
+                sourceLayerName()?.let { putString(RESULT_SOURCE_LAYER_NAME, it) }
             }
         )
         dismiss()
     }
 
-    private fun continueToEncryption(): Boolean = arguments?.getBoolean(ARG_COMBINED, false) == true
+    private fun sourceLayerName(): String? = arguments?.getString(ARG_SOURCE_LAYER_NAME)
+    private fun initialResolution(): Int = arguments
+        ?.getInt(ARG_INITIAL_RESOLUTION, DEFAULT_RESOLUTION)
+        ?.coerceIn(MIN_RESOLUTION, MAX_RESOLUTION)
+        ?: DEFAULT_RESOLUTION
     private fun dp(value: Int): Int = MapSafeUi.dp(requireContext(), value)
 
     companion object {
         const val TAG = "HexabinningDialog"
         const val REQUEST_KEY = "mapsafe_hexabinning_request"
         const val RESULT_RESOLUTION = "h3_resolution"
-        const val RESULT_CONTINUE_TO_ENCRYPT = "continue_to_encryption"
-        private const val ARG_COMBINED = "combined_workflow"
+        const val RESULT_SOURCE_LAYER_NAME = "source_layer_name"
+        private const val ARG_SOURCE_LAYER_NAME = "rebin_source_layer_name"
+        private const val ARG_INITIAL_RESOLUTION = "initial_h3_resolution"
         private const val MIN_RESOLUTION = 6
+        private const val MAX_RESOLUTION = 12
         private const val DEFAULT_RESOLUTION = 8
+
+        fun forRebin(sourceLayerName: String, resolution: Int) = HexabinningDialog().apply {
+            arguments = Bundle().apply {
+                putString(ARG_SOURCE_LAYER_NAME, sourceLayerName)
+                putInt(ARG_INITIAL_RESOLUTION, resolution)
+            }
+        }
+
         private val RESOLUTION_LABELS = arrayOf(
             "Resolution 6  ·  ~3.2 km",
             "Resolution 7  ·  ~1.2 km",
@@ -146,9 +139,5 @@ class HexabinningDialog : DialogFragment() {
             "Resolution 11 ·  ~25 m",
             "Resolution 12 ·  ~9 m"
         )
-
-        fun forCombinedWorkflow() = HexabinningDialog().apply {
-            arguments = Bundle().apply { putBoolean(ARG_COMBINED, true) }
-        }
     }
 }

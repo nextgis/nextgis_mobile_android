@@ -7,7 +7,9 @@ param(
 
     [string]$Avd = 'Pixel_9a',
 
-    [switch]$NoStartEmulator
+    [switch]$NoStartEmulator,
+
+    [switch]$ResetAppData
 )
 
 Set-StrictMode -Version Latest
@@ -183,7 +185,8 @@ function Start-MapSafeDevice {
     $serial = Wait-ForAndroidBoot -AdbPath $adbPath
     Write-Host "Device ready: $serial" -ForegroundColor Green
     $installedPackage = & $adbPath -s $serial shell pm path com.nextgis.mobile.debug
-    if ($installedPackage -match '^package:') {
+    if ($ResetAppData -and $installedPackage -match '^package:') {
+        Write-Host 'Resetting MapSafe app data, including local test identities.' -ForegroundColor Yellow
         $previousPreference = $ErrorActionPreference
         try {
             $ErrorActionPreference = 'Continue'
@@ -192,6 +195,9 @@ function Start-MapSafeDevice {
         finally {
             $ErrorActionPreference = $previousPreference
         }
+    }
+    elseif ($installedPackage -match '^package:') {
+        Write-Host 'Preserving MapSafe app data and previously created identities.' -ForegroundColor Green
     }
     & $adbPath -s $serial logcat -c
 

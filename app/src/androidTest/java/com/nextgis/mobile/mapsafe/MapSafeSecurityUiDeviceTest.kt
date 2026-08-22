@@ -12,7 +12,9 @@ import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import com.nextgis.mobile.mapsafe.ui.MapSafeSecurityActivity
+import org.hamcrest.Matchers.containsString
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -23,6 +25,7 @@ class MapSafeSecurityUiDeviceTest {
     @Test
     fun publicKeyExchangeJourneyIsVisibleInTheProductionInterface() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        MapSafeSaveFolderRepository.clear(context)
         ActivityScenario.launch(MapSafeSecurityActivity::class.java).use {
             onView(withContentDescription("Back")).check(matches(isDisplayed()))
             onView(withContentDescription("MapSafe logo")).check(matches(isDisplayed()))
@@ -38,6 +41,12 @@ class MapSafeSecurityUiDeviceTest {
             onView(withText("Publish my public key")).perform(scrollTo()).check(matches(isDisplayed()))
             onView(withText("Download group member keys")).perform(scrollTo()).check(matches(isDisplayed()))
             onView(withText("Review changed / new fingerprints")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText("5. Save Folder")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText(containsString("Downloads/MapSafe"))).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText("Create MapSafe Folder")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText("Open Save Folder")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText("6. Blockchain network")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText("Configure blockchain network")).perform(scrollTo()).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "security-sharing-identity-keys")
             onView(withText("Advanced key backup / import")).perform(scrollTo(), click())
             onView(withText("Encrypt & Protect")).check(matches(isDisplayed()))

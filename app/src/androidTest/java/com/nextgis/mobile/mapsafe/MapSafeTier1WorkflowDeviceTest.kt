@@ -94,6 +94,16 @@ class MapSafeTier1WorkflowDeviceTest {
         assertEquals(donut.maskedPoints, exported.featureCount)
         show("PASS", "EXPORT", "${exported.featureCount} masked features exported as WGS84 GeoJSON")
 
+        val hexbinLayer = requireNotNull(context.map.getLayerByName(hexbin.outputLayerName))
+            as com.nextgis.maplib.map.VectorLayer
+        val exportedHexbin = MapSafeGeoJsonWorkflow.exportLayer(hexbinLayer, workDirectory)
+        assertEquals(hexbin.hexagons, exportedHexbin.featureCount)
+        show(
+            "PASS",
+            "EXPORT",
+            "${exportedHexbin.featureCount} hexagons exported as WGS84 GeoJSON without losing CRS"
+        )
+
         val local = OpenPgpKeyGenerator.generate(
             "Tier 1 Local <local@example.test>",
             PASSPHRASE.copyOf(),

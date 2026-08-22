@@ -47,41 +47,38 @@ class MapSafePaperScreensDeviceTest {
             openMapSafe(context)
             MapSafeDeviceTestSupport.screenshot(context, "paper-01-mapsafe-workflow-chooser")
 
-            onView(withText("Protect & Share (guided workflow)")).perform(click())
-            onView(withText("Protect & Share")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-02-guided-protect-share")
-            onView(withText("Back")).perform(click())
-
             onView(withText("Safeguard Features")).perform(click())
+            onView(withText("Select a dataset first")).check(matches(isDisplayed()))
+            onView(withText("Load sample dataset")).perform(click())
             onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-03-safeguard-features")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-02-safeguard-features")
 
             onView(withText("Anonymise")).perform(click())
-            MapSafeDeviceTestSupport.screenshot(context, "paper-04-anonymise-options")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-03-anonymise-options")
             onView(withText("Back")).perform(click())
 
             onView(withText("Encrypt")).perform(click())
             onView(withText("Encrypt & Protect")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-05-encrypt-source-chooser")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-04-encrypt-source-chooser")
             onView(withText("Back")).perform(click())
 
             onView(withText("Blockchain Notarisation")).perform(click())
-            MapSafeDeviceTestSupport.screenshot(context, "paper-06-notarisation-placeholder")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-05-notarisation-placeholder")
             onView(withContentDescription("Back")).perform(click())
             onView(withText("Back")).perform(click())
 
             onView(withText("Access Features")).perform(click())
             onView(withText("Access Features")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-07-access-features")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-06-access-features")
 
             onView(withText("Decrypt")).perform(click())
             onView(withText("OpenPGP Decryption")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-08-decrypt-package-chooser")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-07-decrypt-package-chooser")
             onView(withText("Back")).perform(click())
 
-            onView(withText("Check Records")).perform(click())
+            onView(withText("Verify")).perform(click())
             onView(withText("Verification")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-09-verification-placeholder")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-08-verification-placeholder")
         }
     }
 
@@ -91,7 +88,7 @@ class MapSafePaperScreensDeviceTest {
         val passphrase = "MapSafe-Paper-2026!"
         ActivityScenario.launch(MapSafeIdentityActivity::class.java).use {
             onView(withText("Create Encryption Identity")).check(matches(isDisplayed()))
-            MapSafeDeviceTestSupport.screenshot(context, "paper-10-identity-creation")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-09-identity-creation")
 
             onView(withHint("Name")).perform(replaceText("Research Participant"))
             onView(withHint("Organisation / community")).perform(replaceText("MapSafe Study"))
@@ -105,7 +102,7 @@ class MapSafePaperScreensDeviceTest {
                 "Identity success screen did not appear.",
                 device.wait(Until.hasObject(By.text("Key Pair Created Successfully")), 90_000L)
             )
-            MapSafeDeviceTestSupport.screenshot(context, "paper-11-identity-success")
+            MapSafeDeviceTestSupport.screenshot(context, "paper-10-identity-success")
         }
     }
 

@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
+import com.nextgis.mobile.activity.MainActivity
 
 /**
  * Main MapSafe entry dialog.
@@ -27,20 +28,14 @@ class MapSafeMainDialog : DialogFragment() {
                 "Choose a workflow",
                 "Protect a map layer before sharing, or securely access a protected dataset."
             ))
-            addView(MapSafeUi.primaryButton(context, "Protect & Share (guided workflow)") {
-                dismiss()
-                CombinedWorkflowDialog().show(parentFragmentManager, "CombinedWorkflowDialog")
-            })
             addView(MapSafeUi.outlineButton(context, "Security & Sharing") {
                 startActivity(Intent(context, MapSafeSecurityActivity::class.java))
             }.fullWidth())
             addView(MapSafeUi.outlineButton(context, "Safeguard Features") {
-                dismiss()
-                SafeguardFeaturesDialog().show(parentFragmentManager, "SafeguardFeaturesDialog")
+                openWorkflow(DESTINATION_SAFEGUARD)
             }.fullWidth())
             addView(MapSafeUi.outlineButton(context, "Access Features") {
-                dismiss()
-                AccessFeaturesDialog().show(parentFragmentManager, "AccessFeaturesDialog")
+                openWorkflow(DESTINATION_ACCESS)
             }.fullWidth())
             addView(MapSafeUi.card(
                 context,
@@ -64,11 +59,59 @@ class MapSafeMainDialog : DialogFragment() {
     }
 
     private fun useSampleDataset(openAnonymise: Boolean) {
+        useSampleDataset(openAnonymise, destination = null)
+    }
+
+    private fun useSampleDataset(openAnonymise: Boolean, destination: String?) {
         parentFragmentManager.setFragmentResult(
             REQUEST_LOAD_SAMPLE_POINTS,
-            Bundle().apply { putBoolean(RESULT_OPEN_ANONYMISE, openAnonymise) }
+            Bundle().apply {
+                putBoolean(RESULT_OPEN_ANONYMISE, openAnonymise)
+                destination?.let { putString(RESULT_OPEN_DESTINATION, it) }
+            }
         )
         dismiss()
+    }
+
+    private fun openWorkflow(destination: String) {
+        if (destination == DESTINATION_ACCESS) {
+            dismiss()
+            showDestination(destination)
+            return
+        }
+        val selectedLayer = (activity as? MainActivity)?.mapFragment?.selectedLayer
+        if (selectedLayer == null) {
+            showDatasetRequired(destination)
+            return
+        }
+
+        dismiss()
+        showDestination(destination)
+    }
+
+    private fun showDatasetRequired(destination: String) {
+        val workflowName = if (destination == DESTINATION_ACCESS) "Access" else "Safeguard"
+        AlertDialog.Builder(requireContext())
+            .setTitle("Select a dataset first")
+            .setMessage(
+                "$workflowName Features needs an active map dataset. Return to the map and " +
+                    "select the dataset you want to work with, or load the bundled sample dataset."
+            )
+            .setNegativeButton("Return to map") { _, _ -> dismiss() }
+            .setPositiveButton("Load sample dataset") { _, _ ->
+                useSampleDataset(openAnonymise = false, destination = destination)
+            }
+            .show()
+    }
+
+    private fun showDestination(destination: String) {
+        when (destination) {
+            DESTINATION_ACCESS ->
+                AccessFeaturesDialog().show(parentFragmentManager, "AccessFeaturesDialog")
+
+            else ->
+                SafeguardFeaturesDialog().show(parentFragmentManager, "SafeguardFeaturesDialog")
+        }
     }
 
     private fun <T : android.view.View> T.fullWidth(): T = apply {
@@ -84,6 +127,8 @@ class MapSafeMainDialog : DialogFragment() {
         const val TAG = "MapSafeMainDialog"
         const val REQUEST_LOAD_SAMPLE_POINTS = "mapsafe_load_sample_points_request"
         const val RESULT_OPEN_ANONYMISE = "open_anonymise_after_sample"
-        const val RESULT_OPEN_COMBINED = "open_combined_after_sample"
+        const val RESULT_OPEN_DESTINATION = "open_destination_after_sample"
+        const val DESTINATION_SAFEGUARD = "safeguard"
+        const val DESTINATION_ACCESS = "access"
     }
 }

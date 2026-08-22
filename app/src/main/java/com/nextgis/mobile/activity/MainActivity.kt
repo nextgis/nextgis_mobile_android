@@ -127,12 +127,12 @@ import com.nextgis.mobile.R
 import com.nextgis.mobile.fragment.LayersFragment
 import com.nextgis.mobile.fragment.MapFragment
 import com.nextgis.mobile.mapsafe.ui.AccessFeaturesDialog
+import com.nextgis.mobile.mapsafe.ui.AccessDatasetsDialog
 import com.nextgis.mobile.mapsafe.ui.AnonymiseDialog
-import com.nextgis.mobile.mapsafe.ui.CombinedWorkflowDialog
 import com.nextgis.mobile.mapsafe.ui.DonutMaskingDialog
-import com.nextgis.mobile.mapsafe.ui.DonutMaskingResultDialog
 import com.nextgis.mobile.mapsafe.ui.EncryptDialog
 import com.nextgis.mobile.mapsafe.ui.HexabinningDialog
+import com.nextgis.mobile.mapsafe.ui.IntegrityRecordDialog
 import com.nextgis.mobile.mapsafe.ui.MapSafeMainDialog
 import com.nextgis.mobile.mapsafe.ui.MapSafeOpenPgpActivity
 import com.nextgis.mobile.mapsafe.ui.SafeguardFeaturesDialog
@@ -617,6 +617,21 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                 }
                 intent.action = null
             }
+            ACTION_MAPSAFE_OPEN_DATASETS -> {
+                registerMapSafeResultListeners()
+                AccessDatasetsDialog()
+                    .show(supportFragmentManager, "AccessDatasetsDialog")
+                intent.action = null
+            }
+            ACTION_MAPSAFE_OPEN_NOTARISATION -> {
+                registerMapSafeResultListeners()
+                val encryptedFileUri = intent.getStringExtra(EXTRA_MAPSAFE_ENCRYPTED_URI)
+                    ?.let(Uri::parse)
+                val encryptedFileName = intent.getStringExtra(EXTRA_MAPSAFE_ENCRYPTED_FILE_NAME)
+                IntegrityRecordDialog.forSafeguardFeatures(encryptedFileUri, encryptedFileName)
+                    .show(supportFragmentManager, "IntegrityRecordDialog")
+                intent.action = null
+            }
         }
     }
 
@@ -632,11 +647,18 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
         ) { _, result ->
             val loaded = mapFragment?.loadMapSafeSamplePoints() == true
             if (loaded) {
-                when {
-                    result.getBoolean(MapSafeMainDialog.RESULT_OPEN_COMBINED) ->
-                        CombinedWorkflowDialog().show(supportFragmentManager, "CombinedWorkflowDialog")
-                    result.getBoolean(MapSafeMainDialog.RESULT_OPEN_ANONYMISE) ->
+                when (result.getString(MapSafeMainDialog.RESULT_OPEN_DESTINATION)) {
+                    MapSafeMainDialog.DESTINATION_SAFEGUARD ->
+                        SafeguardFeaturesDialog()
+                            .show(supportFragmentManager, "SafeguardFeaturesDialog")
+
+                    MapSafeMainDialog.DESTINATION_ACCESS ->
+                        AccessFeaturesDialog()
+                            .show(supportFragmentManager, "AccessFeaturesDialog")
+
+                    else -> if (result.getBoolean(MapSafeMainDialog.RESULT_OPEN_ANONYMISE)) {
                         AnonymiseDialog().show(supportFragmentManager, "AnonymiseDialog")
+                    }
                 }
             }
         }
@@ -648,20 +670,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             mapFragment?.runMapSafeDonutMasking(
                 result.getDouble(DonutMaskingDialog.RESULT_MIN_DISTANCE),
                 result.getDouble(DonutMaskingDialog.RESULT_MAX_DISTANCE),
-                result.getBoolean(DonutMaskingDialog.RESULT_CONTINUE_TO_ENCRYPT),
                 result.getString(DonutMaskingDialog.RESULT_SOURCE_LAYER_NAME)
             )
-        }
-
-        supportFragmentManager.setFragmentResultListener(
-            DonutMaskingResultDialog.REQUEST_USE_RESULT,
-            this
-        ) { _, result ->
-            if (result.getBoolean(DonutMaskingResultDialog.RESULT_CONTINUE_TO_ENCRYPT)) {
-                result.getString(DonutMaskingResultDialog.RESULT_OUTPUT_LAYER_NAME)?.let {
-                    mapFragment?.continueMapSafeEncryptionForLayer(it)
-                }
-            }
         }
 
         supportFragmentManager.setFragmentResultListener(
@@ -670,7 +680,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
         ) { _, result ->
             mapFragment?.runMapSafeHexabinning(
                 result.getInt(HexabinningDialog.RESULT_RESOLUTION),
-                result.getBoolean(HexabinningDialog.RESULT_CONTINUE_TO_ENCRYPT)
+                result.getString(HexabinningDialog.RESULT_SOURCE_LAYER_NAME)
             )
         }
 
@@ -679,9 +689,23 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             this
         ) { _, result ->
             if (result.getBoolean(EncryptDialog.RESULT_SELECTED_LAYER)) {
-                mapFragment?.openMapSafeEncryptionForSelectedLayer()
+                val sourceLayerName = result.getString(EncryptDialog.RESULT_SOURCE_LAYER_NAME)
+                if (sourceLayerName == null) {
+                    mapFragment?.openMapSafeEncryptionForSelectedLayer()
+                } else {
+                    mapFragment?.openMapSafeEncryptionForLayerName(sourceLayerName)
+                }
             } else {
                 startActivity(MapSafeOpenPgpActivity.intent(this))
+            }
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            AccessDatasetsDialog.REQUEST_OPEN_DATASET,
+            this
+        ) { _, result ->
+            result.getString(AccessDatasetsDialog.RESULT_LAYER_NAME)?.let { layerName ->
+                mapFragment?.openMapSafeAccessedLayer(layerName)
             }
         }
 
@@ -1896,6 +1920,12 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             "com.nextgis.mobile.action.MAPSAFE_LAYER_IMPORTED"
         const val ACTION_MAPSAFE_SHOW_PARENT =
             "com.nextgis.mobile.action.MAPSAFE_SHOW_PARENT"
+        const val ACTION_MAPSAFE_OPEN_DATASETS =
+            "com.nextgis.mobile.action.MAPSAFE_OPEN_DATASETS"
+        const val ACTION_MAPSAFE_OPEN_NOTARISATION =
+            "com.nextgis.mobile.action.MAPSAFE_OPEN_NOTARISATION"
+        const val EXTRA_MAPSAFE_ENCRYPTED_URI = "mapsafe_encrypted_uri"
+        const val EXTRA_MAPSAFE_ENCRYPTED_FILE_NAME = "mapsafe_encrypted_file_name"
         const val EXTRA_MAPSAFE_ACCESS_PARENT = "mapsafe_access_parent"
         const val EXTRA_MAPSAFE_LAYER_NAME = "mapsafe_imported_layer_name"
         const val EXTRA_MAPSAFE_FEATURE_COUNT = "mapsafe_imported_feature_count"

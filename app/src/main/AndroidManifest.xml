@@ -58,9 +58,9 @@
     <application
         android:name=".MainApplication"
         android:allowBackup="true"
-        android:icon="@drawable/mapsafe_logo"
+        android:icon="@drawable/ic_launcher"
         android:label="@string/APP_NAME"
-        android:roundIcon="@drawable/mapsafe_logo"
+        android:roundIcon="@drawable/ic_launcher"
         android:usesCleartextTraffic="true"
         tools:ignore="GoogleAppIndexingWarning"
         tools:replace="android:allowBackup, label"

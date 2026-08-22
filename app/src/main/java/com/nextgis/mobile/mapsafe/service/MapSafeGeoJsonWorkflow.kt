@@ -3,6 +3,9 @@ package com.nextgis.mobile.mapsafe.service
 import com.nextgis.maplib.datasource.GeoEnvelope
 import com.nextgis.maplib.datasource.GeoGeometry
 import com.nextgis.maplib.map.MapBase
+import com.nextgis.maplib.map.Layer
+import com.nextgis.maplib.map.LayerGroup
+import com.nextgis.maplib.map.TrackLayer
 import com.nextgis.maplib.map.VectorLayer
 import com.nextgis.maplib.util.GeoConstants
 import com.nextgis.maplibui.mapui.VectorLayerUI
@@ -10,6 +13,7 @@ import com.nextgis.mobile.MainApplication
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.OutputStream
 import java.util.Locale
 
 /** Bridges regular NextGIS vector layers and MapSafe OpenPGP packages through GeoJSON. */
@@ -36,40 +40,22 @@ object MapSafeGeoJsonWorkflow {
 
         val fileName = safeBaseName(sourceLayer.name) + ".geojson"
         val destination = File(destinationDirectory, fileName)
-        val features = JSONArray()
-        val fields = sourceLayer.fields
-
-        for (id in sourceLayer.query(null)) {
-            val sourceFeature = sourceLayer.getFeature(id) ?: continue
-            val sourceGeometry = sourceLayer.getGeometryForId(id) ?: continue
-            val geometry = geometryAsWgs84(sourceGeometry)
-            val properties = JSONObject()
-
-            fields.forEachIndexed { index, field ->
-                properties.put(field.name, jsonValue(sourceFeature.getFieldValue(index)))
-            }
-
-            features.put(
-                JSONObject()
-                    .put("type", "Feature")
-                    .put("id", id)
-                    .put("geometry", geometry.toJSON())
-                    .put("properties", properties)
-            )
+        val featureCount = destination.outputStream().use { output ->
+            exportLayer(sourceLayer, output)
         }
 
-        require(features.length() > 0) { "The selected layer contains no readable features." }
+        return ExportResult(destination, fileName, featureCount)
+    }
 
-        val collection = JSONObject()
-            .put("type", "FeatureCollection")
-            .put("name", sourceLayer.name)
-            .put("features", features)
-
-        destination.outputStream().bufferedWriter(Charsets.UTF_8).use { writer ->
-            writer.write(collection.toString())
+    /** Writes one vector layer as portable WGS84 GeoJSON to a user-selected destination. */
+    fun exportLayer(sourceLayer: VectorLayer, output: OutputStream): Int {
+        require(sourceLayer.isValid) { "The selected vector layer is not valid." }
+        val collection = featureCollection(sourceLayer)
+        output.bufferedWriter(Charsets.UTF_8).apply {
+            write(collection.toString())
+            flush()
         }
-
-        return ExportResult(destination, fileName, features.length())
+        return collection.getJSONArray("features").length()
     }
 
     fun importLayer(
@@ -106,6 +92,8 @@ object MapSafeGeoJsonWorkflow {
             addedToMap = true
             layer.notifyLayerChanged()
             map.save()
+            MapSafeDatasetCatalogue.markVerifiedDecryptionImport(layer)
+            showOnlyDecryptedDataLayer(map, layer)
 
             return ImportResult(layer, layerName, featureCount, extent)
         } catch (error: Throwable) {
@@ -126,7 +114,9 @@ object MapSafeGeoJsonWorkflow {
     }
 
     private fun geometryAsWgs84(source: GeoGeometry): GeoGeometry {
-        val geometry = source.copy()
+        // Some maplib geometry copy implementations do not carry their CRS field.
+        // Restore it from the stored source before applying the strict export projection.
+        val geometry = source.copy().apply { crs = source.crs }
         when (geometry.crs) {
             GeoConstants.CRS_WGS84 -> Unit
             GeoConstants.CRS_WEB_MERCATOR -> require(geometry.project(GeoConstants.CRS_WGS84)) {
@@ -177,6 +167,54 @@ object MapSafeGeoJsonWorkflow {
             suffix++
         }
         return candidate
+    }
+
+    private fun featureCollection(sourceLayer: VectorLayer): JSONObject {
+        val features = JSONArray()
+        val fields = sourceLayer.fields
+
+        for (id in sourceLayer.query(null)) {
+            val sourceFeature = sourceLayer.getFeature(id) ?: continue
+            val sourceGeometry = sourceLayer.getGeometryForId(id) ?: continue
+            val geometry = geometryAsWgs84(sourceGeometry)
+            val properties = JSONObject()
+
+            fields.forEachIndexed { index, field ->
+                properties.put(field.name, jsonValue(sourceFeature.getFieldValue(index)))
+            }
+
+            features.put(
+                JSONObject()
+                    .put("type", "Feature")
+                    .put("id", id)
+                    .put("geometry", geometry.toJSON())
+                    .put("properties", properties)
+            )
+        }
+
+        require(features.length() > 0) { "The selected layer contains no readable features." }
+        return JSONObject()
+            .put("type", "FeatureCollection")
+            .put("name", sourceLayer.name)
+            .put("features", features)
+    }
+
+    /** Keep map context, but hide every previously loaded vector or track overlay. */
+    private fun showOnlyDecryptedDataLayer(map: MapBase, decryptedLayer: VectorLayer) {
+        val dataLayers = mutableListOf<Layer>()
+        collectDataLayers(map, dataLayers)
+        dataLayers.forEach { layer ->
+            layer.isVisible = layer === decryptedLayer
+        }
+        decryptedLayer.isVisible = true
+        map.save()
+    }
+
+    private fun collectDataLayers(group: LayerGroup, destination: MutableList<Layer>) {
+        group.layers.forEach { layer ->
+            if (layer is VectorLayer || layer is TrackLayer) destination += layer as Layer
+            if (layer is LayerGroup) collectDataLayers(layer, destination)
+        }
     }
 
     private const val MAX_IMPORT_BYTES = 50L * 1024L * 1024L
