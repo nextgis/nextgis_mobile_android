@@ -91,12 +91,18 @@ class IntegrityRecordDialog : DialogFragment() {
             ?.takeIf(String::isNotBlank)
             ?: notarisationFileUri?.let(::displayName)
             ?: NO_FILE_SELECTED
-        selectedVerificationFileName =
-            savedInstanceState?.getString(STATE_FILE_NAME) ?: NO_FILE_SELECTED
-        selectedVerificationFileUri = savedInstanceState?.getString(STATE_FILE_URI)?.let(Uri::parse)
+        selectedVerificationFileName = savedInstanceState?.getString(STATE_FILE_NAME)
+            ?: requireArguments().getString(ARG_VERIFICATION_FILE_NAME)
+            ?: NO_FILE_SELECTED
+        selectedVerificationFileUri = (
+            savedInstanceState?.getString(STATE_FILE_URI)
+                ?: requireArguments().getString(ARG_VERIFICATION_FILE_URI)
+            )?.let(Uri::parse)
         calculatedVerificationHash = savedInstanceState?.getString(STATE_FILE_HASH)
+            ?: requireArguments().getString(ARG_VERIFICATION_FILE_HASH)
         if (selectedVerificationFileUri == null) calculatedVerificationHash = null
-        transactionReferenceValue = savedInstanceState?.getString(STATE_TRANSACTION_REFERENCE).orEmpty()
+        transactionReferenceValue = savedInstanceState?.getString(STATE_TRANSACTION_REFERENCE)
+            ?: requireArguments().getString(ARG_VERIFICATION_TRANSACTION_REFERENCE).orEmpty()
         validatedTransactionHash = savedInstanceState?.getString(STATE_TRANSACTION_HASH)
         validatedTransactionProfileId = savedInstanceState?.getString(STATE_TRANSACTION_PROFILE_ID)
         if (validatedTransactionProfileId != activeNetworkProfile.id) {
@@ -773,6 +779,11 @@ class IntegrityRecordDialog : DialogFragment() {
         private const val ARG_PARENT = "mapsafe_integrity_parent"
         private const val ARG_NOTARISATION_FILE_URI = "mapsafe_notarisation_file_uri"
         private const val ARG_NOTARISATION_FILE_NAME = "mapsafe_notarisation_file_name"
+        private const val ARG_VERIFICATION_FILE_URI = "mapsafe_verification_file_uri"
+        private const val ARG_VERIFICATION_FILE_NAME = "mapsafe_verification_file_name"
+        private const val ARG_VERIFICATION_FILE_HASH = "mapsafe_verification_file_hash"
+        private const val ARG_VERIFICATION_TRANSACTION_REFERENCE =
+            "mapsafe_verification_transaction_reference"
         private const val PARENT_SAFEGUARD = "safeguard"
         private const val PARENT_ACCESS = "access"
         private const val STATE_FILE_NAME = "verification_file_name"
@@ -799,6 +810,23 @@ class IntegrityRecordDialog : DialogFragment() {
 
         fun forAccessFeatures() = IntegrityRecordDialog().apply {
             arguments = Bundle().apply { putString(ARG_PARENT, PARENT_ACCESS) }
+        }
+
+        fun forCommunityPackage(
+            fileUri: Uri,
+            fileName: String,
+            calculatedSha256: String,
+            transactionReference: String? = null
+        ) = IntegrityRecordDialog().apply {
+            arguments = Bundle().apply {
+                putString(ARG_PARENT, PARENT_ACCESS)
+                putString(ARG_VERIFICATION_FILE_URI, fileUri.toString())
+                putString(ARG_VERIFICATION_FILE_NAME, fileName)
+                putString(ARG_VERIFICATION_FILE_HASH, calculatedSha256)
+                transactionReference?.takeIf(String::isNotBlank)?.let {
+                    putString(ARG_VERIFICATION_TRANSACTION_REFERENCE, it)
+                }
+            }
         }
     }
 }

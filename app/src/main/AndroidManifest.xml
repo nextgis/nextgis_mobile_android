@@ -94,9 +94,11 @@
 
         <activity
             android:name=".activity.MainActivity"
+            android:clearTaskOnLaunch="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true"
-            android:label="@string/APP_NAME">
+            android:label="@string/APP_NAME"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

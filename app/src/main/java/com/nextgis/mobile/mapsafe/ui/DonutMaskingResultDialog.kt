@@ -10,20 +10,27 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.LinearLayout
+import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import com.nextgis.maplib.map.VectorLayer
 import com.nextgis.mobile.MainApplication
+import com.nextgis.mobile.mapsafe.community.CommunityArtifactType
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
+import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
 import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
 import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
+import java.util.UUID
 
 /** Shows one halo-masking privacy result and offers a safe retry from the precise source. */
 class DonutMaskingResultDialog : DialogFragment() {
@@ -31,6 +38,8 @@ class DonutMaskingResultDialog : DialogFragment() {
     private var expandablePanel: MapSafeExpandableResultPanel? = null
     private lateinit var saveLocationText: TextView
     private lateinit var saveLocationRow: View
+    private lateinit var communityUploadButton: Button
+    private lateinit var communityUploadStatus: TextView
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val context = requireContext()
@@ -102,6 +111,20 @@ class DonutMaskingResultDialog : DialogFragment() {
                 ::openSaveFolder
             ).apply { visibility = View.GONE }
             addView(saveLocationRow)
+            communityUploadButton = MapSafeUi.outlineButton(
+                context,
+                "Upload to Community",
+                ::uploadOutputLayer
+            )
+            addView(communityUploadButton)
+            communityUploadStatus = MapSafeUi.text(
+                context,
+                "",
+                13f,
+                MapSafeUi.GREEN_TEXT,
+                bold = true
+            ).apply { visibility = View.GONE }
+            addView(communityUploadStatus)
             addView(MapSafeUi.nextStopActions(
                 context,
                 nextLabel = "Next: Encrypt",
@@ -205,6 +228,73 @@ class DonutMaskingResultDialog : DialogFragment() {
         if (!MapSafeSaveFolderRepository.openFolder(requireContext())) {
             Toast.makeText(requireContext(), "Downloads/MapSafe could not be opened.", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun uploadOutputLayer() {
+        val context = requireContext()
+        val selection = MapSafeSecurityPreferences.read(context)
+        if (!selection.hasGroup) {
+            showCommunitySetupRequired()
+            return
+        }
+        val app = context.applicationContext as MainApplication
+        val layer = app.map.getLayerByName(outputLayerName()) as? VectorLayer
+        if (layer == null) {
+            Toast.makeText(context, "The masked layer is no longer available.", Toast.LENGTH_LONG).show()
+            return
+        }
+        communityUploadButton.isEnabled = false
+        communityUploadStatus.apply {
+            text = "Uploading to ${selection.groupName ?: "the selected community"}…"
+            visibility = View.VISIBLE
+        }
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val temporary = File(
+                        context.cacheDir,
+                        "mapsafe-community-upload/${UUID.randomUUID()}"
+                    )
+                    try {
+                        val exported = MapSafeGeoJsonWorkflow.exportLayer(layer, temporary)
+                        NextGisCommunityPublisher(context).publishGeoJson(
+                            selection = selection,
+                            source = exported.file,
+                            fileName = safeGeoJsonName(outputLayerName()),
+                            artifactType = CommunityArtifactType.HALO_MASKED
+                        )
+                    } finally {
+                        temporary.deleteRecursively()
+                    }
+                }
+            }
+            communityUploadButton.isEnabled = true
+            result.onSuccess { published ->
+                communityUploadStatus.text =
+                    "Uploaded: ${published.fileName} to ${published.communityName}"
+                Toast.makeText(context, "Masked layer uploaded to ${published.communityName}.", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                communityUploadStatus.visibility = View.GONE
+                AlertDialog.Builder(context)
+                    .setTitle("Community upload failed")
+                    .setMessage(error.message ?: error.javaClass.simpleName)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
+    }
+
+    private fun showCommunitySetupRequired() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Choose a NextGIS community")
+            .setMessage(
+                "Sign in to NextGIS and choose the preconfigured community in Security & Sharing before uploading."
+            )
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton("Open Security & Sharing") { _, _ ->
+                startActivity(android.content.Intent(requireContext(), MapSafeSecurityActivity::class.java))
+            }
+            .show()
     }
 
     private fun nextToEncryption() {

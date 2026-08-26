@@ -79,24 +79,48 @@ MapSafe reports these states independently from successful decryption:
 Importing a public key does not establish human or organisational trust. Users
 must compare the complete displayed fingerprint through an independent channel.
 
-## NextGIS public-key exchange
+## NextGIS community publishing
 
-MapSafe can use an existing NextGIS account to publish and discover public keys
-for a NextGIS authentication group. Authentication and storage remain separate:
-the authentication group supplies the current member IDs, while a resource group
-named `mapsafe_keys_<group-id>` stores one `file_bucket` per publishing member.
-Each bucket contains only `public-key.asc` and `key-metadata.json`. Private keys
-and passphrases are rejected from this workflow and are never uploaded.
+MapSafe reuses an existing authenticated NextGIS account and the authentication
+group selected in Security & Sharing. It does not create the hosted Web GIS,
+NextGIS ID subscription, team invitations, or users. Those administrative tasks
+are completed before fieldwork.
 
-The directory resource grants the authentication group propagated resource/data
-read access and permission to create child resources. Each member-owned bucket
-can only be updated by its owner under normal NextGIS ownership rules. During
-synchronisation, MapSafe verifies all of the following before caching a key:
+The hosted-compatible publishing path creates or discovers this hierarchy:
+
+```text
+MapSafe
+└── <selected authentication group name>
+    ├── Public Keys
+    ├── Anonymised Layers
+    └── Encrypted Packages
+```
+
+Public keys use a separate group-scoped `MapSafe public keys` directory. Each
+member owns one file-bucket entry containing `public-key.asc` and a validated
+key manifest. This gives every member a stable key version while keeping private
+keys and passphrases off NextGIS Web.
+
+Halo-masked and hexagonal-binned GeoJSON outputs are uploaded as native NextGIS
+vector resources. Their resource metadata includes an opaque record ID, artifact
+type, publisher/group IDs, source filename, MIME type, SHA-256, timestamp and
+status. Encrypted `.pgp` packages are uploaded as arbitrary file attachments on
+small publisher-owned vector registries. Package records also
+reserve the network, chain ID, transaction hash and explorer URL fields. Until a
+real notarisation transaction exists, the package status is `hash_calculated` and
+the transaction fields remain empty.
+
+Private keys and passphrases are rejected from this workflow and are never
+uploaded. The selected authentication group receives read access to its community
+resource hierarchy; the server's effective resource/data permissions are checked
+again immediately before each publication.
+
+Before caching a community key, MapSafe verifies all of the following:
 
 - the manifest group is the selected authentication group;
 - the manifest user is a current group member;
-- the same user owns the NextGIS file bucket;
-- there is exactly one bucket for the user;
+- the same user owns the NextGIS publisher resource;
+- there is exactly one active key record for the user/version;
 - the downloaded OpenPGP fingerprint matches the manifest;
 - the key has a currently usable encryption key.
 
@@ -134,8 +158,8 @@ disposable identities at runtime.
 - no revocation-certificate UI yet;
 - NextGIS directory fingerprints still require explicit out-of-band confirmation;
 - no organisation certification authority or centrally signed-key policy yet;
-- NextGIS `file_bucket` availability and permissions depend on the server edition
-  and administrator configuration;
+- attachment-backed NextGIS publication still requires live validation against
+  the intended hosted Web GIS, account plan and administrator ACL configuration;
 - selected-layer sharing currently uses GeoJSON and does not include attachments,
   renderer configuration, or edit-form definitions;
 - external GnuPG/OpenKeychain interoperability still requires manual validation.

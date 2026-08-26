@@ -150,7 +150,7 @@ class MapSafeSecurityActivity : AppCompatActivity() {
 
         directoryText = bodyText()
         publishButton = actionButton("Publish my public key", ::publishPublicKey)
-        syncButton = actionButton("Download group member keys", ::synchroniseGroupKeys)
+        syncButton = actionButton("Refresh community keys", ::synchroniseGroupKeys)
         reviewButton = actionButton("Review changed / new fingerprints", ::reviewFingerprints)
         controls.addView(card("4. Group public keys", directoryText, publishButton, syncButton, reviewButton))
 
@@ -394,12 +394,20 @@ class MapSafeSecurityActivity : AppCompatActivity() {
         val account = selectedAccount ?: return toast("Choose a NextGIS account first.")
         val group = selectedGroup ?: return toast("Choose a trusted group first.")
         if (!keyRepository.hasLocalIdentity()) return toast("Create an encryption identity first.")
+        val identity = keyRepository.localIdentityInfo()
+            ?: return toast("Create an encryption identity first.")
+        val selection = MapSafeSecurityPreferences.read(this)
+        if (!selection.hasGroup || selection.accountName != account.accountName || selection.groupId != group.id) {
+            return toast("Choose this NextGIS account and community again before publishing.")
+        }
         runBusy(
             message = "Publishing public key to ${group.displayName}...",
             operation = { directoryClient.publish(account.accountName, group.id) },
             onSuccess = { result ->
-                toast("Public key published. Version ${result.keyVersion}; fingerprint ${formatFingerprint(result.fingerprint)}")
-                synchroniseGroupKeys()
+                toast(
+                    "Public key uploaded to ${group.displayName}: " +
+                        formatFingerprint(identity.fingerprint)
+                )
             }
         )
     }
@@ -483,7 +491,8 @@ class MapSafeSecurityActivity : AppCompatActivity() {
     ): String {
         if (group == null) return "Choose a group before publishing or retrieving public keys."
         if (records.isEmpty() && report == null) {
-            return "No cached keys for ${group.displayName}. Publish your key, then download group member keys."
+            return "No cached keys for ${group.displayName}. You can publish your public key now; " +
+                "then refresh community keys to retrieve keys published by other members."
         }
         return buildString {
             append(group.displayName).append('\n')

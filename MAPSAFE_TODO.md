@@ -121,7 +121,13 @@
 ## Cloud integration
 - [x] Reuse existing NextGIS accounts for MapSafe key exchange
 - [x] Resolve collaborator membership from NextGIS authentication groups
-- [x] Store public keys and manifests in NextGIS resource/file buckets
-- [x] Synchronise public-key metadata and local trust state
+- [x] Prototype public-key storage in NextGIS file buckets for compatible on-premise servers
+- [x] Add hosted-compatible `MapSafe / Community / Public Keys / Anonymised Layers / Encrypted Packages` resources
+- [x] Publish and synchronise member public keys through group-scoped file-bucket manifests
+- [x] Publish halo-masked and hexagonal-binned outputs as native NextGIS vector resources
+- [x] Publish encrypted `.pgp` attachments with SHA-256 and reserved blockchain-location fields
+- [x] Add Community Packages listing and SHA-256-checked download in Access
+- [ ] Update an encrypted package record with transaction hash and explorer URL after live notarisation
+- [ ] Validate uploads, ACL denial and resource visibility with owner, member and outsider accounts
 - [x] Add production UI for group selection, missing-key status and fingerprint review
 - [ ] Add scheduled/background key-directory synchronisation

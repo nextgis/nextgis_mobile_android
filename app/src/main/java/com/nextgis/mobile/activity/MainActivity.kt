@@ -65,6 +65,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.DialogFragment
 import androidx.loader.app.LoaderManager
 import androidx.loader.content.Loader
 import com.google.android.material.snackbar.Snackbar
@@ -252,7 +253,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             fm.beginTransaction().add(progressFragment, TAG_FRAGMENT_PROGRESS).commit()
         }
 
-        handleMapSafeImportIntent(intent)
+        handleStartupIntent(intent)
 
 
         if (!hasLocationPermissions()) {
@@ -583,7 +584,25 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleStartupIntent(intent)
+    }
+
+    private fun handleStartupIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_MAIN &&
+            intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+        ) {
+            clearMapSafeDialogsForLauncher()
+            return
+        }
+
         handleMapSafeImportIntent(intent)
+    }
+
+    private fun clearMapSafeDialogsForLauncher() {
+        supportFragmentManager.fragments
+            .filterIsInstance<DialogFragment>()
+            .filter { it.javaClass.name.startsWith(MAPSAFE_UI_PACKAGE) }
+            .forEach(DialogFragment::dismissAllowingStateLoss)
     }
 
     private fun handleMapSafeImportIntent(intent: Intent?) {
@@ -1933,6 +1952,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
         const val EXTRA_MAPSAFE_MAX_X = "mapsafe_imported_max_x"
         const val EXTRA_MAPSAFE_MIN_Y = "mapsafe_imported_min_y"
         const val EXTRA_MAPSAFE_MAX_Y = "mapsafe_imported_max_y"
+        private const val MAPSAFE_UI_PACKAGE = "com.nextgis.mobile.mapsafe.ui."
 
         protected const val PERMISSIONS_REQUEST_ZERO: Int = 0
         protected const val PERMISSIONS_REQUEST_LOC: Int = 1

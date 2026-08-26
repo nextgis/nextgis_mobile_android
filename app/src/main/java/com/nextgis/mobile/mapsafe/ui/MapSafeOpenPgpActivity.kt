@@ -26,12 +26,19 @@ import androidx.lifecycle.lifecycleScope
 import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.activity.MainActivity
 import com.nextgis.mobile.mapsafe.access.decrypt.DecryptFile
+import com.nextgis.mobile.mapsafe.blockchain.BlockchainNetworkPresets
+import com.nextgis.mobile.mapsafe.blockchain.BlockchainNetworkProfileRepository
+import com.nextgis.mobile.mapsafe.community.CommunityArtifactType
+import com.nextgis.mobile.mapsafe.community.CommunityBlockchainReference
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublishException
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpDecryptionResult
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpException
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpSignatureStatus
 import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
+import com.nextgis.mobile.mapsafe.keys.NextGisPublicKeyDirectoryClient
 import com.nextgis.mobile.mapsafe.keys.PublicKeyExchangeRepository
 import com.nextgis.mobile.mapsafe.keys.PublicKeyTrustState
 import com.nextgis.mobile.mapsafe.service.HashUtils
@@ -46,6 +53,7 @@ import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.CipherInputStream
 import javax.crypto.CipherOutputStream
@@ -56,6 +64,7 @@ import javax.crypto.spec.SecretKeySpec
 class MapSafeOpenPgpActivity : AppCompatActivity() {
     private lateinit var repository: OpenPgpKeyRepository
     private lateinit var exchangeRepository: PublicKeyExchangeRepository
+    private lateinit var directoryClient: NextGisPublicKeyDirectoryClient
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
     private lateinit var controls: LinearLayout
@@ -143,6 +152,11 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         )
         repository = OpenPgpKeyRepository(applicationContext)
         exchangeRepository = PublicKeyExchangeRepository(applicationContext)
+        directoryClient = NextGisPublicKeyDirectoryClient(
+            applicationContext,
+            repository,
+            exchangeRepository
+        )
         loadInternalEncryptSource()
         loadVerifiedDecryptSource()
         setContentView(MapSafeUi.activityFrame(this, buildContent(), onBack =(::returnToParentMenu)))
@@ -281,6 +295,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 this,
                 MapSafeUi.sectionTitle(this, "Recipients"),
                 MapSafeUi.valueRow(this, selection.groupName ?: "Trusted group", "$accepted verified"),
+                MapSafeUi.outlineButton(this, "Refresh community keys", ::synchroniseCommunityKeys),
                 MapSafeUi.outlineButton(this, "+  Import individual recipient") {
                     importPublicKey.launch(arrayOf("application/pgp-keys", "application/octet-stream", "text/plain"))
                 },
@@ -608,6 +623,57 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         }
     }
 
+    private fun synchroniseCommunityKeys() {
+        val selection = MapSafeSecurityPreferences.read(this)
+        if (!selection.hasGroup) {
+            AlertDialog.Builder(this)
+                .setTitle("Choose a NextGIS community")
+                .setMessage(
+                    "Connect a NextGIS Web account and choose the trusted community in " +
+                        "Security & Sharing before retrieving member keys."
+                )
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton("Open Security & Sharing") { _, _ ->
+                    startActivity(Intent(this, MapSafeSecurityActivity::class.java))
+                }
+                .show()
+            return
+        }
+
+        val accountName = requireNotNull(selection.accountName)
+        val groupId = requireNotNull(selection.groupId)
+        runBusy(
+            message = "Refreshing public keys for ${selection.groupName ?: "the selected community"}…",
+            operation = { directoryClient.sync(accountName, groupId) },
+            onSuccess = { report ->
+                refreshStatus(
+                    "Community keys refreshed: ${report.acceptedCount} verified; " +
+                        "${report.missingMemberIds.size} missing."
+                )
+                val pending = report.records.count { it.needsUserReview }
+                if (pending > 0) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Fingerprint verification required")
+                        .setMessage(
+                            "$pending new or changed public-key fingerprint" +
+                                if (pending == 1) {
+                                    " requires review before it can be selected for encryption."
+                                } else {
+                                    "s require review before they can be selected for encryption."
+                                }
+                        )
+                        .setNegativeButton("Use verified keys", null)
+                        .setPositiveButton("Review") { _, _ ->
+                            startActivity(Intent(this, MapSafeSecurityActivity::class.java))
+                        }
+                        .show()
+                } else {
+                    toast("Community recipient keys are up to date.")
+                }
+            }
+        )
+    }
+
     private fun encryptToSaveFolder() {
         val inputUri = pendingEncryptInput
         val internalSource = pendingInternalEncryptSource
@@ -669,7 +735,9 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     onNext = ::openNotarisation,
                     onStop = ::stopWorkflow,
                     placeAfterEncryptionAction = true,
-                    savedLocation = saved.displayLocation
+                    savedLocation = saved.displayLocation,
+                    communityActionLabel = "Upload to Community",
+                    onCommunityAction = ::publishLatestEncryptedPackage
                 )
             }
         )
@@ -947,6 +1015,75 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         finish()
     }
 
+    private fun publishLatestEncryptedPackage() {
+        val encryptedUri = latestEncryptedUri
+        if (encryptedUri == null) {
+            toast("Encrypt a dataset before uploading it to the community.")
+            return
+        }
+        val selection = MapSafeSecurityPreferences.read(this)
+        if (!selection.hasGroup) {
+            AlertDialog.Builder(this)
+                .setTitle("Choose a NextGIS community")
+                .setMessage(
+                    "Sign in to NextGIS and choose the preconfigured community in Security & Sharing before uploading."
+                )
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton("Open Security & Sharing") { _, _ ->
+                    startActivity(Intent(this, MapSafeSecurityActivity::class.java))
+                }
+                .show()
+            return
+        }
+        // The community copy uses an opaque name so the original dataset name is
+        // not disclosed through NextGIS resource or attachment metadata.
+        val fileName = "mapsafe-package-${UUID.randomUUID()}.pgp"
+        runBusy(
+            message = "Uploading encrypted package to ${selection.groupName ?: "the selected community"}…",
+            operation = {
+                val temporary = File.createTempFile("mapsafe-community-package-", ".pgp", cacheDir)
+                try {
+                    contentResolver.openInputStream(encryptedUri)?.use { input ->
+                        temporary.outputStream().use(input::copyTo)
+                    } ?: throw NextGisCommunityPublishException(
+                        "The encrypted package could not be opened for upload."
+                    )
+                    val profile = runCatching {
+                        BlockchainNetworkProfileRepository(applicationContext).load().activeProfile
+                    }.getOrElse { BlockchainNetworkPresets.defaults().activeProfile }
+                    NextGisCommunityPublisher(applicationContext).publishAttachedFile(
+                        selection = selection,
+                        source = temporary,
+                        fileName = fileName,
+                        mimeType = "application/pgp-encrypted",
+                        artifactType = CommunityArtifactType.ENCRYPTED_PACKAGE,
+                        blockchain = CommunityBlockchainReference(
+                            networkName = profile.displayName,
+                            chainId = profile.chainId,
+                            contractAddress = profile.contractAddress
+                        )
+                    )
+                } finally {
+                    temporary.delete()
+                }
+            },
+            onSuccess = { published ->
+                refreshStatus("Encrypted package uploaded to ${published.communityName}.")
+                AlertDialog.Builder(this)
+                    .setTitle("Uploaded to ${published.communityName}")
+                    .setMessage(
+                        "${published.fileName} and its SHA-256 were stored in NextGIS Web. " +
+                            "No blockchain transaction URL was stored because notarisation transaction submission is not implemented yet."
+                    )
+                    .setNegativeButton(android.R.string.ok, null)
+                    .setPositiveButton("Open Web GIS") { _, _ ->
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(published.resourceWebUrl)))
+                    }
+                    .show()
+            }
+        )
+    }
+
     private fun stopWorkflow() {
         startActivity(
             Intent(this, MainActivity::class.java)
@@ -1094,7 +1231,9 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         onStop: (() -> Unit)? = null,
         placeAfterEncryptionAction: Boolean = false,
         placeAtBottom: Boolean = false,
-        savedLocation: String? = null
+        savedLocation: String? = null,
+        communityActionLabel: String? = null,
+        onCommunityAction: (() -> Unit)? = null
     ) {
         resultPanel?.let(controls::removeView)
         val summaryChildren = mutableListOf<View>(
@@ -1117,6 +1256,13 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     bold = true
                 ),
                 ::openSaveFolder
+            )
+        }
+        if (communityActionLabel != null && onCommunityAction != null) {
+            summaryChildren += MapSafeUi.outlineButton(
+                this,
+                communityActionLabel,
+                onCommunityAction
             )
         }
         val actions = if (nextLabel != null && onNext != null && onStop != null) {
@@ -1163,12 +1309,12 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             setBusy(false, null)
             result.onSuccess(onSuccess).onFailure { error ->
                 val shown = when (error) {
-                    is OpenPgpException -> error.message
+                    is OpenPgpException, is NextGisCommunityPublishException -> error.message
                     else -> error.message ?: error.javaClass.simpleName
                 }
                 refreshStatus("Operation failed: $shown")
                 AlertDialog.Builder(this@MapSafeOpenPgpActivity)
-                    .setTitle("OpenPGP operation failed")
+                    .setTitle("Operation failed")
                     .setMessage(shown)
                     .setPositiveButton(android.R.string.ok, null)
                     .show()
