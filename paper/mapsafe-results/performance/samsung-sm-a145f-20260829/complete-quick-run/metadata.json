@@ -1,0 +1,135 @@
+{
+  "protocol": "mapsafe-mobile-performance-v3",
+  "protocol_mode": "quick",
+  "dataset_source": "staged_from_downloads_mapsafe",
+  "run_id_utc": "20260829-022612",
+  "physical_device_required": true,
+  "running_on_emulator": false,
+  "publication_eligible": false,
+  "manufacturer": "samsung",
+  "model": "SM-A145F",
+  "device": "a14",
+  "product": "a14nsxx",
+  "soc_model": "Exynos 850",
+  "android_release": "13",
+  "android_sdk": 33,
+  "available_processors": 8,
+  "total_memory_bytes": 3863203840,
+  "app_version": "3.2.1-DEBUG",
+  "app_build_type": "debug",
+  "warm_up_runs_per_cell": 1,
+  "measured_runs_per_cell": 5,
+  "cell_order_seed": 20260811,
+  "mask_min_metres": 100,
+  "mask_max_metres": 2000,
+  "masking_scope": {
+    "mask_core": "source CRS normalisation, secure random displacement, and spherical destination calculation",
+    "mask_with_spruill": "mask core plus Spruill nearest-neighbour assessment on the same candidate",
+    "mask_workflow_total": "selected source-layer read through output-layer insertion and map save",
+    "excluded": "initial dataset import, UI interaction\/rendering, attachments, and performance-result writing"
+  },
+  "attribute_field_count": 18,
+  "attachments_included": false,
+  "attachment_note": "NextGIS attachments are stored separately and are not included by the current MapSafe GeoJSON exporter.",
+  "openpgp_rsa_bits": 3072,
+  "openpgp_recipients": 1,
+  "openpgp_signed": true,
+  "environment_at_start": {
+    "battery_percent": 66,
+    "battery_temperature_celsius": 34.4,
+    "battery_status": 2,
+    "plugged_state": 1,
+    "thermal_status": 0
+  },
+  "environment_at_end": {
+    "battery_percent": 69,
+    "battery_temperature_celsius": 34.1,
+    "battery_status": 2,
+    "plugged_state": 1,
+    "thermal_status": 0
+  },
+  "dataset_point_counts": [
+    50,
+    250,
+    500,
+    1000,
+    2000
+  ],
+  "attribute_profiles": [
+    "typical",
+    "rich"
+  ],
+  "datasets": [
+    {
+      "dataset_id": "field-50-typical",
+      "attribute_profile": "typical",
+      "points": 50,
+      "plaintext_bytes": 40718,
+      "sha256": "234833df11cd77d5bd763162570d5e70632feca9b1c2f5a6037201316b28403e"
+    },
+    {
+      "dataset_id": "field-50-rich",
+      "attribute_profile": "rich",
+      "points": 50,
+      "plaintext_bytes": 167115,
+      "sha256": "20801765a2fc7c00b6aaf8b1c720ec265814781cb48adf0c262429af8335d2a0"
+    },
+    {
+      "dataset_id": "field-250-typical",
+      "attribute_profile": "typical",
+      "points": 250,
+      "plaintext_bytes": 203754,
+      "sha256": "5463d67fc6ec8783c0cce47a4293ba1090fb37f5b85fcd911722f550126b6207"
+    },
+    {
+      "dataset_id": "field-250-rich",
+      "attribute_profile": "rich",
+      "points": 250,
+      "plaintext_bytes": 835751,
+      "sha256": "fd0150b123fdc128fb9c06ca8818bca74ce3f85c06f8a27e3b9c148de50f86ea"
+    },
+    {
+      "dataset_id": "field-500-typical",
+      "attribute_profile": "typical",
+      "points": 500,
+      "plaintext_bytes": 407672,
+      "sha256": "d768fd95739811ffe99fc285b7b62bfd6cd717cb8c8fe2327c7d7611e9d105ec"
+    },
+    {
+      "dataset_id": "field-500-rich",
+      "attribute_profile": "rich",
+      "points": 500,
+      "plaintext_bytes": 1671669,
+      "sha256": "d133819005f97f022cd8eadb526ece1cb055c0ca5e47e06cc650f76e37661651"
+    },
+    {
+      "dataset_id": "field-1000-typical",
+      "attribute_profile": "typical",
+      "points": 1000,
+      "plaintext_bytes": 815500,
+      "sha256": "242a532a108e3d6fc8ea077a6b0549a3e8636e94736e0861013e442ce4a61f0e"
+    },
+    {
+      "dataset_id": "field-1000-rich",
+      "attribute_profile": "rich",
+      "points": 1000,
+      "plaintext_bytes": 3343497,
+      "sha256": "9fb79c4abadde8d8bc046ca801cd24050a4772df1207051b90e57776b98e5981"
+    },
+    {
+      "dataset_id": "field-2000-typical",
+      "attribute_profile": "typical",
+      "points": 2000,
+      "plaintext_bytes": 1633146,
+      "sha256": "28d70cda6d52af2f0cbfa2cea68d99b90ba48c602978ad8ea3f7b7fb9e8d1721"
+    },
+    {
+      "dataset_id": "field-2000-rich",
+      "attribute_profile": "rich",
+      "points": 2000,
+      "plaintext_bytes": 6689143,
+      "sha256": "afd91224fcb31462de0fade521d001f248cb715e8d801b87facdaedd73fe1579"
+    }
+  ],
+  "summary_rows": 50
+}
