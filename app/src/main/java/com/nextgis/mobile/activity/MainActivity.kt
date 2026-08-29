@@ -65,6 +65,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.DialogFragment
 import androidx.loader.app.LoaderManager
 import androidx.loader.content.Loader
 import com.google.android.material.snackbar.Snackbar
@@ -73,6 +74,7 @@ import com.nextgis.maplib.api.GpsEventListener
 import com.nextgis.maplib.api.IGISApplication
 import com.nextgis.maplib.api.ILayer
 import com.nextgis.maplib.datasource.GeoMultiPoint
+import com.nextgis.maplib.datasource.GeoEnvelope
 import com.nextgis.maplib.datasource.GeoPoint
 import com.nextgis.maplib.datasource.ngw.Connection
 import com.nextgis.maplib.datasource.ngw.Connection.NGWResourceTypeRasterLayer
@@ -125,6 +127,16 @@ import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.R
 import com.nextgis.mobile.fragment.LayersFragment
 import com.nextgis.mobile.fragment.MapFragment
+import com.nextgis.mobile.mapsafe.ui.AccessFeaturesDialog
+import com.nextgis.mobile.mapsafe.ui.AccessDatasetsDialog
+import com.nextgis.mobile.mapsafe.ui.AnonymiseDialog
+import com.nextgis.mobile.mapsafe.ui.DonutMaskingDialog
+import com.nextgis.mobile.mapsafe.ui.EncryptDialog
+import com.nextgis.mobile.mapsafe.ui.HexabinningDialog
+import com.nextgis.mobile.mapsafe.ui.IntegrityRecordDialog
+import com.nextgis.mobile.mapsafe.ui.MapSafeMainDialog
+import com.nextgis.mobile.mapsafe.ui.MapSafeOpenPgpActivity
+import com.nextgis.mobile.mapsafe.ui.SafeguardFeaturesDialog
 import com.nextgis.mobile.util.AppSettingsConstants
 import com.nextgis.mobile.util.SDCardUtils
 import org.json.JSONObject
@@ -240,6 +252,8 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             progressFragment = LayerFillProgressDialogFragment()
             fm.beginTransaction().add(progressFragment, TAG_FRAGMENT_PROGRESS).commit()
         }
+
+        handleStartupIntent(intent)
 
 
         if (!hasLocationPermissions()) {
@@ -541,6 +555,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                 return true
             }
 
+            R.id.action_mapsafe -> {
+                showMapSafeDialog()
+                return true
+            }
+
 //            R.id.menu_refresh -> {
 //                if (null != mapFragment) {
 //                    mapFragment!!.refreshSyncButtonAnimateState()
@@ -560,6 +579,155 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
 
             else -> return super.onOptionsItemSelected(item)
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleStartupIntent(intent)
+    }
+
+    private fun handleStartupIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_MAIN &&
+            intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+        ) {
+            clearMapSafeDialogsForLauncher()
+            return
+        }
+
+        handleMapSafeImportIntent(intent)
+    }
+
+    private fun clearMapSafeDialogsForLauncher() {
+        supportFragmentManager.fragments
+            .filterIsInstance<DialogFragment>()
+            .filter { it.javaClass.name.startsWith(MAPSAFE_UI_PACKAGE) }
+            .forEach(DialogFragment::dismissAllowingStateLoss)
+    }
+
+    private fun handleMapSafeImportIntent(intent: Intent?) {
+        when (intent?.action) {
+            ACTION_MAPSAFE_LAYER_IMPORTED -> {
+                val layerName = intent.getStringExtra(EXTRA_MAPSAFE_LAYER_NAME) ?: return
+                if (!intent.hasExtra(EXTRA_MAPSAFE_MIN_X) ||
+                    !intent.hasExtra(EXTRA_MAPSAFE_MAX_X) ||
+                    !intent.hasExtra(EXTRA_MAPSAFE_MIN_Y) ||
+                    !intent.hasExtra(EXTRA_MAPSAFE_MAX_Y)
+                ) return
+
+                val extent = GeoEnvelope(
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MIN_X, 0.0),
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MAX_X, 0.0),
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MIN_Y, 0.0),
+                    intent.getDoubleExtra(EXTRA_MAPSAFE_MAX_Y, 0.0)
+                )
+                val featureCount = intent.getIntExtra(EXTRA_MAPSAFE_FEATURE_COUNT, 0)
+                mapFragment?.showMapSafeImportedLayer(layerName, extent, featureCount)
+                intent.action = null
+            }
+            ACTION_MAPSAFE_SHOW_PARENT -> {
+                registerMapSafeResultListeners()
+                if (intent.getBooleanExtra(EXTRA_MAPSAFE_ACCESS_PARENT, false)) {
+                    AccessFeaturesDialog()
+                        .show(supportFragmentManager, "AccessFeaturesDialog")
+                } else {
+                    SafeguardFeaturesDialog()
+                        .show(supportFragmentManager, "SafeguardFeaturesDialog")
+                }
+                intent.action = null
+            }
+            ACTION_MAPSAFE_OPEN_DATASETS -> {
+                registerMapSafeResultListeners()
+                AccessDatasetsDialog()
+                    .show(supportFragmentManager, "AccessDatasetsDialog")
+                intent.action = null
+            }
+            ACTION_MAPSAFE_OPEN_NOTARISATION -> {
+                registerMapSafeResultListeners()
+                val encryptedFileUri = intent.getStringExtra(EXTRA_MAPSAFE_ENCRYPTED_URI)
+                    ?.let(Uri::parse)
+                val encryptedFileName = intent.getStringExtra(EXTRA_MAPSAFE_ENCRYPTED_FILE_NAME)
+                IntegrityRecordDialog.forSafeguardFeatures(encryptedFileUri, encryptedFileName)
+                    .show(supportFragmentManager, "IntegrityRecordDialog")
+                intent.action = null
+            }
+        }
+    }
+
+    private fun showMapSafeDialog() {
+        registerMapSafeResultListeners()
+        MapSafeMainDialog().show(supportFragmentManager, MapSafeMainDialog.TAG)
+    }
+
+    private fun registerMapSafeResultListeners() {
+        supportFragmentManager.setFragmentResultListener(
+            MapSafeMainDialog.REQUEST_LOAD_SAMPLE_POINTS,
+            this
+        ) { _, result ->
+            val loaded = mapFragment?.loadMapSafeSamplePoints() == true
+            if (loaded) {
+                when (result.getString(MapSafeMainDialog.RESULT_OPEN_DESTINATION)) {
+                    MapSafeMainDialog.DESTINATION_SAFEGUARD ->
+                        SafeguardFeaturesDialog()
+                            .show(supportFragmentManager, "SafeguardFeaturesDialog")
+
+                    MapSafeMainDialog.DESTINATION_ACCESS ->
+                        AccessFeaturesDialog()
+                            .show(supportFragmentManager, "AccessFeaturesDialog")
+
+                    else -> if (result.getBoolean(MapSafeMainDialog.RESULT_OPEN_ANONYMISE)) {
+                        AnonymiseDialog().show(supportFragmentManager, "AnonymiseDialog")
+                    }
+                }
+            }
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            DonutMaskingDialog.REQUEST_KEY,
+            this
+        ) { _, result ->
+            mapFragment?.runMapSafeDonutMasking(
+                result.getDouble(DonutMaskingDialog.RESULT_MIN_DISTANCE),
+                result.getDouble(DonutMaskingDialog.RESULT_MAX_DISTANCE),
+                result.getString(DonutMaskingDialog.RESULT_SOURCE_LAYER_NAME)
+            )
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            HexabinningDialog.REQUEST_KEY,
+            this
+        ) { _, result ->
+            mapFragment?.runMapSafeHexabinning(
+                result.getInt(HexabinningDialog.RESULT_RESOLUTION),
+                result.getString(HexabinningDialog.RESULT_SOURCE_LAYER_NAME)
+            )
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            EncryptDialog.REQUEST_OPEN_ENCRYPTION,
+            this
+        ) { _, result ->
+            if (result.getBoolean(EncryptDialog.RESULT_SELECTED_LAYER)) {
+                val sourceLayerName = result.getString(EncryptDialog.RESULT_SOURCE_LAYER_NAME)
+                if (sourceLayerName == null) {
+                    mapFragment?.openMapSafeEncryptionForSelectedLayer()
+                } else {
+                    mapFragment?.openMapSafeEncryptionForLayerName(sourceLayerName)
+                }
+            } else {
+                startActivity(MapSafeOpenPgpActivity.intent(this))
+            }
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            AccessDatasetsDialog.REQUEST_OPEN_DATASET,
+            this
+        ) { _, result ->
+            result.getString(AccessDatasetsDialog.RESULT_LAYER_NAME)?.let { layerName ->
+                mapFragment?.openMapSafeAccessedLayer(layerName)
+            }
+        }
+
     }
 
     fun showTwoFieldsDialog() {
@@ -1767,6 +1935,25 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
     }
 
     companion object {
+        const val ACTION_MAPSAFE_LAYER_IMPORTED =
+            "com.nextgis.mobile.action.MAPSAFE_LAYER_IMPORTED"
+        const val ACTION_MAPSAFE_SHOW_PARENT =
+            "com.nextgis.mobile.action.MAPSAFE_SHOW_PARENT"
+        const val ACTION_MAPSAFE_OPEN_DATASETS =
+            "com.nextgis.mobile.action.MAPSAFE_OPEN_DATASETS"
+        const val ACTION_MAPSAFE_OPEN_NOTARISATION =
+            "com.nextgis.mobile.action.MAPSAFE_OPEN_NOTARISATION"
+        const val EXTRA_MAPSAFE_ENCRYPTED_URI = "mapsafe_encrypted_uri"
+        const val EXTRA_MAPSAFE_ENCRYPTED_FILE_NAME = "mapsafe_encrypted_file_name"
+        const val EXTRA_MAPSAFE_ACCESS_PARENT = "mapsafe_access_parent"
+        const val EXTRA_MAPSAFE_LAYER_NAME = "mapsafe_imported_layer_name"
+        const val EXTRA_MAPSAFE_FEATURE_COUNT = "mapsafe_imported_feature_count"
+        const val EXTRA_MAPSAFE_MIN_X = "mapsafe_imported_min_x"
+        const val EXTRA_MAPSAFE_MAX_X = "mapsafe_imported_max_x"
+        const val EXTRA_MAPSAFE_MIN_Y = "mapsafe_imported_min_y"
+        const val EXTRA_MAPSAFE_MAX_Y = "mapsafe_imported_max_y"
+        private const val MAPSAFE_UI_PACKAGE = "com.nextgis.mobile.mapsafe.ui."
+
         protected const val PERMISSIONS_REQUEST_ZERO: Int = 0
         protected const val PERMISSIONS_REQUEST_LOC: Int = 1
         protected const val PERMISSIONS_REQUEST_ACCOUNT: Int = 2

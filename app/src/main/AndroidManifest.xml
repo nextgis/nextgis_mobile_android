@@ -60,6 +60,7 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/APP_NAME"
+        android:roundIcon="@drawable/ic_launcher"
         android:usesCleartextTraffic="true"
         tools:ignore="GoogleAppIndexingWarning"
         tools:replace="android:allowBackup, label"
@@ -93,14 +94,34 @@
 
         <activity
             android:name=".activity.MainActivity"
+            android:clearTaskOnLaunch="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true"
-            android:label="@string/APP_NAME">
+            android:label="@string/APP_NAME"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".mapsafe.ui.MapSafeOpenPgpActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:label="MapSafe OpenPGP"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".mapsafe.ui.MapSafeSecurityActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:label="MapSafe Security &amp; Sharing"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".mapsafe.ui.MapSafeIdentityActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:label="MapSafe Encryption Identity"
+            android:theme="@style/AppTheme" />
         <activity
             android:name=".activity.IntroActivity"
             android:label="@string/app_name" />

@@ -52,4 +52,27 @@ allprojects {
         maven { url "https://www.jitpack.io" }
         google()
     }
+
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute module('org.maplibre.gl:android-sdk') using module('org.maplibre.gl:android-sdk-opengl:13.4.1')
+        }
+    }
+}
+
+// The upstream UI library reads this public OAuth client identifier from
+// local.properties. Custom/research checkouts often do not have that private
+// machine file, which otherwise compiles the invalid literal client_id=null.
+// A different registered public client can be supplied with
+// -Pnextgis.oauth.clientId=... without editing the source tree.
+def nextGisOauthClientId = providers.gradleProperty('nextgis.oauth.clientId')
+        .getOrElse('Im6GFdPPuPM09BnvFb3EacFZyq8TpRBSAAex7JDZ')
+
+project(':maplibui') {
+    afterEvaluate {
+        android.defaultConfig.buildConfigField(
+                'String',
+                'CLIENT_ID',
+                "\"${nextGisOauthClientId}\"")
+    }
 }

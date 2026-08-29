@@ -1,0 +1,404 @@
+% MapSafe Mobile results section.
+% Required packages in the parent manuscript:
+%   \usepackage{graphicx}
+%   \usepackage{subcaption}
+%   \usepackage{booktabs}
+%   \usepackage{tabularx}
+%
+% The default path assumes that the manuscript is compiled from this directory.
+% Define it before \input{mapsafe_results.tex} when overriding the default, e.g.:
+%   \newcommand{\mapsafefigdir}{paper/mapsafe-results/screenshots}
+\providecommand{\mapsafefigdir}{screenshots}
+
+\section{Results}
+\label{sec:mapsafe-results}
+
+The implementation produced an integrated MapSafe Mobile workflow within the
+existing NextGIS-based Android application.  The resulting interface supports
+two complementary modes.  The guided \emph{Protect \& Share} path presents
+spatial representation before encryption, whereas the individual-feature path
+allows anonymisation, encryption, and the future notarisation stage to be
+entered separately.  Access operations are separated into verification,
+decryption, and layer viewing.  Figure~\ref{fig:mapsafe-workflow-entry} shows
+these entry points and their relationship.  All nested dialogs and activities
+provide a labelled Back control and Android system Back follows the same parent
+hierarchy; thus, for example, returning from \emph{Security \& Sharing} leads to
+the MapSafe chooser rather than exiting the host map activity.
+
+To make the workflow reproducible when no suitable field layer is available,
+the chooser, guided workflow, and anonymisation screen provide a prominent
+\emph{Use sample dataset} action (Fig.~\ref{fig:mapsafe-workflow-entry}a--b).
+This action creates a known local point-vector layer containing 30 synthetic
+observations in six clusters around Suva, selects it, and zooms the map to its
+extent.  The sample is created directly as the point geometry type expected by
+the anonymisation processors.  Consequently, it also provides a reliable path
+past unsupported-file or ``not vector'' errors during demonstrations and
+evaluation.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-01-mapsafe-workflow-chooser.png}
+    \caption{MapSafe workflow chooser and sample-data path.}
+    \label{fig:mapsafe-workflow-chooser}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-02-guided-protect-share.png}
+    \caption{Guided representation-before-encryption path.}
+    \label{fig:mapsafe-guided-workflow}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-03-safeguard-features.png}
+    \caption{Individually selectable safeguard features.}
+    \label{fig:mapsafe-safeguard-menu}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-07-access-features.png}
+    \caption{Verification, decryption, and viewing entry points.}
+    \label{fig:mapsafe-access-menu}
+  \end{subfigure}
+  \caption{MapSafe Mobile workflow organisation.  The user may follow the
+  ordered Protect \& Share sequence or invoke safeguards individually.  The
+  full MapSafe wordmark identifies the main chooser, while compact headers use
+  the icon-only mark.}
+  \label{fig:mapsafe-workflow-entry}
+\end{figure*}
+
+\subsection{Anonymisation and spatial representation}
+\label{subsec:mapsafe-anonymisation-results}
+
+The anonymisation branch offers halo (donut) masking and hexagonal binning
+(Fig.~\ref{fig:mapsafe-anonymisation-controls}).  Halo masking preserves every
+feature and its non-spatial attributes but replaces each WGS84 point
+$p_i=(\lambda_i,\phi_i)$ with a masked point $q_i$.  For each feature, a
+cryptographically secure random generator selects a bearing uniformly from
+$[0,2\pi)$ and a displacement uniformly from the user-selected interval
+$[r_{\min},r_{\max})$.  The destination is calculated on a sphere rather than
+by adding degree offsets.  The source layer remains unchanged and the candidate
+masked layer is displayed in blue, allowing it to be compared with the precise
+red reference points.
+
+The implementation calculates Spruill's disclosure-risk measure immediately
+after every masking attempt.  For $n$ paired original and masked points, define
+
+\begin{equation}
+ I_i =
+ \begin{cases}
+ 1, & d(q_i,p_i)=\min_{1\leq j\leq n} d(q_i,p_j),\\
+ 0, & \text{otherwise},
+ \end{cases}
+ \qquad
+ R_{\mathrm{Spruill}}=\frac{100}{n}\sum_{i=1}^{n}I_i .
+ \label{eq:spruill-risk}
+\end{equation}
+
+Here, a point contributes to disclosure risk when the closest original location
+to its masked position is still its own parent.  Nearest-neighbour searches are
+performed with a three-dimensional unit-sphere $k$-d tree; unit-sphere chord
+distance is monotonic with great-circle distance and avoids latitude-dependent
+planar distortion.  Equal-distance ties that include the parent are counted as
+parent-nearest.  Because a higher value is easier to interpret as stronger
+privacy, the interface reports the inverted measure
+
+\begin{equation}
+ P_{\mathrm{inv}} = 100-R_{\mathrm{Spruill}}.
+ \label{eq:spruill-inverted}
+\end{equation}
+
+In the illustrative 30-point run captured in
+Figure~\ref{fig:mapsafe-anonymisation-result}a, 4 points remained
+parent-nearest.  This gave $R_{\mathrm{Spruill}}=13.33\%$ and
+$P_{\mathrm{inv}}=86.67/100$, with a mean displacement of 1041.21~m for the
+selected 100--2000~m halo.  These values describe this stochastic run rather
+than a fixed benchmark result.  The result screen exposes both the aggregate
+score and its component counts.  The user may accept the candidate or select
+\emph{Remask}; importantly, remasking returns to the same controls but starts
+again from the precise source layer, never from the already displaced
+candidate (Fig.~\ref{fig:mapsafe-anonymisation-result}b).  This prevents
+unintended compounding of random offsets.
+
+Hexagonal binning removes the individual point representation.  Each point is
+assigned to a cell at the selected resolution, points with the same cell ID are
+grouped, and one polygon containing a count attribute is written for each
+occupied cell.  Native ARM and ARM64 builds use H3.  The x86/x86\_64 emulator
+used for these captures lacks the H3 native library and therefore selected the
+native-free Web Mercator hexagonal grid, whose resolution-dependent cell sizes
+approximate the corresponding H3 choices.  The protected map in
+Figure~\ref{fig:mapsafe-anonymisation-result}c demonstrates the resulting
+masked points and counted polygon representation over the Suva sample.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-04-anonymise-options.png}
+    \caption{Choice of masking or aggregation.}
+    \label{fig:mapsafe-anonymise-choice}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-16-halo-configuration.png}
+    \caption{Halo bounds and privacy control.}
+    \label{fig:mapsafe-halo-controls}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-19-hexbin-configuration.png}
+    \caption{Hexagon resolution and count aggregation.}
+    \label{fig:mapsafe-hexbin-controls}
+  \end{subfigure}
+  \caption{Anonymisation controls.  Halo masking retains one displaced feature
+  per input feature, whereas hexagonal binning replaces locations with occupied
+  cells and their counts.}
+  \label{fig:mapsafe-anonymisation-controls}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-17-halo-spruill-result.png}
+    \caption{Inverted Spruill score and component measures.}
+    \label{fig:mapsafe-spruill-result}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-18-halo-remask.png}
+    \caption{Remasking explicitly restarts from the precise source.}
+    \label{fig:mapsafe-remask}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-20-protected-map.png}
+    \caption{Map output with precise references, masked points, and hexagons.}
+    \label{fig:mapsafe-protected-map}
+  \end{subfigure}
+  \caption{Anonymisation outcomes for the bundled Suva point dataset.  The
+  numeric privacy result is shown before the candidate is accepted, preserving
+  an opportunity to remask or change parameters.}
+  \label{fig:mapsafe-anonymisation-result}
+\end{figure*}
+
+\subsection{Encryption identity and public-key exchange}
+\label{subsec:mapsafe-key-results}
+
+The public-key workflow is surfaced through \emph{Security \& Sharing}
+(Fig.~\ref{fig:mapsafe-key-exchange}).  Its detailed sequence is as follows.
+
+\begin{enumerate}
+  \item The user creates a local OpenPGP identity from a name, organisation,
+  optional email address, and a passphrase of at least 12 characters
+  (Fig.~\ref{fig:mapsafe-key-exchange}a).  The device generates an RSA-3072
+  primary key for certification and signing plus a separate RSA-3072 encryption
+  subkey.  The resulting full fingerprint is displayed to the user
+  (Fig.~\ref{fig:mapsafe-key-exchange}b).
+
+  \item The secret key material is encrypted with the user's passphrase and is
+  additionally wrapped at rest by a non-exportable AES key in Android Keystore.
+  It is not uploaded during ordinary key exchange.  Only the public key is
+  exportable or publishable; an explicitly protected private-key backup is
+  available as a recovery operation.
+
+  \item The user selects an authenticated NextGIS account and a trusted NextGIS
+  group (Fig.~\ref{fig:mapsafe-key-exchange}c).  MapSafe publishes the local
+  public key to a group-specific key directory and can download keys belonging
+  to current group members (Fig.~\ref{fig:mapsafe-key-exchange}d).  Directory
+  ownership and current authentication-group membership are checked during
+  synchronisation.
+
+  \item Downloaded keys are initially discovered, not silently trusted.  The
+  interface instructs the user to compare the complete fingerprint through an
+  independent trusted channel and then accept it explicitly.  Acceptance pins
+  that fingerprint to the member.  A later key change enters a pending/quarantined
+  state, while changed, missing, duplicate, revoked, or removed-member keys are
+  blocked from new recipient selection.  Previously accepted public keys remain
+  cached so that encryption for established recipients can proceed offline.
+\end{enumerate}
+
+This design uses the authenticated group to establish membership and distribute
+public material, but does not equate group membership with cryptographic key
+authenticity.  The explicit fingerprint step supplies that missing binding and
+prevents an updated directory entry from silently replacing a recipient's key.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-10-identity-creation.png}
+    \caption{Local identity and passphrase entry.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-11-identity-success.png}
+    \caption{Generated identity, key ID, and fingerprint.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-14-security-account-group.png}
+    \caption{NextGIS account and group selection.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-15-security-identity-keys.png}
+    \caption{Publishing, synchronising, and reviewing group keys.}
+  \end{subfigure}
+  \caption{Encryption identity and public-key exchange.  Private key material
+  remains locally protected; public keys are distributed within a selected
+  NextGIS group and become eligible recipients only after fingerprint review.}
+  \label{fig:mapsafe-key-exchange}
+\end{figure*}
+
+\subsection{Multi-recipient encryption and signing}
+\label{subsec:mapsafe-encryption-results}
+
+Encryption may receive the currently selected protected map layer directly or
+an existing file from device storage (Fig.~\ref{fig:mapsafe-encryption-flow}a).
+For a map layer, MapSafe first exports the active representation as WGS84
+GeoJSON, so the precise input need not leave the device.  The encryption screen
+then shows the local identity, accepted recipient count, and the selected
+content-protection profile (Fig.~\ref{fig:mapsafe-encryption-flow}b).
+
+The package uses the RFC~9580 version-2 Symmetrically Encrypted Integrity
+Protected Data profile with AES-256-GCM.  A fresh random content-encryption key
+encrypts the compressed file payload once.  For each checked recipient, OpenPGP
+adds a public-key encrypted session-key packet: the recipient's public
+encryption subkey protects the content key, not a second copy of the entire
+dataset.  Therefore adding recipients increases only the key-envelope portion
+of the package.  The device owner's own public key can be selected as a
+self-recipient, ensuring that the sender can subsequently decrypt the package.
+The selection dialog makes this relationship explicit
+(Fig.~\ref{fig:mapsafe-encryption-flow}c).
+
+When \emph{Sign with my local identity} is selected, the passphrase unlocks the
+local signing key only for the operation and a SHA-256 OpenPGP binary-document
+signature is embedded with the payload.  Encryption provides confidentiality
+and AEAD integrity, whereas this signature separately allows the receiver to
+test which key created the package.  The successful state reports the
+AES-256-GCM profile, authorised-recipient count, and whether a signed package
+was saved (Fig.~\ref{fig:mapsafe-encryption-flow}d).
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-05-encrypt-source-chooser.png}
+    \caption{Protected-layer or file source selection.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-21-encrypt-protect.png}
+    \caption{Encryption identity and protection summary.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-12-recipient-selection.png}
+    \caption{Verified recipients and optional signing.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-22-encryption-success.png}
+    \caption{Signed package ready to share.}
+  \end{subfigure}
+  \caption{Multi-recipient encryption flow.  The payload is encrypted once with
+  AES-256-GCM; a separately public-key-encrypted session key grants access to
+  each selected recipient.}
+  \label{fig:mapsafe-encryption-flow}
+\end{figure*}
+
+\subsection{Decryption, verification, and viewing}
+\label{subsec:mapsafe-decryption-results}
+
+The access workflow starts with an OpenPGP package selected from storage
+(Fig.~\ref{fig:mapsafe-decryption-flow}a--b).  MapSafe inspects the package's
+recipient identifiers and chooses a matching locally held encryption secret
+key.  The user passphrase unlocks that key; the resulting private key decrypts
+the recipient's session-key packet, after which AES-256-GCM decrypts the single
+payload.  A package addressed only to other recipients is rejected before
+plaintext is released.
+
+Two independent checks follow.  First, the SEIPD/AEAD integrity result must be
+valid; an unprotected or modified package is rejected.  Second, if an embedded
+signature is present, MapSafe locates the corresponding verification public key
+and reports the signature as valid, invalid, or from an unknown signer.  The
+decrypted file is held as a candidate until these checks complete.  In the
+tested path the interface reported both a passed integrity check and a
+cryptographically valid signature before offering \emph{Import and open}
+(Fig.~\ref{fig:mapsafe-decryption-flow}c).  The final screen retains this status
+as visible evidence (Fig.~\ref{fig:mapsafe-decryption-flow}d).
+
+For a valid GeoJSON result, choosing \emph{Import and open} creates a local
+NextGIS vector layer, selects it, and zooms to its extent.  Invalidly signed data
+is not offered for map import.  This final promotion step separates successful
+cryptographic processing from viewing and prevents an unauthenticated temporary
+output from being mistaken for an accepted layer.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-08-decrypt-package-chooser.png}
+    \caption{OpenPGP package entry point.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-23-decrypt-access.png}
+    \caption{Local private-key and integrity summary.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-13-decryption-integrity-prompt.png}
+    \caption{Verified candidate offered for import.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.235\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-24-decryption-success.png}
+    \caption{Persistent success and signature status.}
+  \end{subfigure}
+  \caption{Decryption and access flow.  MapSafe first proves recipient access,
+  then verifies AEAD integrity and the optional OpenPGP signature, and only then
+  offers a valid spatial payload for import and viewing.}
+  \label{fig:mapsafe-decryption-flow}
+\end{figure*}
+
+\subsection{Notarisation and blockchain-verification boundary}
+\label{subsec:mapsafe-blockchain-results}
+
+The proposed notarisation design records a SHA-256 digest of the encrypted
+package plus minimal metadata, while the encrypted dataset remains off-chain.
+Verification would independently hash the candidate package and compare that
+digest with the value associated with a blockchain receipt; equality would
+confirm byte-level correspondence with the notarised artifact, while inequality
+would identify modification or selection of the wrong package.  This check is
+complementary to OpenPGP: blockchain comparison provides timestamped external
+evidence for a package digest, whereas decryption, AEAD integrity, and signature
+verification establish authorised access and package authenticity.
+
+However, the present Android build does \emph{not} contain a production
+blockchain client and did not submit a transaction.  The interface deliberately
+states that the production network is not configured and disables the minting
+action (Fig.~\ref{fig:mapsafe-blockchain-boundary}a); the verification menu is
+likewise marked as a later-stage interface
+(Fig.~\ref{fig:mapsafe-blockchain-boundary}b).  This is an important result
+boundary: these screens demonstrate workflow placement and privacy constraints,
+not completed on-chain notarisation.  Automated scenarios currently exercise
+the SHA-256 receipt comparison with an in-memory test ledger, including rejection
+of a modified artifact, but those tests are not evidence of deployment to a
+real network.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-06-notarisation-placeholder.png}
+    \caption{Notarisation screen with the production action disabled.}
+  \end{subfigure}\hspace{0.05\textwidth}
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/paper-09-verification-placeholder.png}
+    \caption{Blockchain-verification interface identified as future work.}
+  \end{subfigure}
+  \caption{Current blockchain boundary.  No real blockchain transaction is
+  simulated or presented as completed by this build.}
+  \label{fig:mapsafe-blockchain-boundary}
+\end{figure*}
+
+\subsection{Automated validation}
+\label{subsec:mapsafe-validation-results}
+
+The host-side MapSafe test suite executed 27 tests with no failures or skipped
+tests.  These comprised eight OpenPGP engine tests, six public-key trust-state
+tests, five Spruill-measure tests, two donut-masking tests, two portable-hex-grid
+tests, and four end-to-end workflow-scenario tests.  Their coverage included
+multi-recipient encryption, signed and unsigned packages, integrity/tamper
+rejection, recipient mismatch, fingerprint changes, workflow combinations, and
+the in-memory digest ledger.
+
+Five targeted instrumented tests were then executed on a Pixel~9a Android
+Virtual Device, again with no failures or skipped tests.  They traversed and
+captured the workflow hierarchy, generated an actual RSA-3072 identity, created
+the bundled point-vector layer, performed masking and hexagonal binning, exposed
+the Security \& Sharing key-exchange journey, and completed a real UI-driven
+signed AES-256-GCM encrypt--decrypt round trip.  The 24 screen states reproduced
+in Figures~\ref{fig:mapsafe-workflow-entry}--\ref{fig:mapsafe-blockchain-boundary}
+were extracted from these instrumented workflows.  Thus, the screenshots are
+not design mock-ups; they are outputs of the implemented Android application.

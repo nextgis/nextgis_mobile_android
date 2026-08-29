@@ -1,0 +1,21 @@
+\begin{table}[ht!]
+\centering
+\caption{Preliminary median halo-masking core, core plus Spruill assessment, complete production masking workflow, signed OpenPGP encryption, and verified decryption times in seconds on a physical Samsung SM-A145F Android device. Each value represents five measured runs following one warm-up run. The complete workflow starts with reading an already selected NextGIS source layer and ends after transactional output-layer insertion, spatial-index rebuilding, and map saving. Initial dataset import, UI rendering, and attachments are excluded. The 1,000-point typical masking values are taken from a verification repeat after the corresponding cell in the complete run was affected by transient device contention.}
+\label{tab:mobile-mask-encryption-times-preliminary}
+\begin{tabular}{llrrrrrrr}
+\hline
+Dataset & Attributes & Size (KiB) & Points & Masking core & Core + SM & Total workflow & Encryption & Decryption \\
+\hline
+Synthetic field-50 & Typical & 39.8 & 50 & 0.00190 & 0.00535 & 0.32165 & 2.34415 & 2.31934 \\
+Synthetic field-50 & Rich text & 163.2 & 50 & 0.00181 & 0.00411 & 0.31771 & 2.41509 & 2.38484 \\
+Synthetic field-250 & Typical & 199.0 & 250 & 0.01261 & 0.07833 & 1.75397 & 2.41155 & 2.36418 \\
+Synthetic field-250 & Rich text & 816.2 & 250 & 0.00897 & 0.02140 & 1.43075 & 2.80478 & 2.63079 \\
+Synthetic field-500 & Typical & 398.1 & 500 & 0.01761 & 0.04676 & 2.87159 & 2.49165 & 2.41917 \\
+Synthetic field-500 & Rich text & 1632.5 & 500 & 0.01635 & 0.04199 & 2.79179 & 3.35949 & 2.92661 \\
+Synthetic field-1000 & Typical & 796.4 & 1,000 & 0.03572 & 0.12073 & 5.71156 & 2.68346 & 2.51945 \\
+Synthetic field-1000 & Rich text & 3265.1 & 1,000 & 0.03579 & 0.12087 & 5.96047 & 4.23726 & 3.52177 \\
+Synthetic field-2000 & Typical & 1594.9 & 2,000 & 0.06504 & 0.18031 & 10.80515 & 3.06119 & 2.73338 \\
+Synthetic field-2000 & Rich text & 6532.4 & 2,000 & 0.07006 & 0.20023 & 11.51743 & 6.14156 & 4.68637 \\
+\hline
+\end{tabular}
+\end{table}

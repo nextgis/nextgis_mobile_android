@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "name": "MapSafe sample points - Suva",
+  "mapsafe": {
+    "synthetic": true,
+    "purpose": "Testing donut masking and H3 hexabinning",
+    "crs": "EPSG:4326"
+  },
+  "features": [
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4416, -18.1417] }, "properties": { "site_id": 1, "site_name": "Synthetic Site 01", "category": "health", "sensitivity": "high", "households": 18 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4421, -18.1413] }, "properties": { "site_id": 2, "site_name": "Synthetic Site 02", "category": "water", "sensitivity": "medium", "households": 11 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4409, -18.1420] }, "properties": { "site_id": 3, "site_name": "Synthetic Site 03", "category": "shelter", "sensitivity": "low", "households": 24 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4425, -18.1422] }, "properties": { "site_id": 4, "site_name": "Synthetic Site 04", "category": "household", "sensitivity": "high", "households": 7 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4412, -18.1409] }, "properties": { "site_id": 5, "site_name": "Synthetic Site 05", "category": "health", "sensitivity": "medium", "households": 15 } },
+
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4458, -18.1314] }, "properties": { "site_id": 6, "site_name": "Synthetic Site 06", "category": "water", "sensitivity": "low", "households": 13 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4462, -18.1319] }, "properties": { "site_id": 7, "site_name": "Synthetic Site 07", "category": "shelter", "sensitivity": "medium", "households": 28 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4451, -18.1322] }, "properties": { "site_id": 8, "site_name": "Synthetic Site 08", "category": "household", "sensitivity": "high", "households": 9 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4468, -18.1325] }, "properties": { "site_id": 9, "site_name": "Synthetic Site 09", "category": "health", "sensitivity": "medium", "households": 17 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4447, -18.1317] }, "properties": { "site_id": 10, "site_name": "Synthetic Site 10", "category": "water", "sensitivity": "low", "households": 21 } },
+
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4583, -18.1392] }, "properties": { "site_id": 11, "site_name": "Synthetic Site 11", "category": "shelter", "sensitivity": "high", "households": 31 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4590, -18.1387] }, "properties": { "site_id": 12, "site_name": "Synthetic Site 12", "category": "household", "sensitivity": "medium", "households": 8 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4577, -18.1385] }, "properties": { "site_id": 13, "site_name": "Synthetic Site 13", "category": "health", "sensitivity": "low", "households": 19 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4594, -18.1395] }, "properties": { "site_id": 14, "site_name": "Synthetic Site 14", "category": "water", "sensitivity": "high", "households": 12 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4587, -18.1400] }, "properties": { "site_id": 15, "site_name": "Synthetic Site 15", "category": "shelter", "sensitivity": "medium", "households": 26 } },
+
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4140, -18.1327] }, "properties": { "site_id": 16, "site_name": "Synthetic Site 16", "category": "household", "sensitivity": "low", "households": 10 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4134, -18.1331] }, "properties": { "site_id": 17, "site_name": "Synthetic Site 17", "category": "health", "sensitivity": "high", "households": 16 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4147, -18.1335] }, "properties": { "site_id": 18, "site_name": "Synthetic Site 18", "category": "water", "sensitivity": "medium", "households": 22 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4128, -18.1324] }, "properties": { "site_id": 19, "site_name": "Synthetic Site 19", "category": "shelter", "sensitivity": "low", "households": 29 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4152, -18.1328] }, "properties": { "site_id": 20, "site_name": "Synthetic Site 20", "category": "household", "sensitivity": "high", "households": 6 } },
+
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4370, -18.1185] }, "properties": { "site_id": 21, "site_name": "Synthetic Site 21", "category": "health", "sensitivity": "medium", "households": 14 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4377, -18.1190] }, "properties": { "site_id": 22, "site_name": "Synthetic Site 22", "category": "water", "sensitivity": "low", "households": 20 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4363, -18.1194] }, "properties": { "site_id": 23, "site_name": "Synthetic Site 23", "category": "shelter", "sensitivity": "high", "households": 27 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4382, -18.1182] }, "properties": { "site_id": 24, "site_name": "Synthetic Site 24", "category": "household", "sensitivity": "medium", "households": 5 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4368, -18.1178] }, "properties": { "site_id": 25, "site_name": "Synthetic Site 25", "category": "health", "sensitivity": "low", "households": 18 } },
+
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4818, -18.1148] }, "properties": { "site_id": 26, "site_name": "Synthetic Site 26", "category": "water", "sensitivity": "high", "households": 23 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4824, -18.1153] }, "properties": { "site_id": 27, "site_name": "Synthetic Site 27", "category": "shelter", "sensitivity": "medium", "households": 30 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4812, -18.1156] }, "properties": { "site_id": 28, "site_name": "Synthetic Site 28", "category": "household", "sensitivity": "low", "households": 9 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4830, -18.1145] }, "properties": { "site_id": 29, "site_name": "Synthetic Site 29", "category": "health", "sensitivity": "high", "households": 17 } },
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [178.4820, -18.1160] }, "properties": { "site_id": 30, "site_name": "Synthetic Site 30", "category": "water", "sensitivity": "medium", "households": 25 } }
+  ]
+}
