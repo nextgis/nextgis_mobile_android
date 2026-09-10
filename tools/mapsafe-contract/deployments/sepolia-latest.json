@@ -1,0 +1,19 @@
+{
+  "schema": "mapsafe-contract-deployment-v1",
+  "network": "Ethereum Sepolia",
+  "chainId": 11155111,
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
+  "explorerBaseUrl": "https://sepolia.etherscan.io",
+  "contractAddress": "0xdF7efaA8f01B5674e41534Da2bA4D7C56f65A0F2",
+  "deployer": "0x244EAbEf05ACF009746Ce91fE1712Daf3857e620",
+  "transactionHash": "0xe6d0c11c5d6caed9d1f7d52ff7121dd4dfb3bf60f17f1e024a07f3420d3ea12a",
+  "deployedAtUtc": "2026-09-08T08:49:30.300Z",
+  "runtimeBytes": 6071,
+  "interface": {
+    "mintFunction": "mintNFT(string)",
+    "mintSelector": "0xfb37e883",
+    "locationGetter": "locations(uint256)",
+    "locationSelector": "0xb9e0db35",
+    "erc721InterfaceId": "0x80ac58cd"
+  }
+}

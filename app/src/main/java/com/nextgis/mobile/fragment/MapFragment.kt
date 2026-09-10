@@ -3170,7 +3170,7 @@ public class MapFragment
                     privacyRatingPercent = details.privacyRatingPercent,
                     parentNearestCount = details.parentNearestCount,
                     evaluatedPoints = details.evaluatedPoints,
-                    encryptionSourceLayerName = originalMapSafeLayerName(details.sourceLayerName)
+                    encryptionSourceLayerName = details.outputLayerName
                 ).show(parentFragmentManager, DonutMaskingResultDialog.TAG)
             }
         }
@@ -3219,18 +3219,14 @@ public class MapFragment
                     sourcePoints = details.sourcePoints,
                     hexagons = details.hexagons,
                     resolution = details.resolution,
-                    encryptionSourceLayerName = originalMapSafeLayerName(details.sourceLayerName)
+                    encryptionSourceLayerName = details.outputLayerName
                 ).show(parentFragmentManager, HexabinningResultDialog.TAG)
             }
         }
     }
 
     fun openMapSafeEncryptionForSelectedLayer() {
-        val selectedLayer = mSelectedLayer
-        val sourceLayer = selectedLayer?.let { selected ->
-            mApp?.map?.getLayerByName(originalMapSafeLayerName(selected.name)) as? VectorLayer
-                ?: selected
-        }
+        val sourceLayer = mSelectedLayer
         if (sourceLayer == null) {
             Toast.makeText(requireContext(), "Select a vector layer first.", Toast.LENGTH_LONG).show()
             return
@@ -3239,11 +3235,11 @@ public class MapFragment
     }
 
     fun openMapSafeEncryptionForLayerName(layerName: String) {
-        val sourceLayer = mApp?.map?.getLayerByName(originalMapSafeLayerName(layerName)) as? VectorLayer
+        val sourceLayer = mApp?.map?.getLayerByName(layerName) as? VectorLayer
         if (sourceLayer == null) {
             Toast.makeText(
                 requireContext(),
-                "The original dataset is no longer available. Choose another file for encryption.",
+                "The selected dataset is no longer available. Choose another file for encryption.",
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -3281,7 +3277,12 @@ public class MapFragment
                         requireContext(),
                         sourceFile = exported.file,
                         sourceDisplayName = exported.fileName,
-                        sourceRepresentation = "Original dataset"
+                        sourcePointCount = exported.featureCount,
+                        sourceRepresentation = when {
+                            sourceLayer.name.contains("_masked", ignoreCase = true) -> "Halo-masked dataset"
+                            sourceLayer.name.contains("_hexbin", ignoreCase = true) -> "Hexagonal-binned dataset"
+                            else -> "Original dataset"
+                        }
                     )
                 )
             }.onFailure { error ->

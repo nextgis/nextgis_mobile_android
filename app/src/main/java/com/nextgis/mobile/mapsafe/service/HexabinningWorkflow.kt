@@ -64,6 +64,7 @@ object HexabinningWorkflow {
             GeoConstants.GTPolygon,
             fields
         )
+        outputLayer.isVisible = false
         MapSafeLayerStyle.applyBluePolygonStyle(outputLayer)
 
         map.addLayer(outputLayer)
@@ -81,13 +82,13 @@ object HexabinningWorkflow {
             )
         }
 
-        val layerUri = MapSafeLayerWriter.buildLayerUri(app, outputLayer)
         val insertResult = MapSafeLayerWriter.insertFeatures(
-            context.contentResolver,
-            layerUri,
+            outputLayer,
             features
         )
 
+        outputLayer.rebuildCache(null)
+        outputLayer.isVisible = true
         outputLayer.notifyLayerChanged()
         map.save()
 

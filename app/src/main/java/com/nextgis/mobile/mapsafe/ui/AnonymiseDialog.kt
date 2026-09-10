@@ -51,7 +51,7 @@ class AnonymiseDialog : DialogFragment() {
                 MapSafeUi.sectionTitle(context, "Need a compatible point-vector layer?"),
                 MapSafeUi.text(
                     context,
-                    "Load MapSafe's bundled 30-point Suva dataset and select it automatically for masking or binning.",
+                    "Load MapSafe's bundled 23-point North Whangārei case-study dataset and select it automatically for masking or binning.",
                     14f
                 ),
                 MapSafeUi.outlineButton(context, "Use sample dataset") {
@@ -73,7 +73,7 @@ class AnonymiseDialog : DialogFragment() {
     }
 
     private fun showParent() {
-        SafeguardFeaturesDialog()
-            .show(parentFragmentManager, "SafeguardFeaturesDialog")
+        MapSafeMainDialog.forTab(MapSafeMainDialog.DESTINATION_SAFEGUARD)
+            .show(parentFragmentManager, MapSafeMainDialog.TAG)
     }
 }

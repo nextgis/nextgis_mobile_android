@@ -29,6 +29,8 @@ data class CommunityPackageRecord(
     val mimeType: String,
     val sizeBytes: Long,
     val sha256: String,
+    val recipientUserIds: Set<Long>,
+    val recipientFingerprints: Set<String>,
     val blockchain: CommunityBlockchainReference,
     internal val registryResourceId: Long,
     internal val featureId: Long,
@@ -202,6 +204,12 @@ class NextGisCommunityPackageClient(context: Context) {
                 .ifBlank { attachment.optString("mime_type").ifBlank { MIME_OPENPGP } },
             sizeBytes = attachment.optLong("size", 0L).coerceAtLeast(0L),
             sha256 = sha256,
+            recipientUserIds = parseLongSet(
+                fields.optString(NextGisCommunityRecordSchema.FIELD_RECIPIENT_USER_IDS)
+            ),
+            recipientFingerprints = parseStringSet(
+                fields.optString(NextGisCommunityRecordSchema.FIELD_RECIPIENT_FINGERPRINTS)
+            ),
             blockchain = CommunityBlockchainReference(
                 networkName = fields.optString(NextGisCommunityRecordSchema.FIELD_NETWORK)
                     .takeIf(String::isNotBlank),
@@ -352,6 +360,17 @@ class NextGisCommunityPackageClient(context: Context) {
             .trim('.', ' ')
             .ifBlank { fallback }
             .take(120)
+
+    private fun parseLongSet(value: String): Set<Long> = value
+        .split(',')
+        .mapNotNull { it.trim().toLongOrNull()?.takeIf { id -> id > 0L } }
+        .toSet()
+
+    private fun parseStringSet(value: String): Set<String> = value
+        .split(',')
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .toSet()
 
     private fun server(account: AccountUtil.AccountData): String =
         NGWUtil.getServerUrl(account.url).trimEnd('/')

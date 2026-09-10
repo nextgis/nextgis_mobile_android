@@ -588,6 +588,9 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
     }
 
     private fun handleStartupIntent(intent: Intent?) {
+        if (intent?.data?.scheme == "mapsafe-wc") {
+            return
+        }
         if (intent?.action == Intent.ACTION_MAIN &&
             intent.hasCategory(Intent.CATEGORY_LAUNCHER)
         ) {
@@ -627,13 +630,13 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             }
             ACTION_MAPSAFE_SHOW_PARENT -> {
                 registerMapSafeResultListeners()
-                if (intent.getBooleanExtra(EXTRA_MAPSAFE_ACCESS_PARENT, false)) {
-                    AccessFeaturesDialog()
-                        .show(supportFragmentManager, "AccessFeaturesDialog")
-                } else {
-                    SafeguardFeaturesDialog()
-                        .show(supportFragmentManager, "SafeguardFeaturesDialog")
-                }
+                MapSafeMainDialog.forTab(
+                    if (intent.getBooleanExtra(EXTRA_MAPSAFE_ACCESS_PARENT, false)) {
+                        MapSafeMainDialog.DESTINATION_ACCESS
+                    } else {
+                        MapSafeMainDialog.DESTINATION_SAFEGUARD
+                    }
+                ).show(supportFragmentManager, MapSafeMainDialog.TAG)
                 intent.action = null
             }
             ACTION_MAPSAFE_OPEN_DATASETS -> {
@@ -667,13 +670,11 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             val loaded = mapFragment?.loadMapSafeSamplePoints() == true
             if (loaded) {
                 when (result.getString(MapSafeMainDialog.RESULT_OPEN_DESTINATION)) {
-                    MapSafeMainDialog.DESTINATION_SAFEGUARD ->
-                        SafeguardFeaturesDialog()
-                            .show(supportFragmentManager, "SafeguardFeaturesDialog")
-
+                    MapSafeMainDialog.DESTINATION_SAFEGUARD,
                     MapSafeMainDialog.DESTINATION_ACCESS ->
-                        AccessFeaturesDialog()
-                            .show(supportFragmentManager, "AccessFeaturesDialog")
+                        MapSafeMainDialog.forTab(
+                            requireNotNull(result.getString(MapSafeMainDialog.RESULT_OPEN_DESTINATION))
+                        ).show(supportFragmentManager, MapSafeMainDialog.TAG)
 
                     else -> if (result.getBoolean(MapSafeMainDialog.RESULT_OPEN_ANONYMISE)) {
                         AnonymiseDialog().show(supportFragmentManager, "AnonymiseDialog")

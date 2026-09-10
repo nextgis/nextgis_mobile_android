@@ -90,6 +90,18 @@ class MapSafeOpenPgpUiDeviceTest {
                 MapSafeDeviceTestSupport.screenshot(context, "paper-12-recipient-selection")
                 onView(withText("Continue")).perform(click())
                 onView(withHint("Recovery passphrase")).perform(replaceText(passphrase))
+                onView(withContentDescription("Show passphrase"))
+                    .check(matches(isDisplayed())).perform(click())
+                onView(withContentDescription("Hide passphrase")).check(matches(isDisplayed()))
+                onView(withHint("Recovery passphrase")).check { view, error ->
+                    if (error != null) throw error
+                    assertTrue(
+                        "The encryption passphrase should be visible after tapping the eye button.",
+                        (view as android.widget.EditText).transformationMethod == null
+                    )
+                }
+                onView(withContentDescription("Hide passphrase")).perform(click())
+                onView(withContentDescription("Show passphrase")).check(matches(isDisplayed()))
                 closeSoftKeyboard()
                 onView(withText("Continue")).perform(click())
 
@@ -150,6 +162,10 @@ class MapSafeOpenPgpUiDeviceTest {
                 onView(withText("Decrypt Verified File")).perform(scrollTo(), click())
                 onView(withText("Unlock private key")).check(matches(isDisplayed()))
                 onView(withHint("Recovery passphrase")).perform(replaceText(passphrase))
+                onView(withContentDescription("Show passphrase"))
+                    .check(matches(isDisplayed())).perform(click())
+                onView(withContentDescription("Hide passphrase")).check(matches(isDisplayed()))
+                onView(withContentDescription("Hide passphrase")).perform(click())
                 closeSoftKeyboard()
                 onView(withText("Continue")).perform(click())
 

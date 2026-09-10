@@ -7,8 +7,8 @@ import android.text.method.PasswordTransformationMethod
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
-import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -91,12 +91,13 @@ class MapSafeIdentityActivity : AppCompatActivity() {
 
         passphrase = password("Passphrase")
         confirmation = password("Confirm passphrase")
-        val show = CheckBox(this).apply {
-            text = "Show passphrase"
-            setTextColor(MapSafeUi.TEXT)
-        }
+        var passphraseVisible = false
+        var confirmationVisible = false
         fun updateSecureEntry() {
-            if (passphrase.hasFocus() || confirmation.hasFocus() || show.isChecked) {
+            if (
+                passphrase.hasFocus() || confirmation.hasFocus() ||
+                passphraseVisible || confirmationVisible
+            ) {
                 window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
             } else {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -104,20 +105,26 @@ class MapSafeIdentityActivity : AppCompatActivity() {
         }
         passphrase.onFocusChangeListener = View.OnFocusChangeListener { _, _ -> updateSecureEntry() }
         confirmation.onFocusChangeListener = View.OnFocusChangeListener { _, _ -> updateSecureEntry() }
-        show.setOnCheckedChangeListener { _, checked ->
-            passphrase.transformationMethod = if (checked) null else PasswordTransformationMethod.getInstance()
-            confirmation.transformationMethod = if (checked) null else PasswordTransformationMethod.getInstance()
-            passphrase.setSelection(passphrase.text.length)
-            confirmation.setSelection(confirmation.text.length)
+        val passphraseEntry = passphraseEntry(
+            input = passphrase,
+            description = "passphrase"
+        ) { visible ->
+            passphraseVisible = visible
+            updateSecureEntry()
+        }
+        val confirmationEntry = passphraseEntry(
+            input = confirmation,
+            description = "confirmation passphrase"
+        ) { visible ->
+            confirmationVisible = visible
             updateSecureEntry()
         }
         page.addView(MapSafeUi.card(
             this,
             MapSafeUi.sectionTitle(this, "Protect your private key"),
-            passphrase,
+            passphraseEntry,
             MapSafeUi.text(this, "Use a strong passphrase of at least 12 characters.", 13f, MapSafeUi.MUTED),
-            confirmation,
-            show
+            confirmationEntry
         ))
         page.addView(MapSafeUi.card(
             this,
@@ -249,6 +256,51 @@ class MapSafeIdentityActivity : AppCompatActivity() {
         hint,
         InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
     ).apply { transformationMethod = PasswordTransformationMethod.getInstance() }
+
+    private fun passphraseEntry(
+        input: EditText,
+        description: String,
+        onVisibilityChanged: (Boolean) -> Unit
+    ): LinearLayout {
+        var visible = false
+        val visibilityButton = ImageButton(this).apply {
+            setImageResource(android.R.drawable.ic_menu_view)
+            setColorFilter(MapSafeUi.GREEN_TEXT)
+            background = null
+            contentDescription = "Show $description"
+            minimumWidth = MapSafeUi.dp(this@MapSafeIdentityActivity, 48)
+            minimumHeight = MapSafeUi.dp(this@MapSafeIdentityActivity, 48)
+            setPadding(
+                MapSafeUi.dp(this@MapSafeIdentityActivity, 10),
+                MapSafeUi.dp(this@MapSafeIdentityActivity, 10),
+                MapSafeUi.dp(this@MapSafeIdentityActivity, 10),
+                MapSafeUi.dp(this@MapSafeIdentityActivity, 10)
+            )
+            setOnClickListener {
+                visible = !visible
+                input.transformationMethod = if (visible) {
+                    null
+                } else {
+                    PasswordTransformationMethod.getInstance()
+                }
+                input.setSelection(input.text?.length ?: 0)
+                contentDescription = if (visible) "Hide $description" else "Show $description"
+                onVisibilityChanged(visible)
+            }
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(input, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(
+                visibilityButton,
+                LinearLayout.LayoutParams(
+                    MapSafeUi.dp(this@MapSafeIdentityActivity, 48),
+                    MapSafeUi.dp(this@MapSafeIdentityActivity, 48)
+                )
+            )
+        }
+    }
 
     private fun formatFingerprint(fingerprint: String): String = fingerprint.chunked(4).joinToString(" ")
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()

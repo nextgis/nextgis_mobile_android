@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "server_url": "https://mapsafe.nextgis.com",
+  "community_name": "Community A",
+  "roles": [
+    {
+      "role": "field_data_guardian",
+      "story_name": "Steven",
+      "android_account_name": "REPLACE_WITH_STEVEN_ANDROID_ACCOUNT",
+      "authentication_group_member": true
+    },
+    {
+      "role": "precise_data_recipient",
+      "story_name": "Amber",
+      "android_account_name": "REPLACE_WITH_AMBER_ANDROID_ACCOUNT",
+      "authentication_group_member": true
+    },
+    {
+      "role": "anonymised_data_recipient",
+      "story_name": "BMA representative",
+      "android_account_name": "REPLACE_WITH_BMA_REPRESENTATIVE_ANDROID_ACCOUNT",
+      "authentication_group_member": true
+    },
+    {
+      "role": "outside_user",
+      "story_name": "External non-member",
+      "android_account_name": "REPLACE_WITH_EXTERNAL_NON_MEMBER_ANDROID_ACCOUNT",
+      "authentication_group_member": false
+    }
+  ]
+}

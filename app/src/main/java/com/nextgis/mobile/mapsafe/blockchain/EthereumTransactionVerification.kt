@@ -138,6 +138,7 @@ internal object EthereumTransactionJsonParser {
 internal enum class EthereumTransactionVerificationState {
     MATCH,
     HASH_MISMATCH,
+    FILE_NAME_MISMATCH,
     PENDING,
     INVALID
 }
@@ -146,6 +147,7 @@ internal data class EthereumTransactionVerificationReport(
     val state: EthereumTransactionVerificationState,
     val message: String,
     val onChainHash: String? = null,
+    val onChainFileName: String? = null,
     val recordFormat: MapSafeIntegrityRecordFormat? = null,
     val sender: String? = null,
     val blockNumber: Long? = null
@@ -158,7 +160,8 @@ internal class EthereumTransactionVerifier(
     fun verify(
         profile: BlockchainNetworkProfile,
         transactionHash: String,
-        localSha256: String
+        localSha256: String,
+        expectedFileName: String? = null
     ): EthereumTransactionVerificationReport {
         val validatedProfile = when (val validation = BlockchainNetworkProfileValidator.validate(profile)) {
             is BlockchainProfileValidation.Valid -> validation.profile
@@ -174,7 +177,12 @@ internal class EthereumTransactionVerifier(
         }
 
         return try {
-            verifyFromRpc(validatedProfile, transactionHash, localSha256.lowercase(Locale.US))
+            verifyFromRpc(
+                validatedProfile,
+                transactionHash,
+                localSha256.lowercase(Locale.US),
+                expectedFileName
+            )
         } catch (error: EthereumRpcException) {
             invalid(error.publicMessage)
         } catch (_: Exception) {
@@ -185,7 +193,8 @@ internal class EthereumTransactionVerifier(
     private fun verifyFromRpc(
         profile: BlockchainNetworkProfile,
         requestedHash: String,
-        localSha256: String
+        localSha256: String,
+        expectedFileName: String?
     ): EthereumTransactionVerificationReport {
         val rpcChainId = gateway.chainId(profile.rpcUrl)
         if (rpcChainId != profile.chainId) {
@@ -239,19 +248,38 @@ internal class EthereumTransactionVerifier(
             is MapSafeIntegrityRecordValidation.Valid -> result.record
             is MapSafeIntegrityRecordValidation.Invalid -> return invalid(result.message)
         }
-        val matched = record.sha256.equals(localSha256, ignoreCase = true)
+        val hashMatched = record.sha256.equals(localSha256, ignoreCase = true)
+        val expectedBoundName = expectedFileName?.let { value ->
+            runCatching { MapSafeIntegrityRecordCodec.normalizeFileName(value) }.getOrNull()
+        }
+        val fileNameMatched = when (record.format) {
+            MapSafeIntegrityRecordFormat.MAPSAFE_V1 -> true
+            MapSafeIntegrityRecordFormat.FILENAME_HASH ->
+                expectedBoundName != null && record.fileName == expectedBoundName
+        }
+        val state = when {
+            !hashMatched -> EthereumTransactionVerificationState.HASH_MISMATCH
+            !fileNameMatched -> EthereumTransactionVerificationState.FILE_NAME_MISMATCH
+            else -> EthereumTransactionVerificationState.MATCH
+        }
         return EthereumTransactionVerificationReport(
-            state = if (matched) {
-                EthereumTransactionVerificationState.MATCH
-            } else {
-                EthereumTransactionVerificationState.HASH_MISMATCH
-            },
-            message = if (matched) {
-                "Match confirmed. The blockchain record contains the same SHA-256 as the selected encrypted file."
-            } else {
-                "Hash mismatch. The transaction records a different encrypted file."
+            state = state,
+            message = when (state) {
+                EthereumTransactionVerificationState.MATCH -> if (
+                    record.format == MapSafeIntegrityRecordFormat.FILENAME_HASH
+                ) {
+                    "Match confirmed. The blockchain record contains the same filename and SHA-256 as the selected encrypted file."
+                } else {
+                    "Hash match confirmed. This older record does not bind a filename."
+                }
+                EthereumTransactionVerificationState.HASH_MISMATCH ->
+                    "Hash mismatch. The transaction records different file contents."
+                EthereumTransactionVerificationState.FILE_NAME_MISMATCH ->
+                    "Filename mismatch. The content hash matches, but the transaction records a different filename."
+                else -> error("Unexpected verification state")
             },
             onChainHash = record.sha256,
+            onChainFileName = record.fileName,
             recordFormat = record.format,
             sender = transaction.from,
             blockNumber = receipt.blockNumber

@@ -55,10 +55,19 @@ class HexabinningDialog : DialogFragment() {
             MapSafeUi.divider(context),
             MapSafeUi.valueRow(context, "Aggregation", "Count", strongValue = true)
         ))
-        content.addView(MapSafeUi.primaryButton(context, "Apply Hexagonal Binning", ::applyHexbin))
         panel.addView(
-            ScrollView(context).apply { addView(content) },
+            ScrollView(context).apply {
+                isFillViewport = true
+                isVerticalScrollBarEnabled = true
+                addView(content)
+            },
             LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+        panel.addView(
+            MapSafeUi.primaryButton(context, "Apply Hexagonal Binning", ::applyHexbin),
+            LinearLayout.LayoutParams(-1, -2).apply {
+                setMargins(dp(16), dp(2), dp(16), dp(8))
+            }
         )
         root.addView(
             panel,
@@ -90,7 +99,8 @@ class HexabinningDialog : DialogFragment() {
     }
 
     private fun showParent() {
-        AnonymiseDialog().show(parentFragmentManager, "AnonymiseDialog")
+        MapSafeMainDialog.forTab(MapSafeMainDialog.DESTINATION_SAFEGUARD)
+            .show(parentFragmentManager, MapSafeMainDialog.TAG)
     }
 
     private fun applyHexbin() {

@@ -1,0 +1,3 @@
+# Public Reown application identifier used by WalletConnect/AppKit.
+# Copy this file to mapsafe.properties and replace the placeholder locally.
+MAPSAFE_REOWN_PROJECT_ID=YOUR_32_HEX_CHARACTER_PROJECT_ID

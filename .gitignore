@@ -4,6 +4,7 @@
 /.kotlin/
 build/
 local.properties
+mapsafe.properties
 captures/
 *.iml
 *.iws
@@ -19,3 +20,24 @@ captures/
 
 # Sentry settings
 sentry.properties
+
+# Local MapSafe development credentials and paths
+.env
+.env.*
+!.env.example
+
+# Local smart-contract dependencies and compiler output
+tools/mapsafe-contract/node_modules/
+tools/mapsafe-contract/build/
+
+# Local LaTeX compiler intermediates (the final manuscript PDF is retained)
+paper/mapsafe-results/output/build/
+paper/mapsafe-results/output/pdf/*.aux
+paper/mapsafe-results/output/pdf/*.bbl
+paper/mapsafe-results/output/pdf/*.blg
+paper/mapsafe-results/output/pdf/*.log
+paper/mapsafe-results/output/pdf/*.out
+paper/mapsafe-results/output/pdf/*.vtc
+
+# Raw on-device screenshot export is duplicated by the curated manuscript images.
+paper/mapsafe-results/screenshots/*/device-export/

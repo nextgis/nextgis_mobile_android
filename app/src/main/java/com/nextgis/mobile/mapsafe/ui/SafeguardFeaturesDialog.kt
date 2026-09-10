@@ -47,7 +47,7 @@ class SafeguardFeaturesDialog : DialogFragment() {
             addView(MapSafeUi.card(
                 context,
                 MapSafeUi.text(context, "3  Blockchain Notarisation", 17f, MapSafeUi.GREEN_TEXT, bold = true),
-                MapSafeUi.text(context, "Record a hash after the production blockchain connector is configured.", 14f),
+                MapSafeUi.text(context, "Record the encrypted-package hash with an external wallet.", 14f),
                 MapSafeUi.outlineButton(context, "Blockchain Notarisation") {
                     dismiss()
                     IntegrityRecordDialog.forSafeguardFeatures()

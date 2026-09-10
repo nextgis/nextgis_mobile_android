@@ -250,7 +250,8 @@ class MapSafeSecurityActivity : AppCompatActivity() {
 
         val saveFolder = MapSafeSaveFolderRepository.read(this)
         saveFolderText.text = "Fixed shared location:\n${saveFolder.displayLocation}\n" +
-            "Open it in Files > Downloads > MapSafe. MapSafe creates it automatically and uses it for anonymised, encrypted, and decrypted files."
+            "Open it in Files > Downloads > MapSafe. MapSafe creates it automatically and uses it for anonymised, encrypted, and decrypted files. " +
+            "Successful masking, encryption, and decryption timings are appended to mapsafe-performance-log.csv."
 
         val network = runCatching { networkRepository.load().activeProfile }
             .getOrElse { BlockchainNetworkPresets.defaults().activeProfile }

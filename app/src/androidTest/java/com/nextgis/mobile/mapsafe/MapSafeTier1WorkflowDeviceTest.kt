@@ -53,7 +53,7 @@ class MapSafeTier1WorkflowDeviceTest {
 
         show("PASS", "START", "Tier 1 workflow is running against ${context.packageName}")
         val sample = MapSafeSampleDataWorkflow.createSampleLayer(context, context)
-        assertEquals(30, sample.inserted)
+        assertEquals(23, sample.inserted)
         assertEquals(0, sample.failed)
         show("PASS", "LOAD", "created ${sample.layerName} with ${sample.inserted} points")
 

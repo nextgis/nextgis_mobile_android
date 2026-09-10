@@ -84,6 +84,35 @@ object MapSafeWorkflowRunner {
                 minDistanceMetres = minDistanceMetres,
                 maxDistanceMetres = maxDistanceMetres
             )
+            MapSafePerformanceLogRepository.recordAsync(
+                context,
+                listOf(
+                    MapSafePerformanceLogRepository.Record(
+                        operation = MapSafePerformanceLogRepository.Operation.MASK_WITHOUT_SPRUILL,
+                        datasetName = selectedLayer.name,
+                        pointCount = result.totalPoints,
+                        durationNanos = result.maskingDurationNanos,
+                        minDistanceMetres = minDistanceMetres,
+                        maxDistanceMetres = maxDistanceMetres
+                    ),
+                    MapSafePerformanceLogRepository.Record(
+                        operation = MapSafePerformanceLogRepository.Operation.MASK_WITH_SPRUILL,
+                        datasetName = selectedLayer.name,
+                        pointCount = result.totalPoints,
+                        durationNanos = result.maskingDurationNanos + result.spruillDurationNanos,
+                        minDistanceMetres = minDistanceMetres,
+                        maxDistanceMetres = maxDistanceMetres
+                    ),
+                    MapSafePerformanceLogRepository.Record(
+                        operation = MapSafePerformanceLogRepository.Operation.MASK_WORKFLOW_TOTAL,
+                        datasetName = selectedLayer.name,
+                        pointCount = result.totalPoints,
+                        durationNanos = result.workflowDurationNanos,
+                        minDistanceMetres = minDistanceMetres,
+                        maxDistanceMetres = maxDistanceMetres
+                    )
+                )
+            )
 
             WorkflowMessage.Success(
                 message = "Created ${result.outputLayerName}. " +

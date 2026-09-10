@@ -19,6 +19,34 @@ import org.junit.runner.RunWith
 class MapSafeSaveFolderDeviceTest {
 
     @Test
+    fun openPgpOutputIsCreatedWithoutDependingOnTheLegacyHiddenMarker() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        MapSafeSaveFolderRepository.clear(context)
+        val bytes = "MapSafe encrypted package placeholder".toByteArray()
+        val requestedName = "mapsafe-250-rich-${System.nanoTime()}.geojson.pgp"
+
+        val saved = MapSafeSaveFolderRepository.save(
+            context,
+            "application/pgp-encrypted",
+            requestedName
+        ) { uri ->
+            context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+                ?: error("The encrypted output could not be opened.")
+        }
+
+        try {
+            assertEquals("Downloads/MapSafe", saved.folderLocation)
+            assertTrue(saved.fileName.endsWith(".geojson.pgp"))
+            val recovered = context.contentResolver.openInputStream(saved.uri)?.use { it.readBytes() }
+                ?: error("The encrypted test output could not be read.")
+            assertArrayEquals(bytes, recovered)
+        } finally {
+            context.contentResolver.delete(saved.uri, null, null)
+            MapSafeSaveFolderRepository.clear(context)
+        }
+    }
+
+    @Test
     fun outputIsSavedInDownloadsMapSafeWithoutAPicker() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         MapSafeSaveFolderRepository.clear(context)
@@ -53,6 +81,45 @@ class MapSafeSaveFolderDeviceTest {
             assertArrayEquals(bytes, recovered)
         } finally {
             context.contentResolver.delete(saved.uri, null, null)
+            MapSafeSaveFolderRepository.clear(context)
+        }
+    }
+
+    @Test
+    fun cumulativeCsvReusesOneFileAndWritesItsHeaderOnce() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        MapSafeSaveFolderRepository.clear(context)
+        val requestedName = "mapsafe-append-test-${System.nanoTime()}.csv"
+        var savedUri: android.net.Uri? = null
+
+        try {
+            val first = MapSafeSaveFolderRepository.appendText(
+                context = context,
+                mimeType = "text/csv",
+                requestedFileName = requestedName,
+                header = "operation,duration_seconds",
+                rows = listOf("mask_without_spruill,0.001")
+            )
+            savedUri = first.uri
+            val second = MapSafeSaveFolderRepository.appendText(
+                context = context,
+                mimeType = "text/csv",
+                requestedFileName = requestedName,
+                header = "operation,duration_seconds",
+                rows = listOf("openpgp_encrypt_signed,0.300")
+            )
+
+            assertEquals(first.uri, second.uri)
+            assertEquals("Downloads/MapSafe", second.folderLocation)
+            val lines = context.contentResolver.openInputStream(second.uri)?.bufferedReader()?.use {
+                it.readLines()
+            } ?: error("The cumulative CSV could not be read.")
+            assertEquals(3, lines.size)
+            assertEquals(1, lines.count { it == "operation,duration_seconds" })
+            assertEquals("mask_without_spruill,0.001", lines[1])
+            assertEquals("openpgp_encrypt_signed,0.300", lines[2])
+        } finally {
+            savedUri?.let { context.contentResolver.delete(it, null, null) }
             MapSafeSaveFolderRepository.clear(context)
         }
     }

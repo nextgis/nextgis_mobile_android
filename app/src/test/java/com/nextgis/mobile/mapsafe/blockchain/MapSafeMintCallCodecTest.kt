@@ -6,7 +6,7 @@ import org.junit.Test
 
 class MapSafeMintCallCodecTest {
     private val hash = "ab".repeat(32)
-    private val record = MapSafeIntegrityRecordCodec.encodeSha256(hash)
+    private val record = MapSafeIntegrityRecordCodec.encodeFileHash("field-sites.pgp", hash)
 
     @Test
     fun encodesAndStrictlyDecodesCanonicalRecord() {

@@ -43,6 +43,28 @@ class BlockchainNetworkProfileTest {
     }
 
     @Test
+    fun upgradesSavedHashOnlySepoliaContractToFilenameBoundRegistry() {
+        val defaults = BlockchainNetworkPresets.defaults()
+        val previous = BlockchainNetworkProfiles(
+            activeProfileId = BlockchainNetworkPresets.SEPOLIA_ID,
+            profiles = defaults.profiles.map { profile ->
+                if (profile.id == BlockchainNetworkPresets.SEPOLIA_ID) {
+                    profile.copy(contractAddress = "0xC6978Dd187449ee913047136e19b455Ddf931041")
+                } else {
+                    profile
+                }
+            }
+        )
+
+        val upgraded = BlockchainNetworkPresets.fillMissingPublicRpc(previous)
+
+        assertEquals(
+            BlockchainNetworkPresets.MAPSAFE_SEPOLIA_CONTRACT_ADDRESS,
+            upgraded.profiles.first { it.id == BlockchainNetworkPresets.SEPOLIA_ID }.contractAddress
+        )
+    }
+
+    @Test
     fun validatesAndNormalizesCompleteHttpsProfile() {
         val candidate = BlockchainNetworkPresets.defaults().activeProfile.copy(
             displayName = "  Research Sepolia  ",

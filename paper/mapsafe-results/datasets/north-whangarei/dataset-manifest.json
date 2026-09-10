@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "source": {
+    "repository_url": "https://github.com/sharmapn/geonode_datasovereignty",
+    "archive_path": "datasets/north_whangarei-SHP.zip",
+    "sha256": "958838d456e3d97448c4abc129e0b34844f96339459aab1a0cca99b2abb1408a",
+    "crs": "WGS84 geographic (GCS_WGS_1984)",
+    "geometry_type": "Point",
+    "point_count": 23,
+    "attribute_field_count": 0,
+    "bounds": [
+      173.79867234289532,
+      -35.68653361912114,
+      174.11298826237947,
+      -35.48709981118292
+    ]
+  },
+  "mobile_sample": {
+    "path": "app/src/main/assets/mapsafe/north_whangarei_infected_trees.geojson",
+    "sha256": "3d56c65c877f716c9e8ba175470b65bb01dc5e806fbd69a560d26a0a331edba6",
+    "point_count": 23,
+    "attribute_field_count": 8,
+    "attributes_are_synthetic": true
+  }
+}

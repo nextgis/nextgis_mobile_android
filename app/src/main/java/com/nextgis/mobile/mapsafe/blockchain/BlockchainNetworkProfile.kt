@@ -131,15 +131,23 @@ object BlockchainNetworkPresets {
     const val CUSTOM_ID = "custom-evm"
     const val SEPOLIA_PUBLIC_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
     const val QGIS_LEGACY_SENDER_ADDRESS = "0x244EAbEf05ACF009746Ce91fE1712Daf3857e620"
-    const val QGIS_LEGACY_LOCATION_ADDRESS = "0x8dD5Ca941A9F839062b6589A2E3f701458B011A9"
+    private const val QGIS_LEGACY_SEPOLIA_CONTRACT_ADDRESS = "0x8dD5Ca941A9F839062b6589A2E3f701458B011A9"
+    private const val MAPSAFE_HASH_ONLY_SEPOLIA_CONTRACT_ADDRESS = "0xC6978Dd187449ee913047136e19b455Ddf931041"
+    const val MAPSAFE_SEPOLIA_CONTRACT_ADDRESS = "0xdF7efaA8f01B5674e41534Da2bA4D7C56f65A0F2"
 
     fun fillMissingPublicRpc(configuration: BlockchainNetworkProfiles): BlockchainNetworkProfiles {
         val updated = configuration.profiles.map { profile ->
-            if (profile.id == SEPOLIA_ID && profile.rpcUrl.isBlank()) {
-                profile.copy(rpcUrl = SEPOLIA_PUBLIC_RPC_URL)
-            } else {
-                profile
-            }
+            if (profile.id != SEPOLIA_ID) return@map profile
+            profile.copy(
+                rpcUrl = if (
+                    profile.rpcUrl.isBlank() ||
+                    profile.rpcUrl.contains("eth_goerli", ignoreCase = true)
+                ) SEPOLIA_PUBLIC_RPC_URL else profile.rpcUrl,
+                contractAddress = if (
+                    profile.contractAddress.equals(QGIS_LEGACY_SEPOLIA_CONTRACT_ADDRESS, ignoreCase = true) ||
+                    profile.contractAddress.equals(MAPSAFE_HASH_ONLY_SEPOLIA_CONTRACT_ADDRESS, ignoreCase = true)
+                ) MAPSAFE_SEPOLIA_CONTRACT_ADDRESS else profile.contractAddress
+            )
         }
         return if (updated == configuration.profiles) {
             configuration
@@ -158,7 +166,7 @@ object BlockchainNetworkPresets {
                 chainId = 11_155_111L,
                 rpcUrl = SEPOLIA_PUBLIC_RPC_URL,
                 explorerBaseUrl = "https://sepolia.etherscan.io",
-                contractAddress = QGIS_LEGACY_LOCATION_ADDRESS
+                contractAddress = MAPSAFE_SEPOLIA_CONTRACT_ADDRESS
             ),
             BlockchainNetworkProfile(
                 id = MAINNET_ID,

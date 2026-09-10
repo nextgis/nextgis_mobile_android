@@ -57,6 +57,7 @@ import com.nextgis.maplibui.mapui.VectorLayerUI;
 import com.nextgis.maplibui.service.TrackerService;
 import com.nextgis.maplibui.util.SettingsConstantsUI;
 import com.nextgis.mobile.activity.SettingsActivity;
+import com.nextgis.mobile.mapsafe.blockchain.MapSafeReownWalletClient;
 import com.nextgis.mobile.util.Logger;
 import com.nextgis.mobile.util.OfflineSyncIntentService;
 
@@ -113,6 +114,7 @@ public class MainApplication extends GISApplication
         setExceptionHandler();
 
         super.onCreate();
+        MapSafeReownWalletClient.initialize(this, BuildConfig.MAPSAFE_REOWN_PROJECT_ID);
         updateFromOldVersion();
         NGWUtil.NGUA = "ng_mobile";
         NGWUtil.UUID = TrackerService.getUid(this);

@@ -1,6 +1,7 @@
 package com.nextgis.mobile.mapsafe.service
 
 import android.content.Context
+import android.os.SystemClock
 import com.nextgis.maplib.datasource.Field
 import com.nextgis.maplib.datasource.GeoPoint
 import com.nextgis.maplib.map.MapBase
@@ -25,6 +26,12 @@ object DonutMaskingWorkflow {
         val maskedPoints: Int,
         val averageDistanceMetres: Double,
         val spruillMeasure: SpruillMeasure.Result,
+        val sourceReadDurationNanos: Long,
+        val maskingDurationNanos: Long,
+        val spruillDurationNanos: Long,
+        val featureConstructionDurationNanos: Long,
+        val outputWriteDurationNanos: Long,
+        val workflowDurationNanos: Long,
         val inserted: Int,
         val failed: Int
     )
@@ -54,8 +61,11 @@ object DonutMaskingWorkflow {
             "Minimum distance must be non-negative and no greater than maximum distance."
         }
 
+        val workflowStartedAt = SystemClock.elapsedRealtimeNanos()
         val schema = createOutputSchema(sourceLayer.fields)
+        val sourceReadStartedAt = SystemClock.elapsedRealtimeNanos()
         val sourcePoints = readPointFeatures(sourceLayer, schema)
+        val sourceReadDurationNanos = SystemClock.elapsedRealtimeNanos() - sourceReadStartedAt
         require(sourcePoints.isNotEmpty()) { "The selected point layer contains no readable points." }
 
         val processed = DonutMaskingProcessor.processPoints(
@@ -67,6 +77,7 @@ object DonutMaskingWorkflow {
             schema.maskDistanceField
         )
 
+        val outputWriteStartedAt = SystemClock.elapsedRealtimeNanos()
         val map: MapBase = app.map
         val outputLayerName = uniqueLayerName(
             map,
@@ -79,20 +90,29 @@ object DonutMaskingWorkflow {
             GeoConstants.GTPoint,
             schema.fields
         )
+        // Keep the layer out of the renderer while its geometry R-tree is being
+        // populated. Rendering a visible layer during sequential ContentResolver
+        // inserts can concurrently traverse that mutable index and drop features.
+        outputLayer.isVisible = false
         MapSafeLayerStyle.applyBluePointStyle(outputLayer)
 
         map.addLayer(outputLayer)
         map.save()
 
-        val layerUri = MapSafeLayerWriter.buildLayerUri(app, outputLayer)
         val insertResult = MapSafeLayerWriter.insertFeatures(
-            context.contentResolver,
-            layerUri,
+            outputLayer,
             processed.features
         )
 
+        // ContentResolver insert notifications update the display cache
+        // asynchronously. Rebuild from the committed table so this workflow does not
+        // report success—or stop its total timer—before every feature is map-ready.
+        outputLayer.rebuildCache(null)
+        outputLayer.isVisible = true
         outputLayer.notifyLayerChanged()
         map.save()
+        val outputWriteDurationNanos = SystemClock.elapsedRealtimeNanos() - outputWriteStartedAt
+        val workflowDurationNanos = SystemClock.elapsedRealtimeNanos() - workflowStartedAt
 
         return WorkflowResult(
             outputLayer = outputLayer,
@@ -101,6 +121,12 @@ object DonutMaskingWorkflow {
             maskedPoints = processed.statistics.maskedPoints,
             averageDistanceMetres = processed.statistics.averageDistanceMetres,
             spruillMeasure = processed.statistics.spruillMeasure,
+            sourceReadDurationNanos = sourceReadDurationNanos,
+            maskingDurationNanos = processed.statistics.maskingDurationNanos,
+            spruillDurationNanos = processed.statistics.spruillDurationNanos,
+            featureConstructionDurationNanos = processed.statistics.featureConstructionDurationNanos,
+            outputWriteDurationNanos = outputWriteDurationNanos,
+            workflowDurationNanos = workflowDurationNanos,
             inserted = insertResult.inserted,
             failed = insertResult.failed
         )

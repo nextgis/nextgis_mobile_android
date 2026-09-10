@@ -33,7 +33,6 @@ object MapSafeGeoJsonWorkflow {
     )
 
     fun exportLayer(sourceLayer: VectorLayer, destinationDirectory: File): ExportResult {
-        require(sourceLayer.isValid) { "The selected vector layer is not valid." }
         require(destinationDirectory.exists() || destinationDirectory.mkdirs()) {
             "The temporary MapSafe export directory could not be created."
         }
@@ -49,7 +48,6 @@ object MapSafeGeoJsonWorkflow {
 
     /** Writes one vector layer as portable WGS84 GeoJSON to a user-selected destination. */
     fun exportLayer(sourceLayer: VectorLayer, output: OutputStream): Int {
-        require(sourceLayer.isValid) { "The selected vector layer is not valid." }
         val collection = featureCollection(sourceLayer)
         output.bufferedWriter(Charsets.UTF_8).apply {
             write(collection.toString())

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" modified="2026-09-09T02:30:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="mapsafe-mobile-architecture" name="Figure 1">
+    <mxGraphModel dx="2000" dy="1260" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1260" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Heading -->
+        <mxCell id="title" value="MapSafe Mobile architecture on the NextGIS platform" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=38;fontStyle=1;fontColor=#256D35;" vertex="1" parent="1">
+          <mxGeometry x="400" y="30" width="1200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="subtitle" value="Implemented field-device, community-exchange, and filename-bound notarisation flows" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=19;fontColor=#52606D;" vertex="1" parent="1">
+          <mxGeometry x="500" y="78" width="1000" height="32" as="geometry"/>
+        </mxCell>
+
+        <!-- Main regions -->
+        <mxCell id="safeguard_region" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#EFF8F1;strokeColor=#256D35;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="55" y="130" width="1335" height="460" as="geometry"/>
+        </mxCell>
+        <mxCell id="access_region" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#EEF5FC;strokeColor=#1D5FA7;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="55" y="660" width="1335" height="455" as="geometry"/>
+        </mxCell>
+        <mxCell id="external_region" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#F5F7F9;strokeColor=#7B8794;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="130" width="515" height="985" as="geometry"/>
+        </mxCell>
+        <mxCell id="safeguard_label" value="MapSafe Mobile — Safeguard" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=25;fontStyle=1;fontColor=#256D35;" vertex="1" parent="1">
+          <mxGeometry x="410" y="145" width="620" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="access_label" value="MapSafe Mobile — Access" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=25;fontStyle=1;fontColor=#1D5FA7;" vertex="1" parent="1">
+          <mxGeometry x="410" y="675" width="620" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="external_label" value="External services" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=25;fontStyle=1;fontColor=#1F2933;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="145" width="435" height="42" as="geometry"/>
+        </mxCell>
+
+        <!-- Safeguard workflow nodes -->
+        <mxCell id="collect" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Collect / select&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Original point dataset&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="90" y="215" width="245" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="anonymise" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Anonymise (optional)&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Halo mask or H3 bin&lt;br&gt;Original remains unchanged&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="375" y="215" width="245" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="encrypt" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Select and encrypt&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Original, masked, or binned&lt;br&gt;One .pgp per dataset&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="660" y="215" width="245" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="notarise" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Notarise (optional)&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Bind encrypted filename&lt;br&gt;to SHA-256&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="930" y="215" width="240" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="upload" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Upload&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Keys, anonymised&lt;br&gt;layers,&lt;br&gt;or encrypted&lt;br&gt;packages&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=6;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="215" width="160" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- Safeguard supporting nodes -->
+        <mxCell id="local_openpgp" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Local OpenPGP identity&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Passphrase + Android Keystore&lt;br&gt;Private key stays on device&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F5F0FB;strokeColor=#6B46A5;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="180" y="425" width="375" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="security_sharing" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Security &amp;amp; Sharing&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;NextGIS account/group, key trust,&lt;br&gt;save folder, EVM profile&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F5F0FB;strokeColor=#6B46A5;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="620" y="425" width="440" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="external_wallet" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;External wallet&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Reviews fee and signs&lt;br&gt;transaction&lt;br&gt;Wallet key stays outside&lt;br&gt;MapSafe&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#EAF8F8;strokeColor=#167C80;strokeWidth=3;align=center;verticalAlign=middle;spacing=5;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="425" width="260" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- External services nodes -->
+        <mxCell id="key_directory" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;NextGIS public-key directory&lt;/div&gt;&lt;div style=&quot;margin-top:12px;font-size:17px;color:#52606D;&quot;&gt;Authentication group&lt;br&gt;Member public keys + metadata&lt;br&gt;Fingerprint acceptance remains local&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF8F1;strokeColor=#256D35;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="205" width="435" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="community_resources" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;NextGIS community resources&lt;/div&gt;&lt;div style=&quot;margin-top:12px;font-size:17px;color:#52606D;&quot;&gt;Public keys&lt;br&gt;Halo-masked / binned vector layers&lt;br&gt;Encrypted .pgp packages&lt;br&gt;SHA-256 + transaction metadata&lt;br&gt;ACL-controlled access&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=7;fillColor=#EEF5FC;strokeColor=#1D5FA7;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="430" width="435" height="290" as="geometry"/>
+        </mxCell>
+        <mxCell id="evm_record" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;EVM integrity record&lt;/div&gt;&lt;div style=&quot;margin-top:12px;font-size:17px;color:#52606D;&quot;&gt;&amp;lt;encrypted filename&amp;gt;_&amp;lt;SHA-256&amp;gt;&lt;br&gt;Transaction sender, chain, contract, time&lt;br&gt;Receipt retrieved and checked&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=7;fillColor=#EAF8F8;strokeColor=#167C80;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="770" width="435" height="275" as="geometry"/>
+        </mxCell>
+
+        <!-- Access workflow nodes -->
+        <mxCell id="display" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Display&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Clear prior layers&lt;br&gt;Show recovered dataset&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="90" y="755" width="245" height="165" as="geometry"/>
+        </mxCell>
+        <mxCell id="validate_import" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Validate and import&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;OpenPGP integrity/signature&lt;br&gt;Save recovered GeoJSON&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="375" y="755" width="245" height="165" as="geometry"/>
+        </mxCell>
+        <mxCell id="decrypt" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Decrypt&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Match local recipient key&lt;br&gt;Unlock with passphrase&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="660" y="755" width="245" height="165" as="geometry"/>
+        </mxCell>
+        <mxCell id="verify" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Verify&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Local SHA-256&lt;br&gt;Registry and optional EVM&lt;br&gt;check&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="945" y="755" width="245" height="165" as="geometry"/>
+        </mxCell>
+        <mxCell id="choose_package" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Choose&lt;br&gt;package&lt;/div&gt;&lt;div style=&quot;margin-top:9px;font-size:17px;color:#52606D;&quot;&gt;Community&lt;br&gt;Packages&lt;br&gt;or local .pgp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF7DF;strokeColor=#B7791F;strokeWidth=3;align=center;verticalAlign=middle;spacing=5;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1225" y="755" width="135" height="165" as="geometry"/>
+        </mxCell>
+
+        <!-- Access supporting nodes -->
+        <mxCell id="recipient_identity" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Local recipient identity&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Matching private key + passphrase&lt;br&gt;Private key never uploaded&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F5F0FB;strokeColor=#6B46A5;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="585" y="965" width="395" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="community_trust" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Community trust and access&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Synchronise keys/resources&lt;br&gt;Apply group membership and ACLs&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F5F0FB;strokeColor=#6B46A5;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="965" width="345" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Solid safeguard flow -->
+        <mxCell id="edge_collect_anonymise" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#256D35;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="collect" target="anonymise"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_anonymise_encrypt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#256D35;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="anonymise" target="encrypt"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_encrypt_notarise" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#256D35;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="encrypt" target="notarise"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_notarise_upload" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#256D35;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="notarise" target="upload"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Local-key and configuration flows -->
+        <mxCell id="edge_identity_encrypt" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#6B46A5;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=1;" edge="1" parent="1" source="local_openpgp" target="encrypt"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="label_identity_encrypt" value="sign + recipients" style="text;html=1;strokeColor=none;fillColor=#EFF8F1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#6B46A5;" vertex="1" parent="1"><mxGeometry x="535" y="400" width="145" height="28" as="geometry"/></mxCell>
+        <mxCell id="edge_security_notarise" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#6B46A5;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0.05;entryY=1;" edge="1" parent="1" source="security_sharing" target="notarise"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="label_security_notarise" value="network profile" style="text;html=1;strokeColor=none;fillColor=#EFF8F1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#6B46A5;" vertex="1" parent="1"><mxGeometry x="910" y="397" width="150" height="28" as="geometry"/></mxCell>
+        <mxCell id="edge_notarise_wallet" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#167C80;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="notarise" target="external_wallet"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- External service flows -->
+        <mxCell id="edge_keys_sync" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#256D35;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="security_sharing" target="key_directory">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="840" y="395"/><mxPoint x="1390" y="395"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="label_keys_sync" value="publish / synchronise public keys" style="text;html=1;strokeColor=none;fillColor=#EFF8F1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#256D35;" vertex="1" parent="1"><mxGeometry x="1080" y="365" width="285" height="28" as="geometry"/></mxCell>
+        <mxCell id="edge_upload_community" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1D5FA7;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.45;" edge="1" parent="1" source="upload" target="community_resources">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1390" y="292"/><mxPoint x="1390" y="560"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_wallet_chain" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#167C80;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.62;entryX=0;entryY=0.47;" edge="1" parent="1" source="external_wallet" target="evm_record">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1415" y="500"/><mxPoint x="1415" y="900"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- Solid access flow -->
+        <mxCell id="edge_choose_verify" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1D5FA7;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="choose_package" target="verify"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_verify_decrypt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1D5FA7;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="verify" target="decrypt"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_decrypt_validate" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1D5FA7;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="decrypt" target="validate_import"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_validate_display" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1D5FA7;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="validate_import" target="display"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_recipient_decrypt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6B46A5;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="recipient_identity" target="decrypt"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="label_recipient_decrypt" value="matching private key" style="text;html=1;strokeColor=none;fillColor=#EEF5FC;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#6B46A5;" vertex="1" parent="1"><mxGeometry x="800" y="928" width="185" height="28" as="geometry"/></mxCell>
+        <mxCell id="edge_community_choose" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#1D5FA7;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.59;entryX=1;entryY=0.5;" edge="1" parent="1" source="community_resources" target="choose_package"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge_chain_verify" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#167C80;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.49;entryX=1;entryY=0.5;" edge="1" parent="1" source="evm_record" target="verify">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1410" y="940"/><mxPoint x="1210" y="940"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#CBD2D9;strokeWidth=2;" vertex="1" parent="1"><mxGeometry x="180" y="1160" width="1640" height="65" as="geometry"/></mxCell>
+        <mxCell id="legend_text" value="Solid: protected-data/resource flow&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; Green dashed: NextGIS identity or key exchange&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; Purple dashed: local key/configuration use&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; Teal dashed: external-wallet and EVM verification" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#1F2933;" vertex="1" parent="1"><mxGeometry x="205" y="1170" width="1590" height="45" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

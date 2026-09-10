@@ -2,7 +2,6 @@ package com.nextgis.mobile.mapsafe.blockchain
 
 import org.bouncycastle.crypto.digests.KeccakDigest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -11,16 +10,19 @@ class MapSafeIntegrityRecordTest {
     private val normalizedHash = upperHash.lowercase()
 
     @Test
-    fun canonicalRecordIsVersionedLowercaseAndOmitsFileName() {
-        val encoded = MapSafeIntegrityRecordCodec.encodeSha256(upperHash)
+    fun currentRecordBindsSafeBasenameToLowercaseHash() {
+        val encoded = MapSafeIntegrityRecordCodec.encodeFileHash(
+            "C:\\Downloads\\Sensitive Sites (final).pgp",
+            upperHash
+        )
 
-        assertEquals("mapsafe:v1:sha256:$normalizedHash", encoded)
-        assertTrue(!encoded.contains("dataset"))
+        assertEquals("Sensitive Sites _final_.pgp_$normalizedHash", encoded)
+        assertTrue(!encoded.contains("Downloads"))
         val parsed = MapSafeIntegrityRecordCodec.parse(encoded)
             as MapSafeIntegrityRecordValidation.Valid
         assertEquals(normalizedHash, parsed.record.sha256)
-        assertEquals(MapSafeIntegrityRecordFormat.MAPSAFE_V1, parsed.record.format)
-        assertNull(parsed.record.legacyFileName)
+        assertEquals(MapSafeIntegrityRecordFormat.FILENAME_HASH, parsed.record.format)
+        assertEquals("Sensitive Sites _final_.pgp", parsed.record.fileName)
     }
 
     @Test
@@ -30,11 +32,18 @@ class MapSafeIntegrityRecordTest {
         ) as MapSafeIntegrityRecordValidation.Valid
 
         assertEquals(normalizedHash, parsed.record.sha256)
-        assertEquals(
-            MapSafeIntegrityRecordFormat.LEGACY_QGIS_FILENAME_HASH,
-            parsed.record.format
-        )
-        assertEquals("masked_sensitive_sites.zip", parsed.record.legacyFileName)
+        assertEquals(MapSafeIntegrityRecordFormat.FILENAME_HASH, parsed.record.format)
+        assertEquals("masked_sensitive_sites.zip", parsed.record.fileName)
+    }
+
+    @Test
+    fun readsEarlierHashOnlyMapSafeRecord() {
+        val encoded = MapSafeIntegrityRecordCodec.encodeSha256(upperHash)
+        val parsed = MapSafeIntegrityRecordCodec.parse(encoded)
+            as MapSafeIntegrityRecordValidation.Valid
+
+        assertEquals(normalizedHash, parsed.record.sha256)
+        assertEquals(MapSafeIntegrityRecordFormat.MAPSAFE_V1, parsed.record.format)
     }
 
     @Test
@@ -43,6 +52,7 @@ class MapSafeIntegrityRecordTest {
             "mapsafe:v1:sha256:1234",
             "mapsafe:v2:sha256:$normalizedHash",
             "filename_1234",
+            "folder/file.pgp_$normalizedHash",
             normalizedHash
         )
 

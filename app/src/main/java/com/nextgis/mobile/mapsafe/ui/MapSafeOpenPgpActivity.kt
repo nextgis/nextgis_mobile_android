@@ -5,15 +5,18 @@ import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.text.InputType
 import android.text.method.PasswordTransformationMethod
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -30,9 +33,12 @@ import com.nextgis.mobile.mapsafe.blockchain.BlockchainNetworkPresets
 import com.nextgis.mobile.mapsafe.blockchain.BlockchainNetworkProfileRepository
 import com.nextgis.mobile.mapsafe.community.CommunityArtifactType
 import com.nextgis.mobile.mapsafe.community.CommunityBlockchainReference
+import com.nextgis.mobile.mapsafe.community.CommunityPackageAudienceRecord
+import com.nextgis.mobile.mapsafe.community.CommunityPackageAudienceRepository
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublishException
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpDecryptionResult
+import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpEncryptionResult
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpException
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
@@ -43,6 +49,7 @@ import com.nextgis.mobile.mapsafe.keys.PublicKeyExchangeRepository
 import com.nextgis.mobile.mapsafe.keys.PublicKeyTrustState
 import com.nextgis.mobile.mapsafe.service.HashUtils
 import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
+import com.nextgis.mobile.mapsafe.service.MapSafePerformanceLogRepository
 import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import com.nextgis.mobile.mapsafe.safeguard.encryption.EncryptFile
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +60,6 @@ import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
-import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.CipherInputStream
 import javax.crypto.CipherOutputStream
@@ -62,6 +68,44 @@ import javax.crypto.spec.SecretKeySpec
 
 /** Self-contained MapSafe OpenPGP identity, recipient, encryption and decryption screen. */
 class MapSafeOpenPgpActivity : AppCompatActivity() {
+    data class EncryptionSource(
+        val file: File,
+        val displayName: String,
+        val pointCount: Int?,
+        val representation: String
+    )
+
+    private data class InternalEncryptionSource(
+        val file: File,
+        val displayName: String,
+        val pointCount: Int?,
+        val representation: String
+    )
+
+    private data class TimedEncryptionResult(
+        val result: OpenPgpEncryptionResult,
+        val durationNanos: Long,
+        val inputBytes: Long?
+    )
+
+    private data class TimedDecryptionResult(
+        val result: OpenPgpDecryptionResult,
+        val durationNanos: Long,
+        val inputBytes: Long?
+    )
+
+    private data class SavedEncryptionBundle(
+        val saved: MapSafeSaveFolderRepository.SavedFile<TimedEncryptionResult>,
+        val audience: CommunityPackageAudienceRecord?
+    )
+
+    private data class PreparedCommunityPackage(
+        val source: File,
+        val fileName: String,
+        val selection: MapSafeSecurityPreferences.Selection,
+        val audienceRecord: CommunityPackageAudienceRecord
+    )
+
     private lateinit var repository: OpenPgpKeyRepository
     private lateinit var exchangeRepository: PublicKeyExchangeRepository
     private lateinit var directoryClient: NextGisPublicKeyDirectoryClient
@@ -82,6 +126,11 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     private var pendingEncryptInput: Uri? = null
     private var pendingInternalEncryptSource: File? = null
     private var pendingInternalEncryptName: String? = null
+    private var pendingInternalEncryptPointCount: Int? = null
+    private var pendingInternalEncryptRepresentation: String? = null
+    private val queuedInternalEncryptSources = ArrayDeque<InternalEncryptionSource>()
+    private var encryptionBatchTotal = 1
+    private var encryptionBatchIndex = 1
     private var pendingEncryptRecipients: Set<String> = emptySet()
     private var pendingSigningPassphrase: CharArray? = null
     private var pendingDecryptInput: Uri? = null
@@ -131,6 +180,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             clearPendingEncryption()
         } else {
             pendingEncryptInput = uri
+            pendingInternalEncryptPointCount = null
             encryptToSaveFolder()
         }
     }
@@ -219,9 +269,12 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 "Encrypt & Protect",
                 "Choose who can access the dataset, then encrypt it."
             ))
-            val representation = intent.getStringExtra(EXTRA_SOURCE_REPRESENTATION)
+            val representation = pendingInternalEncryptRepresentation
+                ?: intent.getStringExtra(EXTRA_SOURCE_REPRESENTATION)
                 ?: "User-selected representation"
-            val inputName = pendingInternalEncryptName ?: "Choose a dataset during encryption"
+            val inputName = pendingInternalEncryptName?.let { name ->
+                if (encryptionBatchTotal > 1) "$name  ·  $encryptionBatchIndex of $encryptionBatchTotal" else name
+            } ?: "Choose a dataset during encryption"
             val datasetSectionTitle = when {
                 isAnonymisedDataset(inputName, representation) -> "Anonymised Dataset"
                 pendingInternalEncryptSource != null ||
@@ -458,12 +511,15 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     }
 
     private fun replaceEncryptionInput(uri: Uri) {
-        pendingInternalEncryptSource?.let { source ->
-            source.delete()
-            source.parentFile?.delete()
-        }
+        pendingInternalEncryptSource?.let(::deleteTemporaryEncryptionSource)
+        queuedInternalEncryptSources.forEach { deleteTemporaryEncryptionSource(it.file) }
+        queuedInternalEncryptSources.clear()
+        encryptionBatchTotal = 1
+        encryptionBatchIndex = 1
         pendingInternalEncryptSource = null
         pendingInternalEncryptName = null
+        pendingInternalEncryptPointCount = null
+        pendingInternalEncryptRepresentation = null
         pendingEncryptInput = uri
         datasetTitleText?.text = "Dataset"
         datasetNameText?.text = displayName(uri) ?: "Selected file"
@@ -566,6 +622,14 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             }
         val missingMembers = (selection.groupMemberCount - availableMemberIds.size).coerceAtLeast(0)
         val pendingMembers = groupRecords.count { it.needsUserReview }
+        val recipientScroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(form, ViewGroup.LayoutParams(-1, -2))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                minOf(dp(420), resources.displayMetrics.heightPixels / 2)
+            )
+        }
         dialog = AlertDialog.Builder(this)
             .setTitle("Select recipients")
             .setMessage(buildString {
@@ -586,7 +650,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     }
                 }
             })
-            .setView(form)
+            .setView(recipientScroll)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton("Continue", null)
             .create()
@@ -695,7 +759,9 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     val inputName = pendingInternalEncryptName
                         ?: inputUri?.let(::displayName)
                         ?: "mapsafe-data"
-                    MapSafeSaveFolderRepository.save(
+                    val inputBytes = internalSource?.length()?.takeIf { it >= 0L }
+                        ?: inputUri?.let(::contentSize)
+                    val saved = MapSafeSaveFolderRepository.save(
                         this@MapSafeOpenPgpActivity,
                         "application/pgp-encrypted",
                         "$inputName.pgp"
@@ -704,7 +770,8 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                             ?: inputUri?.let(contentResolver::openInputStream)
                         inputStream?.use { input ->
                             contentResolver.openOutputStream(outputUri, "wt")?.use { output ->
-                                EncryptFile.encrypt(
+                                val startedAt = SystemClock.elapsedRealtimeNanos()
+                                val result = EncryptFile.encrypt(
                                     input = input,
                                     output = output,
                                     originalFileName = inputName,
@@ -712,27 +779,69 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                                     signingKeyRing = signingRing,
                                     signingPassphrase = signingPassphrase
                                 )
+                                TimedEncryptionResult(
+                                    result = result,
+                                    durationNanos = SystemClock.elapsedRealtimeNanos() - startedAt,
+                                    inputBytes = inputBytes
+                                )
                             } ?: throw OpenPgpException("The Save Folder did not open the encrypted file.")
                         } ?: throw OpenPgpException("The source document could not be opened.")
                     }
+                    val packageHash = contentResolver.openInputStream(saved.uri)?.use(HashUtils::sha256)
+                        ?: throw OpenPgpException("The saved encrypted package could not be reopened.")
+                    val selection = MapSafeSecurityPreferences.read(this@MapSafeOpenPgpActivity)
+                    val audience = CommunityPackageAudienceRepository.fromEncryptionRecipients(
+                        sha256 = packageHash,
+                        fileName = saved.fileName,
+                        selection = selection,
+                        recipientFingerprints = saved.value.result.recipientFingerprints,
+                        localFingerprint = repository.localIdentityInfo()?.fingerprint,
+                        directoryRecords = exchangeRepository.records()
+                    )
+                    audience?.let {
+                        CommunityPackageAudienceRepository(this@MapSafeOpenPgpActivity).record(it)
+                    }
+                    SavedEncryptionBundle(saved, audience)
                 } finally {
                     clearEncryptionAttempt()
                 }
             },
-            onSuccess = { saved ->
-                val result = saved.value
+            onSuccess = { bundle ->
+                val saved = bundle.saved
+                val timed = saved.value
+                val result = timed.result
                 val signing = if (result.signerFingerprint == null) "Unsigned" else "Signed"
+                MapSafePerformanceLogRepository.recordAsync(
+                    this,
+                    MapSafePerformanceLogRepository.Record(
+                        operation = MapSafePerformanceLogRepository.Operation.OPENPGP_ENCRYPT,
+                        datasetName = pendingInternalEncryptName
+                            ?: pendingEncryptInput?.let(::displayName)
+                            ?: "mapsafe-data",
+                        pointCount = pendingInternalEncryptPointCount,
+                        inputBytes = timed.inputBytes,
+                        outputBytes = contentSize(saved.uri),
+                        durationNanos = timed.durationNanos,
+                        recipientCount = result.recipientFingerprints.size,
+                        signed = result.signerFingerprint != null
+                    )
+                )
                 latestEncryptedUri = saved.uri
                 latestEncryptedFileName = saved.fileName
                 refreshStatus()
                 createIdentityButton?.visibility = View.GONE
                 encryptActionButton?.text = "Reselect Recipients & Encrypt"
+                val hasAnotherDataset = queuedInternalEncryptSources.isNotEmpty()
                 showResultPanel(
                     "✓  Dataset protected",
                     "${result.contentProtection.displayName} encryption",
                     "${result.recipientFingerprints.size} authorised recipient(s) · $signing package ready to share",
-                    nextLabel = "Next: Notarise",
-                    onNext = ::openNotarisation,
+                    nextLabel = if (hasAnotherDataset) {
+                        "Next: Encrypt (${queuedInternalEncryptSources.size} remaining)"
+                    } else {
+                        "Next: Notarise"
+                    },
+                    onNext = if (hasAnotherDataset) ::advanceToNextEncryptionSource else ::openNotarisation,
                     onStop = ::stopWorkflow,
                     placeAfterEncryptionAction = true,
                     savedLocation = saved.displayLocation,
@@ -823,6 +932,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         val inputUri = pendingDecryptInput ?: return clearPendingDecryption()
         val passphrase = pendingDecryptPassphrase ?: return clearPendingDecryption()
         val expectedVerifiedHash = verifiedDecryptSha256
+        val encryptedInputBytes = contentSize(inputUri)
         runBusy(
             message = "Decrypting and checking integrity…",
             operation = {
@@ -839,6 +949,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                         val encryptCipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
                             init(Cipher.ENCRYPT_MODE, temporaryKeySpec, GCMParameterSpec(128, temporaryIv))
                         }
+                        val startedAt = SystemClock.elapsedRealtimeNanos()
                         val decryptionResult = CipherOutputStream(
                             temporary.outputStream().buffered(),
                             encryptCipher
@@ -851,6 +962,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                                 verificationKeyRings = repository.listPublicKeyRings()
                             )
                         }
+                        val decryptionDurationNanos = SystemClock.elapsedRealtimeNanos() - startedAt
                         if (digest != null) {
                             val remainder = ByteArray(DEFAULT_BUFFER_SIZE)
                             while (protectedInput.read(remainder) >= 0) Unit
@@ -862,10 +974,14 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                                 )
                             }
                         }
-                        decryptionResult
+                        TimedDecryptionResult(
+                            result = decryptionResult,
+                            durationNanos = decryptionDurationNanos,
+                            inputBytes = encryptedInputBytes
+                        )
                     } ?: throw OpenPgpException("The encrypted document could not be opened.")
 
-                    val recoveredName = result.originalFileName.takeIf(String::isNotBlank) ?: outputName
+                    val recoveredName = result.result.originalFileName.takeIf(String::isNotBlank) ?: outputName
                     MapSafeSaveFolderRepository.save(
                         this@MapSafeOpenPgpActivity,
                         if (MapSafeGeoJsonWorkflow.isGeoJsonFileName(recoveredName)) {
@@ -894,8 +1010,20 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 }
             },
             onSuccess = { saved ->
-                val result = saved.value
+                val timed = saved.value
+                val result = timed.result
                 val outputUri = saved.uri
+                MapSafePerformanceLogRepository.recordAsync(
+                    this,
+                    MapSafePerformanceLogRepository.Record(
+                        operation = MapSafePerformanceLogRepository.Operation.OPENPGP_DECRYPT_VERIFY,
+                        datasetName = result.originalFileName,
+                        inputBytes = timed.inputBytes,
+                        outputBytes = contentSize(outputUri),
+                        durationNanos = timed.durationNanos,
+                        signed = result.signatureStatus != OpenPgpSignatureStatus.NOT_SIGNED
+                    )
+                )
                 decryptActionButton?.let(controls::removeView)
                 decryptActionButton = null
                 refreshStatus(decryptionMessage(result))
@@ -1035,11 +1163,11 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 .show()
             return
         }
-        // The community copy uses an opaque name so the original dataset name is
-        // not disclosed through NextGIS resource or attachment metadata.
-        val fileName = "mapsafe-package-${UUID.randomUUID()}.pgp"
+        val fileName = latestEncryptedFileName
+            ?.takeIf(String::isNotBlank)
+            ?: "mapsafe-package.pgp"
         runBusy(
-            message = "Uploading encrypted package to ${selection.groupName ?: "the selected community"}…",
+            message = "Checking the encrypted package audience…",
             operation = {
                 val temporary = File.createTempFile("mapsafe-community-package-", ".pgp", cacheDir)
                 try {
@@ -1048,23 +1176,83 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     } ?: throw NextGisCommunityPublishException(
                         "The encrypted package could not be opened for upload."
                     )
+                    val digest = HashUtils.sha256(temporary)
+                    val audience = CommunityPackageAudienceRepository(applicationContext)
+                        .find(digest, selection)
+                        ?: throw NextGisCommunityPublishException(
+                            "MapSafe cannot determine this package's NextGIS recipients. " +
+                                "Encrypt it again after selecting the community and its accepted public keys."
+                        )
+                    PreparedCommunityPackage(
+                        source = temporary,
+                        fileName = fileName,
+                        selection = selection,
+                        audienceRecord = audience
+                    )
+                } catch (error: Throwable) {
+                    temporary.delete()
+                    throw error
+                }
+            },
+            onSuccess = ::confirmCommunityPackageAudience
+        )
+    }
+
+    private fun confirmCommunityPackageAudience(prepared: PreparedCommunityPackage) {
+        val audience = prepared.audienceRecord.audience
+        if (!audience.isReadyForRestrictedUpload) {
+            prepared.source.delete()
+            val missing = audience.unmappedFingerprints.size
+            AlertDialog.Builder(this)
+                .setTitle("Community audience incomplete")
+                .setMessage(
+                    "$missing encrypted recipient${if (missing == 1) " is" else "s are"} not linked " +
+                        "to accepted members of ${prepared.selection.groupName ?: "the selected community"}. " +
+                        "Refresh and verify the community keys, then encrypt the dataset again."
+                )
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
+        val names = audience.members.joinToString("\n") { "• ${it.displayName}" }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Confirm community access")
+            .setMessage(
+                "${prepared.fileName}\n\nOnly the publisher and these OpenPGP recipients will be " +
+                    "allowed to list and download the package:\n\n$names\n\n" +
+                    "Other community members may still receive separately published anonymised layers."
+            )
+            .setNegativeButton(android.R.string.cancel) { _, _ -> prepared.source.delete() }
+            .setPositiveButton("Upload") { _, _ -> uploadPreparedCommunityPackage(prepared) }
+            .create()
+        dialog.setOnCancelListener { prepared.source.delete() }
+        dialog.show()
+    }
+
+    private fun uploadPreparedCommunityPackage(prepared: PreparedCommunityPackage) {
+        runBusy(
+            message = "Uploading encrypted package to " +
+                "${prepared.selection.groupName ?: "the selected community"}…",
+            operation = {
+                try {
                     val profile = runCatching {
                         BlockchainNetworkProfileRepository(applicationContext).load().activeProfile
                     }.getOrElse { BlockchainNetworkPresets.defaults().activeProfile }
                     NextGisCommunityPublisher(applicationContext).publishAttachedFile(
-                        selection = selection,
-                        source = temporary,
-                        fileName = fileName,
+                        selection = prepared.selection,
+                        source = prepared.source,
+                        fileName = prepared.fileName,
                         mimeType = "application/pgp-encrypted",
                         artifactType = CommunityArtifactType.ENCRYPTED_PACKAGE,
                         blockchain = CommunityBlockchainReference(
                             networkName = profile.displayName,
                             chainId = profile.chainId,
                             contractAddress = profile.contractAddress
-                        )
+                        ),
+                        audience = prepared.audienceRecord.audience
                     )
                 } finally {
-                    temporary.delete()
+                    prepared.source.delete()
                 }
             },
             onSuccess = { published ->
@@ -1072,8 +1260,8 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                 AlertDialog.Builder(this)
                     .setTitle("Uploaded to ${published.communityName}")
                     .setMessage(
-                        "${published.fileName} and its SHA-256 were stored in NextGIS Web. " +
-                            "No blockchain transaction URL was stored because notarisation transaction submission is not implemented yet."
+                        "${published.fileName} and its SHA-256 were stored in NextGIS Web for the confirmed recipients. " +
+                            "If this package is notarised next, MapSafe will add the confirmed network and transaction to its matching community record."
                     )
                     .setNegativeButton(android.R.string.ok, null)
                     .setPositiveButton("Open Web GIS") { _, _ ->
@@ -1198,9 +1386,10 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     private fun promptForPassphrase(title: String, onPassphrase: (CharArray) -> Unit) {
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         val input = passwordField("Recovery passphrase")
+        val entry = passphraseEntry(input)
         val dialog = AlertDialog.Builder(this)
             .setTitle(title)
-            .setView(verticalForm(input))
+            .setView(verticalForm(entry))
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton("Continue", null)
             .create()
@@ -1332,13 +1521,14 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     private fun clearPendingEncryption(deleteInternalSource: Boolean = false) {
         clearEncryptionAttempt()
         pendingEncryptInput = null
+        pendingInternalEncryptPointCount = null
         if (deleteInternalSource) {
-            pendingInternalEncryptSource?.let { source ->
-                source.delete()
-                source.parentFile?.delete()
-            }
+            pendingInternalEncryptSource?.let(::deleteTemporaryEncryptionSource)
+            queuedInternalEncryptSources.forEach { deleteTemporaryEncryptionSource(it.file) }
+            queuedInternalEncryptSources.clear()
             pendingInternalEncryptSource = null
             pendingInternalEncryptName = null
+            pendingInternalEncryptRepresentation = null
         }
     }
 
@@ -1349,16 +1539,89 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
     }
 
     private fun loadInternalEncryptSource() {
+        val batchPaths = intent.getStringArrayListExtra(EXTRA_BATCH_SOURCE_PATHS)
+        if (!batchPaths.isNullOrEmpty()) {
+            val names = intent.getStringArrayListExtra(EXTRA_BATCH_SOURCE_NAMES).orEmpty()
+            val representations = intent.getStringArrayListExtra(EXTRA_BATCH_SOURCE_REPRESENTATIONS).orEmpty()
+            val counts = intent.getIntegerArrayListExtra(EXTRA_BATCH_SOURCE_POINT_COUNTS).orEmpty()
+            val sources = batchPaths.mapIndexedNotNull { index, path ->
+                validatedInternalSource(path)?.let { source ->
+                    InternalEncryptionSource(
+                        file = source,
+                        displayName = names.getOrNull(index)?.let { File(it).name }?.takeIf(String::isNotBlank)
+                            ?: source.name,
+                        pointCount = counts.getOrNull(index)?.takeIf { it >= 0 },
+                        representation = representations.getOrNull(index)?.takeIf(String::isNotBlank)
+                            ?: "Selected dataset"
+                    )
+                }
+            }
+            if (sources.isNotEmpty()) {
+                encryptionBatchTotal = sources.size
+                encryptionBatchIndex = 1
+                applyInternalEncryptionSource(sources.first())
+                queuedInternalEncryptSources.addAll(sources.drop(1))
+                return
+            }
+        }
         val path = intent.getStringExtra(EXTRA_INTERNAL_SOURCE_PATH) ?: return
-        val source = runCatching { File(path).canonicalFile }.getOrNull() ?: return
-        val allowedRoot = runCatching { File(cacheDir, "mapsafe").canonicalFile }.getOrNull() ?: return
+        val source = validatedInternalSource(path) ?: return
+        applyInternalEncryptionSource(
+            InternalEncryptionSource(
+                file = source,
+                displayName = intent.getStringExtra(EXTRA_INTERNAL_SOURCE_NAME)
+                    ?.let { File(it).name }
+                    ?.takeIf { it.isNotBlank() }
+                    ?: source.name,
+                pointCount = intent.getIntExtra(EXTRA_INTERNAL_SOURCE_POINT_COUNT, -1)
+                    .takeIf { it >= 0 },
+                representation = intent.getStringExtra(EXTRA_SOURCE_REPRESENTATION)
+                    ?.takeIf(String::isNotBlank)
+                    ?: "Selected dataset"
+            )
+        )
+    }
+
+    private fun validatedInternalSource(path: String): File? {
+        val source = runCatching { File(path).canonicalFile }.getOrNull() ?: return null
+        val allowedRoot = runCatching { File(cacheDir, "mapsafe").canonicalFile }.getOrNull() ?: return null
         val isInsideRoot = source.path.startsWith(allowedRoot.path + File.separator)
-        if (!isInsideRoot || !source.isFile || source.length() <= 0L) return
-        pendingInternalEncryptSource = source
-        pendingInternalEncryptName = intent.getStringExtra(EXTRA_INTERNAL_SOURCE_NAME)
-            ?.let { File(it).name }
-            ?.takeIf { it.isNotBlank() }
-            ?: source.name
+        return source.takeIf { isInsideRoot && it.isFile && it.length() > 0L }
+    }
+
+    private fun applyInternalEncryptionSource(source: InternalEncryptionSource) {
+        pendingInternalEncryptSource = source.file
+        pendingInternalEncryptName = source.displayName
+        pendingInternalEncryptPointCount = source.pointCount
+        pendingInternalEncryptRepresentation = source.representation
+    }
+
+    private fun advanceToNextEncryptionSource() {
+        val next = queuedInternalEncryptSources.removeFirstOrNull() ?: return openNotarisation()
+        pendingInternalEncryptSource?.let(::deleteTemporaryEncryptionSource)
+        applyInternalEncryptionSource(next)
+        encryptionBatchIndex++
+        latestEncryptedUri = null
+        latestEncryptedFileName = null
+        resultPanel?.let(controls::removeView)
+        resultPanel = null
+        val representation = pendingInternalEncryptRepresentation ?: "Selected dataset"
+        val name = pendingInternalEncryptName ?: next.file.name
+        datasetTitleText?.text = when {
+            isAnonymisedDataset(name, representation) -> "Anonymised Dataset"
+            representation.contains("original", ignoreCase = true) -> "Original Dataset"
+            else -> "Dataset to Encrypt"
+        }
+        datasetNameText?.text = "$name  ·  $encryptionBatchIndex of $encryptionBatchTotal"
+        encryptActionButton?.text = "Select Recipients & Encrypt"
+        refreshStatus("Next dataset ready. Review its recipients before encrypting.")
+    }
+
+    private fun deleteTemporaryEncryptionSource(source: File) {
+        source.delete()
+        val itemDirectory = source.parentFile
+        itemDirectory?.delete()
+        itemDirectory?.parentFile?.takeIf { it.name.startsWith("batch-") }?.delete()
     }
 
     private fun loadVerifiedDecryptSource() {
@@ -1408,6 +1671,19 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         }
     }
 
+    private fun contentSize(uri: Uri): Long? {
+        if (uri.scheme == "file") return uri.path?.let(::File)?.takeIf(File::isFile)?.length()
+        var cursor: Cursor? = null
+        return try {
+            cursor = contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
+            if (cursor?.moveToFirst() == true && !cursor.isNull(0)) cursor.getLong(0) else null
+        } catch (_: Exception) {
+            null
+        } finally {
+            cursor?.close()
+        }
+    }
+
     private fun inputField(hint: String, type: Int = InputType.TYPE_CLASS_TEXT): EditText {
         return EditText(this).apply {
             this.hint = hint
@@ -1422,6 +1698,38 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         ).apply {
             transformationMethod = PasswordTransformationMethod.getInstance()
+        }
+    }
+
+    private fun passphraseEntry(input: EditText): LinearLayout {
+        var visible = false
+        val visibilityButton = ImageButton(this).apply {
+            setImageResource(android.R.drawable.ic_menu_view)
+            setColorFilter(MapSafeUi.GREEN_TEXT)
+            background = null
+            contentDescription = "Show passphrase"
+            minimumWidth = dp(48)
+            minimumHeight = dp(48)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setOnClickListener {
+                visible = !visible
+                input.transformationMethod = if (visible) {
+                    null
+                } else {
+                    PasswordTransformationMethod.getInstance()
+                }
+                input.setSelection(input.text?.length ?: 0)
+                contentDescription = if (visible) "Hide passphrase" else "Show passphrase"
+            }
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(input, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(
+                visibilityButton,
+                LinearLayout.LayoutParams(dp(48), dp(48))
+            )
         }
     }
 
@@ -1447,7 +1755,14 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
         private const val EXTRA_MODE = "mapsafe_openpgp_mode"
         private const val EXTRA_INTERNAL_SOURCE_PATH = "mapsafe_openpgp_internal_source_path"
         private const val EXTRA_INTERNAL_SOURCE_NAME = "mapsafe_openpgp_internal_source_name"
+        private const val EXTRA_INTERNAL_SOURCE_POINT_COUNT =
+            "mapsafe_openpgp_internal_source_point_count"
         private const val EXTRA_SOURCE_REPRESENTATION = "mapsafe_openpgp_source_representation"
+        private const val EXTRA_BATCH_SOURCE_PATHS = "mapsafe_openpgp_batch_source_paths"
+        private const val EXTRA_BATCH_SOURCE_NAMES = "mapsafe_openpgp_batch_source_names"
+        private const val EXTRA_BATCH_SOURCE_POINT_COUNTS = "mapsafe_openpgp_batch_source_point_counts"
+        private const val EXTRA_BATCH_SOURCE_REPRESENTATIONS =
+            "mapsafe_openpgp_batch_source_representations"
         private const val EXTRA_RETURN_TO_SECURITY = "mapsafe_openpgp_return_to_security"
         private const val EXTRA_VERIFIED_SOURCE_URI = "mapsafe_openpgp_verified_source_uri"
         private const val EXTRA_VERIFIED_SOURCE_DISPLAY_NAME =
@@ -1465,6 +1780,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
             decrypt: Boolean = false,
             sourceFile: File? = null,
             sourceDisplayName: String? = null,
+            sourcePointCount: Int? = null,
             sourceRepresentation: String? = null,
             returnToSecurity: Boolean = false,
             verifiedSourceUri: Uri? = null,
@@ -1480,6 +1796,7 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                     if (sourceFile != null) {
                         putExtra(EXTRA_INTERNAL_SOURCE_PATH, sourceFile.absolutePath)
                         putExtra(EXTRA_INTERNAL_SOURCE_NAME, sourceDisplayName ?: sourceFile.name)
+                        sourcePointCount?.let { putExtra(EXTRA_INTERNAL_SOURCE_POINT_COUNT, it) }
                         sourceRepresentation?.let { putExtra(EXTRA_SOURCE_REPRESENTATION, it) }
                     }
                     if (verifiedSourceUri != null) {
@@ -1498,6 +1815,28 @@ class MapSafeOpenPgpActivity : AppCompatActivity() {
                         }
                     }
                 }
+        }
+
+        fun intent(context: Context, sources: List<EncryptionSource>): Intent {
+            require(sources.isNotEmpty()) { "At least one encryption source is required." }
+            return Intent(context, MapSafeOpenPgpActivity::class.java)
+                .putExtra(EXTRA_MODE, MODE_ENCRYPT)
+                .putStringArrayListExtra(
+                    EXTRA_BATCH_SOURCE_PATHS,
+                    ArrayList(sources.map { it.file.absolutePath })
+                )
+                .putStringArrayListExtra(
+                    EXTRA_BATCH_SOURCE_NAMES,
+                    ArrayList(sources.map(EncryptionSource::displayName))
+                )
+                .putIntegerArrayListExtra(
+                    EXTRA_BATCH_SOURCE_POINT_COUNTS,
+                    ArrayList(sources.map { it.pointCount ?: -1 })
+                )
+                .putStringArrayListExtra(
+                    EXTRA_BATCH_SOURCE_REPRESENTATIONS,
+                    ArrayList(sources.map(EncryptionSource::representation))
+                )
         }
     }
 }

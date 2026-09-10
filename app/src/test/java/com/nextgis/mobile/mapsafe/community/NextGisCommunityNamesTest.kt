@@ -14,6 +14,20 @@ class NextGisCommunityNamesTest {
         assertEquals("mapsafe_public_keys_g42", NextGisCommunityNames.publicKeysKey(42))
         assertEquals("mapsafe_layers_g42", NextGisCommunityNames.layersKey(42))
         assertEquals("mapsafe_packages_g42", NextGisCommunityNames.packagesKey(42))
+        assertEquals("mapsafe_packages_g42_u7", NextGisCommunityNames.packageRegistryPrefix(42, 7))
+        assertEquals(
+            "mapsafe_packages_g42_u7_r1111111122223333",
+            NextGisCommunityNames.packageRegistryKey(42, 7, "11111111-2222-3333-4444-555555555555")
+        )
+        assertEquals(
+            setOf(
+                CommunityArtifactType.PUBLIC_KEY,
+                CommunityArtifactType.HALO_MASKED,
+                CommunityArtifactType.HEXBIN,
+                CommunityArtifactType.ENCRYPTED_PACKAGE
+            ),
+            CommunityArtifactType.entries.toSet()
+        )
         assertEquals(
             "/api/resource/17/feature/23/attachment/31/download",
             NextGisCommunityNames.attachmentDownloadPath(17, 23, 31)

@@ -1,7 +1,16 @@
 [CmdletBinding()]
 param(
     [string]$Serial,
-    [string]$OutputDirectory
+    [string]$OutputDirectory,
+
+    [ValidateSet('Quick', 'Paper')]
+    [string]$Protocol = 'Paper',
+
+    [switch]$AllowEmulator,
+
+    [switch]$UseExistingPhoneDatasets,
+
+    [switch]$SkipBuild
 )
 
 Set-StrictMode -Version Latest
@@ -70,21 +79,34 @@ else {
 $model = ((Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'getprop', 'ro.product.model')) -join '').Trim()
 $manufacturer = ((Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'getprop', 'ro.product.manufacturer')) -join '').Trim()
 $qemu = ((Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'getprop', 'ro.kernel.qemu')) -join '').Trim()
-if ($Serial.StartsWith('emulator-') -or $qemu -eq '1' -or $model -match 'Emulator|Android SDK built for') {
+$isEmulator = $Serial.StartsWith('emulator-') -or $qemu -eq '1' -or $model -match 'Emulator|Android SDK built for|sdk_gphone'
+if ($isEmulator -and -not $AllowEmulator) {
     throw "Performance results must come from a physical phone; '$Serial' ($manufacturer $model) is an emulator."
 }
 
-Write-Host "Physical device: $manufacturer $model ($Serial)" -ForegroundColor Green
-Write-Host 'Building benchmark APKs...'
-Push-Location $workspaceRoot
-try {
-    & $gradleWrapper --no-daemon --console=plain --warning-mode=none :app:assembleDebug :app:assembleDebugAndroidTest
-    if ($LASTEXITCODE -ne 0) {
-        throw "Gradle build failed with exit code $LASTEXITCODE."
-    }
+if ($isEmulator) {
+    Write-Warning 'This is an explicitly permitted emulator run. Its timings are preliminary and must not be reported as physical mobile performance.'
+    Write-Host "Emulator: $manufacturer $model ($Serial)" -ForegroundColor Yellow
 }
-finally {
-    Pop-Location
+else {
+    Write-Host "Physical device: $manufacturer $model ($Serial)" -ForegroundColor Green
+}
+Write-Host "Protocol: $Protocol"
+if ($SkipBuild) {
+    Write-Host 'Using already-built benchmark APKs.'
+}
+else {
+    Write-Host 'Building benchmark APKs...'
+    Push-Location $workspaceRoot
+    try {
+        & $gradleWrapper --no-daemon --console=plain --warning-mode=none :app:assembleDebug :app:assembleDebugAndroidTest
+        if ($LASTEXITCODE -ne 0) {
+            throw "Gradle build failed with exit code $LASTEXITCODE."
+        }
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 $appApk = Join-Path $workspaceRoot 'app\build\outputs\apk\debug\app-debug.apk'
@@ -97,12 +119,57 @@ Invoke-Adb -Arguments @('-s', $Serial, 'install', '-r', $appApk) | Out-Host
 Invoke-Adb -Arguments @('-s', $Serial, 'install', '-r', $testApk) | Out-Host
 Invoke-Adb -Arguments @('-s', $Serial, 'logcat', '-c') | Out-Null
 
-Write-Host 'Running 5 warm-ups and 30 measurements for each benchmark cell...'
-$instrumentation = Invoke-Adb -Arguments @(
+$stagedInputDirectory = $null
+if ($UseExistingPhoneDatasets) {
+    $expectedDatasetNames = foreach ($points in @(50, 250, 500, 1000, 2000)) {
+        foreach ($profile in @('typical', 'rich')) {
+            "field-$points-$profile.geojson"
+        }
+    }
+    $sourceDirectory = '/sdcard/Download/MapSafe'
+    $stageId = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')
+    $temporaryInputDirectory = "/data/local/tmp/mapsafe-existing-input/$stageId"
+    $privateInputRelative = "files/mapsafe-existing-input/$stageId"
+    $stagedInputDirectory = "/data/user/0/$targetPackage/$privateInputRelative"
+    Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'mkdir', '-p', $temporaryInputDirectory) | Out-Null
+    Invoke-Adb -Arguments @(
+        '-s', $Serial, 'shell', 'run-as', $targetPackage, 'mkdir', '-p', $privateInputRelative
+    ) | Out-Null
+    foreach ($fileName in $expectedDatasetNames) {
+        $source = "$sourceDirectory/$fileName"
+        $available = @(Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'test', '-f', $source, ';', 'echo', '$?'))
+        if (($available -join '').Trim() -ne '0') {
+            throw "Required phone dataset is missing: $source"
+        }
+        $temporaryFile = "$temporaryInputDirectory/$fileName"
+        Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'cp', $source, $temporaryFile) | Out-Null
+        Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'chmod', '644', $temporaryFile) | Out-Null
+        Invoke-Adb -Arguments @(
+            '-s', $Serial, 'shell', 'run-as', $targetPackage,
+            'cp', $temporaryFile, "$privateInputRelative/$fileName"
+        ) | Out-Null
+    }
+    Write-Host "Staged 10 existing Downloads/MapSafe datasets without modifying their source files." -ForegroundColor Green
+    Write-Host "Private staged input: $stagedInputDirectory"
+}
+
+if ($Protocol -eq 'Quick') {
+    Write-Host 'Running 1 warm-up and 5 measurements for each benchmark cell...'
+}
+else {
+    Write-Host 'Running 5 warm-ups and 30 measurements for each benchmark cell...'
+}
+$instrumentationArguments = @(
     '-s', $Serial, 'shell', 'am', 'instrument', '-w', '-r',
     '-e', 'class', $benchmarkClass,
-    "$testPackage/$runner"
+    '-e', 'mapsafe.protocol', $Protocol.ToLowerInvariant(),
+    '-e', 'mapsafe.allowEmulator', $AllowEmulator.IsPresent.ToString().ToLowerInvariant()
 )
+if ($stagedInputDirectory) {
+    $instrumentationArguments += @('-e', 'mapsafe.inputDirectory', $stagedInputDirectory)
+}
+$instrumentationArguments += "$testPackage/$runner"
+$instrumentation = Invoke-Adb -Arguments $instrumentationArguments
 $instrumentation | Out-Host
 $instrumentationText = $instrumentation -join [Environment]::NewLine
 if ($instrumentationText -match 'FAILURES!!!|INSTRUMENTATION_FAILED|Process crashed|shortMsg=') {
@@ -110,8 +177,10 @@ if ($instrumentationText -match 'FAILURES!!!|INSTRUMENTATION_FAILED|Process cras
 }
 
 $remoteRoot = "/sdcard/Android/data/$targetPackage/files/mapsafe-benchmark"
-$remoteRuns = @(Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'ls', '-1t', $remoteRoot)) |
-    Where-Object { $_ -match '^\d{8}-\d{6}$' }
+$remoteRuns = @(
+    @(Invoke-Adb -Arguments @('-s', $Serial, 'shell', 'ls', '-1t', $remoteRoot)) |
+        Where-Object { $_ -match '^\d{8}-\d{6}$' }
+)
 if ($remoteRuns.Count -eq 0) {
     throw "The benchmark completed but no result directory was found under $remoteRoot."
 }
@@ -131,4 +200,9 @@ Write-Host ''
 Write-Host 'MapSafe performance benchmark completed.' -ForegroundColor Green
 Write-Host "Results: $OutputDirectory"
 Write-Host "Summary: $(Join-Path $OutputDirectory 'summary.csv')"
+Write-Host "Masking phases: $(Join-Path $OutputDirectory 'masking-phase-measurements.csv')"
+Write-Host "Run progress: $(Join-Path $OutputDirectory 'run-progress.json')"
+Write-Host "Dataset manifest: $(Join-Path $OutputDirectory 'dataset-manifest.csv')"
+Write-Host "Reusable samples: $(Join-Path $OutputDirectory 'datasets')"
+Write-Host "LaTeX table: $(Join-Path $OutputDirectory 'paper-table.tex')"
 Write-Host "Metadata: $(Join-Path $OutputDirectory 'metadata.json')"

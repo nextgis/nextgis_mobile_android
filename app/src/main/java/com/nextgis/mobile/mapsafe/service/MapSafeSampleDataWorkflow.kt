@@ -14,8 +14,8 @@ import org.json.JSONObject
 /** Loads the bundled synthetic point dataset into a regular local vector layer. */
 object MapSafeSampleDataWorkflow {
 
-    private const val ASSET_PATH = "mapsafe/sample_points_suva.geojson"
-    private const val BASE_LAYER_NAME = "MapSafe sample points - Suva"
+    private const val ASSET_PATH = "mapsafe/north_whangarei_infected_trees.geojson"
+    private const val BASE_LAYER_NAME = "North Whangārei infected trees"
 
     data class WorkflowResult(
         val layer: VectorLayer,
@@ -33,11 +33,14 @@ object MapSafeSampleDataWorkflow {
         val map: MapBase = app.map
         val layerName = uniqueLayerName(map, BASE_LAYER_NAME)
         val fields = listOf(
-            Field(GeoConstants.FTInteger, "site_id", "Site ID"),
-            Field(GeoConstants.FTString, "site_name", "Site name"),
-            Field(GeoConstants.FTString, "category", "Category"),
+            Field(GeoConstants.FTInteger, "tree_id", "Tree ID"),
+            Field(GeoConstants.FTString, "site_code", "Site code"),
+            Field(GeoConstants.FTString, "observation", "Observation"),
+            Field(GeoConstants.FTString, "record_status", "Record status"),
             Field(GeoConstants.FTString, "sensitivity", "Sensitivity"),
-            Field(GeoConstants.FTInteger, "households", "Households")
+            Field(GeoConstants.FTString, "data_guardian", "Data guardian"),
+            Field(GeoConstants.FTString, "community", "Community"),
+            Field(GeoConstants.FTString, "source_study", "Source study")
         )
 
         val layer = app.createEmptyVectorLayer(
@@ -46,6 +49,7 @@ object MapSafeSampleDataWorkflow {
             GeoConstants.GTPoint,
             fields
         )
+        layer.isVisible = false
         require(layer.geometryType == GeoConstants.GTPoint) {
             "The sample layer was not created as a point-vector layer."
         }
@@ -57,8 +61,7 @@ object MapSafeSampleDataWorkflow {
             map.save()
 
             val insertResult = MapSafeLayerWriter.insertFeatures(
-                context.contentResolver,
-                MapSafeLayerWriter.buildLayerUri(app, layer),
+                layer,
                 features
             )
             require(insertResult.attempted == features.size) {
@@ -68,6 +71,8 @@ object MapSafeSampleDataWorkflow {
                 "Only ${insertResult.inserted}/${features.size} sample points were inserted."
             }
 
+            layer.rebuildCache(null)
+            layer.isVisible = true
             layer.notifyLayerChanged()
             map.save()
 
@@ -131,11 +136,14 @@ object MapSafeSampleDataWorkflow {
                 MapSafeLayerWriter.FeatureToInsert(
                     geometry = point,
                     attributes = mapOf(
-                        "site_id" to properties.getInt("site_id"),
-                        "site_name" to properties.getString("site_name"),
-                        "category" to properties.getString("category"),
+                        "tree_id" to properties.getInt("tree_id"),
+                        "site_code" to properties.getString("site_code"),
+                        "observation" to properties.getString("observation"),
+                        "record_status" to properties.getString("record_status"),
                         "sensitivity" to properties.getString("sensitivity"),
-                        "households" to properties.getInt("households")
+                        "data_guardian" to properties.getString("data_guardian"),
+                        "community" to properties.getString("community"),
+                        "source_study" to properties.getString("source_study")
                     )
                 )
             )

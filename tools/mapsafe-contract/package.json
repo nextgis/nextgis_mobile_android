@@ -1,0 +1,17 @@
+{
+  "name": "mapsafe-integrity-registry-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reproducible deployment and live-test tools for the MapSafe EVM integrity registry.",
+  "scripts": {
+    "compile": "node scripts/compile.mjs",
+    "deploy:sepolia": "node scripts/deploy-sepolia.mjs",
+    "test:live": "node scripts/live-mint.mjs"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0",
+    "dotenv": "17.2.2",
+    "ethers": "6.15.0",
+    "solc": "0.8.30"
+  }
+}

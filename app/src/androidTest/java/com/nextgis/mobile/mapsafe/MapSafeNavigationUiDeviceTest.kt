@@ -30,7 +30,7 @@ import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.R
 import com.nextgis.mobile.activity.MainActivity
 import com.nextgis.mobile.mapsafe.service.HashUtils
-import com.nextgis.mobile.mapsafe.test.MapSafeTestDocumentProvider
+import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import com.nextgis.mobile.mapsafe.ui.DonutMaskingResultDialog
 import com.nextgis.mobile.mapsafe.ui.IntegrityRecordDialog
 import org.hamcrest.Matchers.allOf
@@ -49,12 +49,16 @@ class MapSafeNavigationUiDeviceTest {
     fun localHashEnablesDecryptionWithoutRequiringBlockchainComparison() {
         val context = ApplicationProvider.getApplicationContext<MainApplication>()
         val documentName = "verification-ready-${System.nanoTime()}.pgp"
-        val documentUri = MapSafeTestDocumentProvider.uri(context, documentName)
-        val document = MapSafeTestDocumentProvider.file(context, documentName).apply {
-            parentFile?.mkdirs()
-            writeBytes("MapSafe local hash readiness".toByteArray())
+        val documentBytes = "MapSafe local hash readiness".toByteArray()
+        val saved = MapSafeSaveFolderRepository.save(
+            context,
+            "application/pgp-encrypted",
+            documentName
+        ) { uri ->
+            context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(documentBytes) }
+                ?: error("The encrypted test package could not be opened.")
         }
-        val expectedHash = HashUtils.sha256(document)
+        val expectedHash = HashUtils.sha256(documentBytes)
         MapSafeDeviceTestSupport.prepareMainActivity(context)
 
         Intents.init()
@@ -62,7 +66,7 @@ class MapSafeNavigationUiDeviceTest {
             intending(hasAction(Intent.ACTION_OPEN_DOCUMENT)).respondWith(
                 ActivityResult(
                     Activity.RESULT_OK,
-                    Intent().setData(documentUri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    Intent().setData(saved.uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 )
             )
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -95,6 +99,7 @@ class MapSafeNavigationUiDeviceTest {
             }
         } finally {
             Intents.release()
+            context.contentResolver.delete(saved.uri, null, null)
         }
     }
 
@@ -115,7 +120,7 @@ class MapSafeNavigationUiDeviceTest {
             onView(withText("Security & Sharing")).check(matches(isDisplayed()))
             onView(withText("Configure blockchain network")).perform(scrollTo(), click())
             onView(withText("Blockchain Network Settings")).check(matches(isDisplayed()))
-            onView(withText("mapsafe:v1:sha256:<64 lowercase hex>"))
+            onView(withText("<encrypted-package filename>_<64 lowercase hex>"))
                 .perform(scrollTo()).check(matches(isDisplayed()))
             onView(withText("Read-only Connection Check"))
                 .perform(scrollTo()).check(matches(isDisplayed()))
@@ -132,58 +137,33 @@ class MapSafeNavigationUiDeviceTest {
             onView(withContentDescription("Back")).check(matches(isDisplayed())).perform(click())
             assertMainChooser()
 
-            onView(withText("Safeguard Features")).perform(click())
+            onView(withContentDescription("Open Halo Masking")).perform(click())
             onView(withText("Select a dataset first")).check(matches(isDisplayed()))
             onView(withText("Load sample dataset")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Anonymise")).perform(click())
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Halo Masking")).perform(click())
             pressBack()
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Back")).perform(click())
             assertMainChooser()
 
-            onView(withText("Safeguard Features")).perform(click())
-            onView(withText("Encrypt")).perform(click())
-            onView(withContentDescription("Safeguard progress: 2 of 3, Encrypt"))
-                .check(matches(isDisplayed()))
+            onView(withContentDescription("Open Encrypt")).perform(scrollTo(), click())
+            onView(withText("Choose Datasets to Encrypt")).check(matches(isDisplayed()))
             onView(withText("Back")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Encrypt")).perform(click())
-            onView(withText("Encrypt another file")).perform(click())
+            assertMainChooser()
+            onView(withContentDescription("Open Encrypt")).perform(scrollTo(), click())
+            onView(withText("Choose Another File")).perform(scrollTo(), click())
             onView(withText("Encrypt & Protect")).check(matches(isDisplayed()))
             onView(withContentDescription("Safeguard progress: 2 of 3, Encrypt"))
                 .check(matches(isDisplayed()))
             onView(withContentDescription("Back")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Blockchain Notarisation")).perform(click())
+            assertMainChooser()
+            onView(withContentDescription("Open Notarise Package")).perform(scrollTo(), click())
             onView(withContentDescription("Back")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Back")).perform(click())
             assertMainChooser()
 
-            onView(withText("Access Features")).perform(click())
-            onView(withText("1  Verify Record")).check(matches(isDisplayed()))
-            onView(withText("2  Decrypt")).check(matches(isDisplayed()))
-            onView(withText("3  Access Dataset")).check(matches(isDisplayed()))
-            onView(withText("Access datasets")).check(matches(isEnabled())).perform(click())
-            onView(withText("Access Datasets")).check(matches(isDisplayed()))
-            onView(withContentDescription("Access progress: 3 of 3, Access"))
-                .check(matches(isDisplayed()))
-            onView(withText("Back")).perform(click())
-            onView(withText("Access Features")).check(matches(isDisplayed()))
-            onView(withText("Decrypt")).perform(click())
-            onView(withText("Back")).perform(click())
-            onView(withText("Access Features")).check(matches(isDisplayed()))
-            onView(withText("Decrypt")).perform(click())
-            onView(withText("Open")).perform(click())
-            onView(withText("Decrypt & Access")).check(matches(isDisplayed()))
-            onView(withContentDescription("Access progress: 2 of 3, Decrypt"))
-                .check(matches(isDisplayed()))
-            onView(withContentDescription("Safeguard progress: 2 of 3, Encrypt"))
-                .check(doesNotExist())
-            onView(withContentDescription("Back")).perform(click())
-            onView(withText("Access Features")).check(matches(isDisplayed()))
-            onView(withText("Verify")).perform(click())
+            onView(withText("Access")).perform(click())
+            onView(withText("Community Packages")).check(matches(isDisplayed()))
+            onView(withText("Verify Encrypted File")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Verify Encrypted File")).perform(click())
             onView(withText("Verification")).check(matches(isDisplayed()))
             onView(withContentDescription("Access progress: 1 of 3, Verify"))
                 .check(matches(isDisplayed()))
@@ -206,8 +186,7 @@ class MapSafeNavigationUiDeviceTest {
             onView(withText("Continue Securely")).check(doesNotExist())
             onView(withText("Configure blockchain network")).check(doesNotExist())
             pressBack()
-            onView(withText("Access Features")).check(matches(isDisplayed()))
-            onView(withText("Back")).perform(click())
+            onView(withContentDescription("Access tab, selected")).check(matches(isDisplayed()))
             assertMainChooser()
 
             MapSafeDeviceTestSupport.production(
@@ -247,7 +226,7 @@ class MapSafeNavigationUiDeviceTest {
             onView(withText("Halo Masking")).check(matches(isDisplayed()))
             onView(withText(containsString("Min:"))).check(matches(isDisplayed()))
             onView(withContentDescription("Back")).perform(click())
-            onView(withText("Configure Halo Masking")).check(matches(isDisplayed()))
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
         }
     }
 
@@ -258,8 +237,9 @@ class MapSafeNavigationUiDeviceTest {
     }
 
     private fun assertMainChooser() {
-        onView(withText("Choose a workflow")).check(matches(isDisplayed()))
+        onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
         onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
         onView(withText("Protect & Share (guided workflow)")).check(doesNotExist())
     }
+
 }

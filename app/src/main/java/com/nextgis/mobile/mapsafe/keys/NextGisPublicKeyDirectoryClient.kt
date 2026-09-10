@@ -7,16 +7,18 @@ import com.nextgis.maplib.util.AccountUtil
 import com.nextgis.maplib.util.HttpResponse
 import com.nextgis.maplib.util.NGWUtil
 import com.nextgis.maplib.util.NetworkUtil
+import com.nextgis.mobile.mapsafe.community.CommunityArtifactType
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpException
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityNames
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublicKeyClient
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URLEncoder
-import java.time.Instant
 import java.util.UUID
 
 /** NextGIS Web adapter for publishing and discovering MapSafe public keys. */
@@ -113,47 +115,45 @@ class NextGisPublicKeyDirectoryClient(
         }
 
         val directory = findOrCreateDirectory(account, authGroup)
-        val bucketKey = personalBucketKey(groupId, currentUser.id)
-        val existingBucket = findResourceByKey(account, bucketKey)?.also { resource ->
-            if (resource.cls != FILE_BUCKET_CLASS || resource.parentId != directory.id) {
-                throw OpenPgpException("The reserved MapSafe key resource has an unexpected type or parent.")
-            }
-            if (resource.ownerUserId != currentUser.id) {
-                throw OpenPgpException("Another user owns the reserved key bucket. Ask the NextGIS administrator to resolve it.")
-            }
-        }
-        val previousManifest = existingBucket?.let { bucket ->
-            runCatching { readManifest(account, bucket.id) }.getOrNull()
-        }
-        val keyVersion = when {
-            previousManifest == null -> 1
-            previousManifest.fingerprint == fingerprint -> previousManifest.keyVersion.coerceAtLeast(1)
-            else -> previousManifest.keyVersion.coerceAtLeast(1) + 1
-        }
-        val publishedAt = Instant.now().toString()
-        val manifest = KeyDirectoryManifest(
-            identityId = UUID.nameUUIDFromBytes(
-                "${normalizeServer(account.url)}|$groupId|${currentUser.id}".toByteArray(Charsets.UTF_8)
-            ).toString(),
-            nextgisUserId = currentUser.id,
-            nextgisGroupId = groupId,
-            nextgisKeyname = currentUser.keyname,
-            displayName = currentUser.displayName,
-            fingerprint = fingerprint,
-            keyVersion = keyVersion,
-            algorithm = "OpenPGP-${ring.publicKey.bitStrength}",
-            createdAt = ring.publicKey.creationTime.toInstant().toString(),
-            publishedAt = publishedAt,
-            status = "active",
-            publicKeyFile = PUBLIC_KEY_FILE
+        val selection = MapSafeSecurityPreferences.Selection(
+            accountName = accountName,
+            serverUrl = normalizeServer(account.url),
+            groupId = groupId,
+            groupName = authGroup.displayName,
+            currentUserId = currentUser.id,
+            groupMemberCount = authGroup.memberIds.size
         )
-
-        val uploads = uploadDirectoryFiles(account, publicKey, manifest.toJson().toString(2).toByteArray())
-        val bucketId = if (existingBucket == null) {
-            createFileBucket(account, directory.id, bucketKey, currentUser, manifest, uploads)
-        } else {
-            updateFileBucket(account, existingBucket.id, manifest, uploads)
-            existingBucket.id
+        val existingRecords = NextGisCommunityPublicKeyClient(context)
+            .listPublicKeys(selection)
+            .filter { it.publisherId == currentUser.id }
+        val current = existingRecords
+            .filter { it.status == "active" }
+            .maxWithOrNull(compareBy({ it.keyVersion }, { it.createdAt }, { it.featureId }))
+        if (current?.fingerprint == fingerprint) {
+            return PublicKeyPublishResult(
+                groupId = groupId,
+                userId = currentUser.id,
+                fingerprint = fingerprint,
+                keyVersion = current.keyVersion,
+                directoryResourceId = directory.id,
+                bucketResourceId = current.registryResourceId
+            )
+        }
+        val keyVersion = (existingRecords.maxOfOrNull { it.keyVersion } ?: 0) + 1
+        val publicFile = File.createTempFile("mapsafe-public-", ".asc", context.cacheDir)
+        val published = try {
+            publicFile.writeBytes(publicKey)
+            NextGisCommunityPublisher(context).publishAttachedFile(
+                selection = selection,
+                source = publicFile,
+                fileName = PUBLIC_KEY_FILE,
+                mimeType = "application/pgp-keys",
+                artifactType = CommunityArtifactType.PUBLIC_KEY,
+                fingerprint = fingerprint,
+                keyVersion = keyVersion
+            )
+        } finally {
+            publicFile.delete()
         }
         return PublicKeyPublishResult(
             groupId = groupId,
@@ -161,7 +161,7 @@ class NextGisPublicKeyDirectoryClient(
             fingerprint = fingerprint,
             keyVersion = keyVersion,
             directoryResourceId = directory.id,
-            bucketResourceId = bucketId
+            bucketResourceId = published.resourceId
         )
     }
 
@@ -169,84 +169,58 @@ class NextGisPublicKeyDirectoryClient(
         require(groupId > 0) { "NextGIS group ID must be greater than zero." }
         val account = account(accountName)
         val group = authGroup(account, groupId)
+        val signedInUser = currentUser(account)
         val memberNames = memberNames(account, group.memberIds)
-        val directory = findResourceByKey(account, directoryKey(groupId))
         val syncedAt = System.currentTimeMillis()
-        if (directory == null) {
-            exchangeRepository.markDirectoryPresence(
-                account.url,
-                groupId,
-                group.memberIds,
-                emptySet(),
-                syncedAt
-            )
-            return PublicKeySyncReport(
-                groupId,
-                exchangeRepository.records(account.url, groupId),
-                group.memberIds,
-                emptyList(),
-                syncedAt,
-                memberNames
-            )
-        }
-        if (directory.cls != RESOURCE_GROUP_CLASS) {
-            throw OpenPgpException("The reserved MapSafe key directory is not a NextGIS resource group.")
-        }
-
-        val invalid = mutableListOf<String>()
-        val candidates = mutableListOf<DirectoryCandidate>()
-        childResources(account, directory.id)
-            .filter { it.cls == FILE_BUCKET_CLASS }
-            .forEach { bucket ->
-                runCatching {
-                    val manifest = readManifest(account, bucket.id)
-                    validateManifest(manifest, bucket, group)
-                    val bytes = downloadResourceFile(account, bucket.id, manifest.publicKeyFile, MAX_PUBLIC_KEY_BYTES)
-                    val ring = OpenPgpKeyCodec.decodePublicKeyRing(bytes)
-                    val actual = OpenPgpKeyCodec.fingerprint(ring.publicKey.fingerprint)
-                    if (actual != manifest.fingerprint) {
-                        throw OpenPgpException("published fingerprint does not match the key")
-                    }
-                    if (manifest.status == "active" && OpenPgpKeyCodec.findEncryptionKey(ring) == null) {
-                        throw OpenPgpException("public key has no usable encryption key")
-                    }
-                    DirectoryCandidate(bucket, manifest, bytes)
-                }.onSuccess(candidates::add).onFailure { error ->
-                    invalid += "Bucket ${bucket.id}: ${error.message ?: "invalid key entry"}"
-                }
+        val selection = MapSafeSecurityPreferences.Selection(
+            accountName = accountName,
+            serverUrl = normalizeServer(account.url),
+            groupId = groupId,
+            groupName = group.displayName,
+            currentUserId = signedInUser.id,
+            groupMemberCount = group.memberIds.size
+        )
+        val publicKeyClient = NextGisCommunityPublicKeyClient(context)
+        val newestByUser = publicKeyClient.listPublicKeys(selection)
+            .filter { it.publisherId in group.memberIds }
+            .groupBy { it.publisherId }
+            .mapNotNull { (_, records) ->
+                records.maxWithOrNull(compareBy({ it.keyVersion }, { it.createdAt }, { it.featureId }))
             }
-
-        val duplicateUsers = candidates.groupingBy { it.manifest.nextgisUserId }
-            .eachCount()
-            .filterValues { it > 1 }
-            .keys
-        if (duplicateUsers.isNotEmpty()) {
-            invalid += duplicateUsers.sorted().map { "User $it has duplicate public-key buckets." }
-        }
-
-        val records = candidates
-            .filterNot { it.manifest.nextgisUserId in duplicateUsers }
-            .map { candidate ->
-                val manifest = candidate.manifest
+        val invalid = mutableListOf<String>()
+        val records = newestByUser.mapNotNull { remote ->
+            runCatching {
+                val bytes = publicKeyClient.downloadPublicKey(selection, remote)
+                val ring = OpenPgpKeyCodec.decodePublicKeyRing(bytes)
+                val actual = OpenPgpKeyCodec.fingerprint(ring.publicKey.fingerprint)
+                if (actual != remote.fingerprint) {
+                    throw OpenPgpException("published fingerprint does not match the public key")
+                }
+                if (remote.status == "active" && OpenPgpKeyCodec.findEncryptionKey(ring) == null) {
+                    throw OpenPgpException("public key has no usable encryption key")
+                }
                 exchangeRepository.observe(
                     PublicKeyObservation(
                         identity = PublicKeyDirectoryIdentity(
                             serverUrl = account.url,
                             accountName = accountName,
                             groupId = groupId,
-                            userId = manifest.nextgisUserId
+                            userId = remote.publisherId
                         ),
-                        displayName = manifest.displayName,
-                        fingerprint = manifest.fingerprint,
-                        keyVersion = manifest.keyVersion,
-                        bucketId = candidate.bucket.id,
-                        publishedAt = manifest.publishedAt,
-                        directoryStatus = manifest.status
+                        displayName = remote.publisherName,
+                        fingerprint = remote.fingerprint,
+                        keyVersion = remote.keyVersion,
+                        bucketId = remote.registryResourceId,
+                        publishedAt = remote.createdAt,
+                        directoryStatus = remote.status
                     ),
-                    candidate.publicKey,
+                    bytes,
                     syncedAt
                 )
-            }
+            }.onFailure { error ->
+                invalid += "Public-key record ${remote.recordId}: ${error.message ?: "invalid key entry"}"
+            }.getOrNull()
+        }
         val observedUsers = records.mapTo(mutableSetOf()) { it.identity.userId }
         exchangeRepository.markDirectoryPresence(
             account.url,
@@ -265,105 +239,81 @@ class NextGisPublicKeyDirectoryClient(
         )
     }
 
-    private fun validateManifest(
-        manifest: KeyDirectoryManifest,
-        bucket: NextGisResource,
-        group: NextGisAuthGroup
-    ) {
-        if (manifest.nextgisGroupId != group.id) throw OpenPgpException("manifest group ID is incorrect")
-        if (manifest.nextgisUserId !in group.memberIds) throw OpenPgpException("publisher is not a current group member")
-        if (manifest.nextgisUserId != bucket.ownerUserId) throw OpenPgpException("manifest user does not own the bucket")
-        if (manifest.keyVersion < 1) throw OpenPgpException("manifest key version is invalid")
-        if (manifest.status !in DIRECTORY_STATUSES) throw OpenPgpException("manifest status is invalid")
-        if (manifest.publicKeyFile != PUBLIC_KEY_FILE) throw OpenPgpException("manifest public-key filename is invalid")
+    private fun findOrCreateDirectory(account: AccountUtil.AccountData, group: NextGisAuthGroup): NextGisResource {
+        val root = findOrCreateResourceGroup(
+            account = account,
+            parentId = ROOT_RESOURCE_ID,
+            displayName = "MapSafe",
+            keyname = NextGisCommunityNames.rootKey,
+            description = "MapSafe community resources. Private keys and passphrases are never stored here.",
+            permissions = JSONArray().put(permission(group.id, "read", propagate = false))
+        )
+        val community = findOrCreateResourceGroup(
+            account = account,
+            parentId = root.id,
+            displayName = group.displayName,
+            keyname = NextGisCommunityNames.communityKey(group.id),
+            description = "MapSafe resources for NextGIS authentication group ${group.id}.",
+            permissions = JSONArray()
+                .put(permission(group.id, "read", propagate = false))
+                .put(permission(group.id, "create", propagate = false))
+        )
+        return findOrCreateResourceGroup(
+            account = account,
+            parentId = community.id,
+            displayName = "Public Keys",
+            keyname = directoryKey(group.id),
+            description = "Public OpenPGP keys for NextGIS authentication group ${group.id}. No private keys.",
+            permissions = JSONArray()
+                .put(permission(group.id, "read", propagate = false))
+                .put(permission(group.id, "create", propagate = false))
+        )
     }
 
-    private fun findOrCreateDirectory(account: AccountUtil.AccountData, group: NextGisAuthGroup): NextGisResource {
-        findResourceByKey(account, directoryKey(group.id))?.let { existing ->
-            if (existing.cls != RESOURCE_GROUP_CLASS) {
-                throw OpenPgpException("The reserved MapSafe key directory name is used by another resource type.")
-            }
+    private fun findOrCreateResourceGroup(
+        account: AccountUtil.AccountData,
+        parentId: Long,
+        displayName: String,
+        keyname: String,
+        description: String,
+        permissions: JSONArray? = null
+    ): NextGisResource {
+        findResourceByKey(account, keyname)?.let { existing ->
+            validateResourceGroup(existing, parentId, keyname)
             return existing
         }
-        val permissions = JSONArray()
-            .put(permission(group.id, "read", propagate = true))
-            .put(permission(group.id, "read", propagate = true, scope = "data"))
-            .put(permission(group.id, "create", propagate = false))
-            .put(permission(group.id, "manage_children", propagate = false))
-        val payload = JSONObject().put(
-            "resource",
-            JSONObject()
-                .put("cls", RESOURCE_GROUP_CLASS)
-                .put("parent", JSONObject().put("id", 0))
-                .put("display_name", "MapSafe public keys — ${group.displayName}")
-                .put("keyname", directoryKey(group.id))
-                .put("description", "Public OpenPGP keys for NextGIS authentication group ${group.id}. No private keys.")
-                .put("permissions", permissions)
+        val resource = JSONObject()
+            .put("cls", RESOURCE_GROUP_CLASS)
+            .put("parent", JSONObject().put("id", parentId))
+            .put("display_name", displayName)
+            .put("keyname", keyname)
+            .put("description", description)
+        permissions?.let { resource.put("permissions", it) }
+        val response = postJson(
+            account,
+            resourceCollectionUrl(account),
+            JSONObject().put("resource", resource)
         )
-        val response = postJson(account, resourceCollectionUrl(account), payload)
         if (!response.isOk) {
-            findResourceByKey(account, directoryKey(group.id))?.let { raced ->
-                if (raced.cls != RESOURCE_GROUP_CLASS) {
-                    throw OpenPgpException("The reserved MapSafe key directory name is used by another resource type.")
-                }
+            findResourceByKey(account, keyname)?.let { raced ->
+                validateResourceGroup(raced, parentId, keyname)
                 return raced
             }
             throw httpError(
-                "Could not create the MapSafe key directory. Ask an administrator to create it and grant group access",
+                "Could not create the $displayName Web GIS resource group. " +
+                    "Ask the community administrator to create the MapSafe hierarchy and grant access",
                 response
             )
         }
-        val id = JSONObject(response.responseBody).getLong("id")
-        return getResource(account, id)
+        return getResource(account, JSONObject(response.responseBody).getLong("id"))
     }
 
-    private fun createFileBucket(
-        account: AccountUtil.AccountData,
-        parentId: Long,
-        keyname: String,
-        user: NextGisUser,
-        manifest: KeyDirectoryManifest,
-        uploads: JSONArray
-    ): Long {
-        val resource = JSONObject()
-            .put("cls", FILE_BUCKET_CLASS)
-            .put("parent", JSONObject().put("id", parentId))
-            .put("display_name", "MapSafe public key — ${user.displayName}")
-            .put("keyname", keyname)
-            .put("description", "Public OpenPGP key for NextGIS user ${user.id}. No private key material.")
-        val payload = JSONObject()
-            .put("resource", resource)
-            .put("file_bucket", JSONObject().put("files", uploads))
-            .put("resmeta", metadata(manifest))
-        val response = postJson(account, resourceCollectionUrl(account), payload)
-        if (!response.isOk) throw httpError("Could not create the user's NextGIS file bucket", response)
-        return JSONObject(response.responseBody).getLong("id")
-    }
-
-    private fun updateFileBucket(
-        account: AccountUtil.AccountData,
-        bucketId: Long,
-        manifest: KeyDirectoryManifest,
-        uploads: JSONArray
-    ) {
-        val payload = JSONObject()
-            .put("file_bucket", JSONObject().put("files", uploads))
-            .put("resmeta", metadata(manifest))
-        val response = putJson(account, resourceUrl(account, bucketId), payload)
-        if (!response.isOk) throw httpError("Could not update the user's NextGIS public-key bucket", response)
-    }
-
-    private fun metadata(manifest: KeyDirectoryManifest): JSONObject {
-        return JSONObject().put(
-            "items",
-            JSONObject()
-                .put("mapsafe.schema", MANIFEST_SCHEMA)
-                .put("mapsafe.nextgis_group_id", manifest.nextgisGroupId)
-                .put("mapsafe.nextgis_user_id", manifest.nextgisUserId)
-                .put("mapsafe.fingerprint", manifest.fingerprint)
-                .put("mapsafe.key_version", manifest.keyVersion)
-                .put("mapsafe.status", manifest.status)
-        )
+    private fun validateResourceGroup(resource: NextGisResource, parentId: Long, keyname: String) {
+        if (resource.cls != RESOURCE_GROUP_CLASS || resource.parentId != parentId) {
+            throw OpenPgpException(
+                "The reserved NextGIS resource $keyname has an unexpected type or parent."
+            )
+        }
     }
 
     private fun permission(
@@ -379,88 +329,6 @@ class NextGisPublicKeyDirectoryClient(
             .put("scope", scope)
             .put("permission", permission)
             .put("propagate", propagate)
-    }
-
-    private fun uploadDirectoryFiles(
-        account: AccountUtil.AccountData,
-        publicKey: ByteArray,
-        manifest: ByteArray
-    ): JSONArray {
-        val publicFile = File.createTempFile("mapsafe-public-", ".asc", context.cacheDir)
-        val manifestFile = File.createTempFile("mapsafe-key-metadata-", ".json", context.cacheDir)
-        return try {
-            publicFile.writeBytes(publicKey)
-            manifestFile.writeBytes(manifest)
-            JSONArray()
-                .put(uploadFile(account, PUBLIC_KEY_FILE, publicFile, "application/pgp-keys"))
-                .put(uploadFile(account, MANIFEST_FILE, manifestFile, "application/json"))
-        } finally {
-            publicFile.delete()
-            manifestFile.delete()
-        }
-    }
-
-    private fun uploadFile(
-        account: AccountUtil.AccountData,
-        fileName: String,
-        file: File,
-        mimeType: String
-    ): JSONObject {
-        val response = NetworkUtil.postFileOld(
-            NGWUtil.getFileUploadUrlViaTus(account.url),
-            fileName,
-            file,
-            mimeType,
-            account.login,
-            account.password,
-            true
-        )
-        if (!response.isOk) throw httpError("Could not upload $fileName", response)
-        val body = JSONObject(response.responseBody)
-        val uploaded = if (body.has("upload_meta")) {
-            body.getJSONArray("upload_meta").getJSONObject(0)
-        } else {
-            body
-        }
-        return JSONObject(uploaded.toString()).put("name", fileName)
-    }
-
-    private fun readManifest(account: AccountUtil.AccountData, bucketId: Long): KeyDirectoryManifest {
-        val bytes = downloadResourceFile(account, bucketId, MANIFEST_FILE, MAX_MANIFEST_BYTES)
-        return KeyDirectoryManifest.fromJson(JSONObject(bytes.toString(Charsets.UTF_8)))
-    }
-
-    private fun downloadResourceFile(
-        account: AccountUtil.AccountData,
-        resourceId: Long,
-        fileName: String,
-        maximumBytes: Int
-    ): ByteArray {
-        val encoded = URLEncoder.encode(fileName, Charsets.UTF_8.name()).replace("+", "%20")
-        val url = "${resourceUrl(account, resourceId)}/file/$encoded"
-        val connection = NetworkUtil.getHttpConnection("GET", url, account.login, account.password)
-            ?: throw OpenPgpException("Could not open the NextGIS public-key download.")
-        try {
-            val status = connection.responseCode
-            if (status != HttpURLConnection.HTTP_OK) {
-                throw OpenPgpException("NextGIS returned HTTP $status while downloading $fileName.")
-            }
-            connection.inputStream.use { input ->
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    if (total > maximumBytes) throw OpenPgpException("Downloaded $fileName exceeds the size limit.")
-                    output.write(buffer, 0, count)
-                }
-                return output.toByteArray()
-            }
-        } finally {
-            connection.disconnect()
-        }
     }
 
     private fun currentUser(account: AccountUtil.AccountData): NextGisUser {
@@ -519,13 +387,6 @@ class NextGisPublicKeyDirectoryClient(
         return resourceFromJson(array.getJSONObject(0))
     }
 
-    private fun childResources(account: AccountUtil.AccountData, parentId: Long): List<NextGisResource> {
-        val array = getArray(account, "${server(account)}/api/resource/?parent=$parentId")
-        return buildList {
-            for (index in 0 until array.length()) add(resourceFromJson(array.getJSONObject(index)))
-        }
-    }
-
     private fun getResource(account: AccountUtil.AccountData, id: Long): NextGisResource {
         return resourceFromJson(getObject(account, resourceUrl(account, id)))
     }
@@ -553,10 +414,6 @@ class NextGisPublicKeyDirectoryClient(
         return NetworkUtil.post(url, json.toString(), account.login, account.password, true)
     }
 
-    private fun putJson(account: AccountUtil.AccountData, url: String, json: JSONObject): HttpResponse {
-        return NetworkUtil.put(url, json.toString(), account.login, account.password, true)
-    }
-
     private fun requireOk(response: HttpResponse, action: String): String {
         if (!response.isOk) throw httpError(action, response)
         return response.responseBody ?: throw OpenPgpException("$action: NextGIS returned an empty response.")
@@ -578,8 +435,7 @@ class NextGisPublicKeyDirectoryClient(
     private fun resourceCollectionUrl(account: AccountUtil.AccountData): String = "${server(account)}/api/resource/"
     private fun resourceUrl(account: AccountUtil.AccountData, id: Long): String = "${server(account)}/api/resource/$id"
     private fun normalizeServer(url: String): String = NGWUtil.getServerUrl(url).trimEnd('/')
-    private fun directoryKey(groupId: Long): String = "mapsafe_keys_$groupId"
-    private fun personalBucketKey(groupId: Long, userId: Long): String = "mapsafe_pk_g${groupId}_u$userId"
+    private fun directoryKey(groupId: Long): String = NextGisCommunityNames.publicKeysKey(groupId)
     private fun groupKeyname(displayName: String): String {
         val stem = displayName.lowercase()
             .replace(Regex("[^a-z0-9]+"), "_")
@@ -604,85 +460,9 @@ class NextGisPublicKeyDirectoryClient(
         val ownerUserId: Long,
         val keyname: String?
     )
-    private data class DirectoryCandidate(
-        val bucket: NextGisResource,
-        val manifest: KeyDirectoryManifest,
-        val publicKey: ByteArray
-    )
-
-    private data class KeyDirectoryManifest(
-        val identityId: String,
-        val nextgisUserId: Long,
-        val nextgisGroupId: Long,
-        val nextgisKeyname: String,
-        val displayName: String,
-        val fingerprint: String,
-        val keyVersion: Int,
-        val algorithm: String,
-        val createdAt: String,
-        val publishedAt: String,
-        val status: String,
-        val publicKeyFile: String
-    ) {
-        fun toJson(): JSONObject = JSONObject()
-            .put("schema", MANIFEST_SCHEMA)
-            .put("identityId", identityId)
-            .put("nextgisUserId", nextgisUserId)
-            .put("nextgisGroupId", nextgisGroupId)
-            .put("nextgisKeyname", nextgisKeyname)
-            .put("displayName", displayName)
-            .put("fingerprint", fingerprint)
-            .put("keyVersion", keyVersion)
-            .put("algorithm", algorithm)
-            .put("createdAt", createdAt)
-            .put("publishedAt", publishedAt)
-            .put("status", status)
-            .put("publicKeyFile", publicKeyFile)
-
-        companion object {
-            fun fromJson(json: JSONObject): KeyDirectoryManifest {
-                if (json.getString("schema") != MANIFEST_SCHEMA) {
-                    throw OpenPgpException("unsupported key manifest schema")
-                }
-                val fingerprint = json.getString("fingerprint").replace(" ", "").uppercase()
-                if (!fingerprint.matches(Regex("(?:[0-9A-F]{40}|[0-9A-F]{64})"))) {
-                    throw OpenPgpException("manifest fingerprint is invalid")
-                }
-                val identityId = json.getString("identityId")
-                val createdAt = json.getString("createdAt")
-                val publishedAt = json.getString("publishedAt")
-                runCatching { UUID.fromString(identityId) }
-                    .getOrElse { throw OpenPgpException("manifest identity ID is invalid", it) }
-                runCatching { Instant.parse(createdAt) }
-                    .getOrElse { throw OpenPgpException("manifest creation timestamp is invalid", it) }
-                runCatching { Instant.parse(publishedAt) }
-                    .getOrElse { throw OpenPgpException("manifest publication timestamp is invalid", it) }
-                return KeyDirectoryManifest(
-                    identityId = identityId,
-                    nextgisUserId = json.getLong("nextgisUserId"),
-                    nextgisGroupId = json.getLong("nextgisGroupId"),
-                    nextgisKeyname = json.getString("nextgisKeyname"),
-                    displayName = json.getString("displayName"),
-                    fingerprint = fingerprint,
-                    keyVersion = json.getInt("keyVersion"),
-                    algorithm = json.getString("algorithm"),
-                    createdAt = createdAt,
-                    publishedAt = publishedAt,
-                    status = json.getString("status").lowercase(),
-                    publicKeyFile = json.getString("publicKeyFile")
-                )
-            }
-        }
-    }
-
     companion object {
-        private const val MANIFEST_SCHEMA = "mapsafe-key-directory/v1"
+        private const val ROOT_RESOURCE_ID = 0L
         private const val PUBLIC_KEY_FILE = "public-key.asc"
-        private const val MANIFEST_FILE = "key-metadata.json"
         private const val RESOURCE_GROUP_CLASS = "resource_group"
-        private const val FILE_BUCKET_CLASS = "file_bucket"
-        private const val MAX_PUBLIC_KEY_BYTES = 1024 * 1024
-        private const val MAX_MANIFEST_BYTES = 64 * 1024
-        private val DIRECTORY_STATUSES = setOf("active", "superseded", "revoked")
     }
 }

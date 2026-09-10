@@ -1,0 +1,500 @@
+{
+  "type": "FeatureCollection",
+  "name": "north-whangarei-infected-trees",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "mapsafe_provenance": {
+    "source_archive_sha256": "958838d456e3d97448c4abc129e0b34844f96339459aab1a0cca99b2abb1408a",
+    "coordinate_policy": "Coordinates preserved exactly from POINT.shp",
+    "attribute_policy": "Demonstration attributes are synthetic and were not present in POINT.dbf"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.93337916559773,
+          -35.57002346666512
+        ]
+      },
+      "properties": {
+        "tree_id": 1,
+        "site_code": "NW-001",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.96101133434405,
+          -35.57985617883377
+        ]
+      },
+      "properties": {
+        "tree_id": 2,
+        "site_code": "NW-002",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.93337916559773,
+          -35.57845157956337
+        ]
+      },
+      "properties": {
+        "tree_id": 3,
+        "site_code": "NW-003",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.92992514450435,
+          -35.59390081663802
+        ]
+      },
+      "properties": {
+        "tree_id": 4,
+        "site_code": "NW-004",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 5,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.95755731325073,
+          -35.59109208616308
+        ]
+      },
+      "properties": {
+        "tree_id": 5,
+        "site_code": "NW-005",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 6,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.000732576916,
+          -35.58687880567733
+        ]
+      },
+      "properties": {
+        "tree_id": 6,
+        "site_code": "NW-006",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 7,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.98173546090186,
+          -35.59390081663802
+        ]
+      },
+      "properties": {
+        "tree_id": 7,
+        "site_code": "NW-007",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 8,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.92647112341103,
+          -35.62900163138633
+        ]
+      },
+      "properties": {
+        "tree_id": 8,
+        "site_code": "NW-008",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 9,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.0041865980093,
+          -35.61636711237494
+        ]
+      },
+      "properties": {
+        "tree_id": 9,
+        "site_code": "NW-009",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 10,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.97137339762395,
+          -35.63321269408039
+        ]
+      },
+      "properties": {
+        "tree_id": 10,
+        "site_code": "NW-010",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 11,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.8781148281069,
+          -35.606538884176196
+        ]
+      },
+      "properties": {
+        "tree_id": 11,
+        "site_code": "NW-011",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 12,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.05081588276772,
+          -35.550354421800535
+        ]
+      },
+      "properties": {
+        "tree_id": 12,
+        "site_code": "NW-012",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 13,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.8781148281069,
+          -35.636019945965955
+        ]
+      },
+      "properties": {
+        "tree_id": 13,
+        "site_code": "NW-013",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 14,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.0542699037934,
+          -35.65847441400945
+        ]
+      },
+      "properties": {
+        "tree_id": 14,
+        "site_code": "NW-014",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 15,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.11298826237947,
+          -35.68653361912114
+        ]
+      },
+      "properties": {
+        "tree_id": 15,
+        "site_code": "NW-015",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 16,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.83321255382833,
+          -35.65145807158753
+        ]
+      },
+      "properties": {
+        "tree_id": 16,
+        "site_code": "NW-016",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 17,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.79867234289532,
+          -35.668296257825766
+        ]
+      },
+      "properties": {
+        "tree_id": 17,
+        "site_code": "NW-017",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 18,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.83148554328068,
+          -35.672505249581924
+        ]
+      },
+      "properties": {
+        "tree_id": 18,
+        "site_code": "NW-018",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 19,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.05945093543443,
+          -35.48709981118292
+        ]
+      },
+      "properties": {
+        "tree_id": 19,
+        "site_code": "NW-019",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 20,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.06463196707335,
+          -35.49834871855627
+        ]
+      },
+      "properties": {
+        "tree_id": 20,
+        "site_code": "NW-020",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 21,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.1060802201929,
+          -35.62198270341025
+        ]
+      },
+      "properties": {
+        "tree_id": 21,
+        "site_code": "NW-021",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 22,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173.81248842726848,
+          -35.68092256725563
+        ]
+      },
+      "properties": {
+        "tree_id": 22,
+        "site_code": "NW-022",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 23,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174.08708310418075,
+          -35.624790349658454
+        ]
+      },
+      "properties": {
+        "tree_id": 23,
+        "site_code": "NW-023",
+        "observation": "Fictional infected-tree location",
+        "record_status": "Synthetic case-study record",
+        "sensitivity": "Precise location restricted",
+        "data_guardian": "Steven (field data custodian)",
+        "community": "North Whangarei biodiversity community",
+        "source_study": "Sharma et al. (2024), doi:10.1111/tgis.13153"
+      }
+    }
+  ]
+}

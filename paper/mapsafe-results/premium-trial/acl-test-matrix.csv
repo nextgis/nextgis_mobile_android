@@ -1,0 +1,8 @@
+resource_or_action,steven_guardian,amber_precise_recipient,bma_representative,external_non_member,acceptance_evidence
+MapSafe community folder,read,read,read,denied,API and browser
+Public-key directory,read and publish own key,read and publish own key,read and publish own key,denied,three key records visible only to group
+Halo-masked layer,read and download,read and download,read and download,denied,23 downloaded features
+Hexagonal aggregate,read and download,read and download,read and download,denied,multiple occupied cells
+Steven protected-original package,read and download,read and download,not listed and direct read denied,denied,per-package resource ACL
+Protected-original decryption,success,success,not possible,not possible,exact recovered bytes and valid Steven signature
+Package audience metadata,contains Steven and Amber,contains Steven and Amber,not visible,not visible,NextGIS user IDs plus OpenPGP fingerprints

@@ -5,6 +5,7 @@ import com.nextgis.maplib.util.AccountUtil
 import com.nextgis.maplib.util.HttpResponse
 import com.nextgis.maplib.util.NGWUtil
 import com.nextgis.maplib.util.NetworkUtil
+import com.nextgis.mobile.mapsafe.blockchain.MapSafeIntegrityRecordCodec
 import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
 import com.nextgis.mobile.mapsafe.service.HashUtils
 import org.json.JSONArray
@@ -56,6 +57,11 @@ data class CommunityPublishResult(
     val status: String
 )
 
+data class CommunityNotarisationUpdateResult(
+    val communityName: String,
+    val updatedRecords: Int
+)
+
 class NextGisCommunityPublishException(message: String, cause: Throwable? = null) :
     Exception(message, cause)
 
@@ -73,12 +79,16 @@ class NextGisCommunityPublisher(context: Context) {
         selection: MapSafeSecurityPreferences.Selection,
         source: File,
         fileName: String,
-        artifactType: CommunityArtifactType
+        artifactType: CommunityArtifactType,
+        audience: CommunityArtifactAudience = CommunityArtifactAudience.community()
     ): CommunityPublishResult {
         require(artifactType.storage == CommunityArtifactStorage.NATIVE_LAYER) {
             "Only anonymised GeoJSON layers can be published as native vector resources."
         }
         requireReadableFile(source)
+        require(audience.mode == CommunityAudienceMode.COMMUNITY) {
+            "An anonymised layer is published to the selected community audience."
+        }
         val resolved = resolve(selection)
         val hierarchy = ensureHierarchy(resolved)
         requireCreatePermission(resolved.account, hierarchy.layers.id, "publish an anonymised layer")
@@ -102,11 +112,19 @@ class NextGisCommunityPublisher(context: Context) {
                     .put("display_name", displayNameWithoutExtension(safeName))
                     .put("keyname", NextGisCommunityNames.artifactKey(resolved.group.id, resolved.user.id, recordId))
                     .put("description", "${artifactType.displayName} published by MapSafe.")
+                    .put(
+                        "permissions",
+                        permissionsJson(
+                            NextGisCommunityAccessPolicy.communityReadableArtifact(resolved.group.id)
+                        )
+                    )
             )
             .put(
                 "vector_layer",
                 JSONObject()
                     .put("source", upload)
+                    // NextGIS Web currently requires EPSG:3857 as the target SRS
+                    // when a vector layer is created from an uploaded data source.
                     .put("srs", JSONObject().put("id", 3857))
                     .put("fix_errors", "SAFE")
                     .put("skip_errors", false)
@@ -144,7 +162,9 @@ class NextGisCommunityPublisher(context: Context) {
         mimeType: String,
         artifactType: CommunityArtifactType,
         fingerprint: String? = null,
-        blockchain: CommunityBlockchainReference? = null
+        keyVersion: Int? = null,
+        blockchain: CommunityBlockchainReference? = null,
+        audience: CommunityArtifactAudience? = null
     ): CommunityPublishResult {
         require(
             artifactType.storage == CommunityArtifactStorage.PUBLIC_KEYS ||
@@ -152,6 +172,11 @@ class NextGisCommunityPublisher(context: Context) {
         ) { "This artifact must be published as a native vector resource." }
         if (artifactType == CommunityArtifactType.PUBLIC_KEY) {
             require(!fingerprint.isNullOrBlank()) { "A public-key fingerprint is required." }
+        }
+        if (artifactType == CommunityArtifactType.ENCRYPTED_PACKAGE) {
+            require(audience?.isReadyForRestrictedUpload == true) {
+                "Confirm an audience whose OpenPGP recipients all map to accepted members of the selected NextGIS community."
+            }
         }
         requireReadableFile(source)
         val resolved = resolve(selection)
@@ -161,16 +186,24 @@ class NextGisCommunityPublisher(context: Context) {
             CommunityArtifactStorage.PACKAGES -> hierarchy.packages
             CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers use publishGeoJson().")
         }
-        val registry = ensurePublisherRegistry(resolved, parent, artifactType.storage)
-        requireDataWritePermission(resolved.account, registry.id, "publish ${artifactType.displayName.lowercase()}")
-
-        val safeName = safeFileName(
-            fileName,
-            if (artifactType == CommunityArtifactType.PUBLIC_KEY) "public-key.asc" else "mapsafe-package.pgp"
+        val safeName = if (artifactType == CommunityArtifactType.ENCRYPTED_PACKAGE) {
+            runCatching { MapSafeIntegrityRecordCodec.normalizeFileName(fileName) }
+                .getOrDefault("mapsafe-package.pgp")
+        } else {
+            safeFileName(fileName, "public-key.asc")
+        }
+        val recordId = UUID.randomUUID().toString()
+        val registry = ensurePublisherRegistry(
+            resolved = resolved,
+            parent = parent,
+            storage = artifactType.storage,
+            recordId = recordId,
+            fileName = safeName,
+            audience = audience
         )
+        requireDataWritePermission(resolved.account, registry.id, "publish ${artifactType.displayName.lowercase()}")
         val sha256 = HashUtils.sha256(source)
         val upload = uploadFile(resolved.account, safeName, source, mimeType)
-        val recordId = UUID.randomUUID().toString()
         val status = when {
             artifactType == CommunityArtifactType.PUBLIC_KEY -> STATUS_ACTIVE
             blockchain?.isRecorded == true -> STATUS_NOTARISED
@@ -187,11 +220,20 @@ class NextGisCommunityPublisher(context: Context) {
             .put(FIELD_CREATED_AT, Instant.now().toString())
             .put(FIELD_STATUS, status)
             .put(FIELD_FINGERPRINT, fingerprint.orEmpty())
+            .put(FIELD_KEY_VERSION, keyVersion?.coerceAtLeast(1)?.toString().orEmpty())
             .put(FIELD_NETWORK, blockchain?.networkName.orEmpty())
             .put(FIELD_CHAIN_ID, blockchain?.chainId?.toString().orEmpty())
             .put(FIELD_CONTRACT_ADDRESS, blockchain?.contractAddress.orEmpty())
             .put(FIELD_TRANSACTION_HASH, blockchain?.transactionHash.orEmpty())
             .put(FIELD_BLOCKCHAIN_URL, blockchain?.explorerUrl.orEmpty())
+            .put(
+                FIELD_RECIPIENT_USER_IDS,
+                audience?.recipientUserIds?.sorted()?.joinToString(",").orEmpty()
+            )
+            .put(
+                FIELD_RECIPIENT_FINGERPRINTS,
+                audience?.members?.map { it.fingerprint }?.sorted()?.joinToString(",").orEmpty()
+            )
         val featureResponse = postJson(
             resolved.account,
             "${resourceApiUrl(resolved.account, registry.id)}/feature/",
@@ -237,6 +279,84 @@ class NextGisCommunityPublisher(context: Context) {
         )
     }
 
+    /**
+     * Adds a confirmed blockchain reference to this publisher's matching package records.
+     *
+     * A package may be notarised after it was uploaded. Matching by the immutable SHA-256
+     * lets the Notarise screen complete that metadata without retaining a fragile feature ID.
+     */
+    fun updateEncryptedPackageNotarisation(
+        selection: MapSafeSecurityPreferences.Selection,
+        sha256: String,
+        blockchain: CommunityBlockchainReference
+    ): CommunityNotarisationUpdateResult {
+        val normalisedHash = sha256.lowercase()
+        require(SHA_256.matches(normalisedHash)) { "A valid encrypted-package SHA-256 is required." }
+        require(blockchain.isRecorded) { "A confirmed blockchain transaction reference is required." }
+        val resolved = resolve(selection)
+        val community = findResourceByKey(
+            resolved.account,
+            NextGisCommunityNames.communityKey(resolved.group.id)
+        ) ?: return CommunityNotarisationUpdateResult(resolved.group.displayName, 0)
+        val packages = findResourceByKey(
+            resolved.account,
+            NextGisCommunityNames.packagesKey(resolved.group.id)
+        ) ?: return CommunityNotarisationUpdateResult(resolved.group.displayName, 0)
+        if (packages.cls != RESOURCE_GROUP_CLASS || packages.parentId != community.id) {
+            throw NextGisCommunityPublishException(
+                "The selected community's encrypted-package directory is invalid."
+            )
+        }
+        var updated = 0
+        val registryPrefix = NextGisCommunityNames.packageRegistryPrefix(
+            resolved.group.id,
+            resolved.user.id
+        )
+        val registries = childResources(resolved.account, packages.id).filter {
+            it.cls == VECTOR_LAYER_CLASS &&
+                it.ownerUserId == resolved.user.id &&
+                it.keyname?.startsWith(registryPrefix) == true
+        }
+        for (registry in registries) {
+            requireDataWritePermission(resolved.account, registry.id, "update the package notarisation")
+            val features = getArray(
+                resolved.account,
+                "${resourceApiUrl(resolved.account, registry.id)}/feature/?dt_format=iso"
+            )
+            for (index in 0 until features.length()) {
+                val feature = features.getJSONObject(index)
+                val featureId = feature.optLong("id", -1L)
+                val fields = feature.optJSONObject("fields") ?: continue
+                val matches = featureId > 0L &&
+                    fields.optString(FIELD_ARTIFACT_TYPE) == CommunityArtifactType.ENCRYPTED_PACKAGE.wireName &&
+                    fields.optString(FIELD_SHA256).equals(normalisedHash, ignoreCase = true) &&
+                    fields.optLong(FIELD_PUBLISHER_ID, -1L) == resolved.user.id &&
+                    fields.optLong(FIELD_GROUP_ID, -1L) == resolved.group.id
+                if (!matches) continue
+
+                fields
+                    .put(FIELD_STATUS, STATUS_NOTARISED)
+                    .put(FIELD_NETWORK, blockchain.networkName.orEmpty())
+                    .put(FIELD_CHAIN_ID, blockchain.chainId?.toString().orEmpty())
+                    .put(FIELD_CONTRACT_ADDRESS, blockchain.contractAddress.orEmpty())
+                    .put(FIELD_TRANSACTION_HASH, blockchain.transactionHash.orEmpty())
+                    .put(FIELD_BLOCKCHAIN_URL, blockchain.explorerUrl.orEmpty())
+                val response = NetworkUtil.put(
+                    "${resourceApiUrl(resolved.account, registry.id)}/feature/$featureId",
+                    JSONObject().put("fields", fields).toString(),
+                    resolved.account.login,
+                    resolved.account.password,
+                    true
+                )
+                if (!response.isOk) {
+                    throw httpError("Could not update the MapSafe package notarisation", response)
+                }
+                updated++
+            }
+        }
+        return CommunityNotarisationUpdateResult(resolved.group.displayName, updated)
+    }
+
     private fun resolve(selection: MapSafeSecurityPreferences.Selection): ResolvedCommunity {
         if (!selection.hasGroup) {
             throw NextGisCommunityPublishException(
@@ -274,7 +394,7 @@ class NextGisCommunityPublisher(context: Context) {
             displayName = "MapSafe",
             keyname = NextGisCommunityNames.rootKey,
             description = "MapSafe community resources. Private keys and passphrases are never stored here.",
-            permissions = JSONArray().put(permission(resolved.group.id, "read", propagate = false))
+            permissions = permissionsJson(NextGisCommunityAccessPolicy.rootPath(resolved.group.id))
         )
         val community = ensureResourceGroup(
             resolved.account,
@@ -282,30 +402,33 @@ class NextGisCommunityPublisher(context: Context) {
             displayName = resolved.group.displayName,
             keyname = NextGisCommunityNames.communityKey(resolved.group.id),
             description = "MapSafe resources for NextGIS authentication group ${resolved.group.id}.",
-            permissions = JSONArray()
-                .put(permission(resolved.group.id, "read", propagate = true))
-                .put(permission(resolved.group.id, "read", propagate = true, scope = "data"))
+            permissions = permissionsJson(
+                NextGisCommunityAccessPolicy.communityFolder(resolved.group.id)
+            )
         )
         val publicKeys = ensureResourceGroup(
             resolved.account,
             community.id,
             "Public Keys",
             NextGisCommunityNames.publicKeysKey(resolved.group.id),
-            "Public OpenPGP keys only. No private key material."
+            "Public OpenPGP keys only. No private key material.",
+            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id))
         )
         val layers = ensureResourceGroup(
             resolved.account,
             community.id,
-            "Anonymised Layers",
+            "Anonymised Datasets",
             NextGisCommunityNames.layersKey(resolved.group.id),
-            "Halo-masked and hexagonal-binned MapSafe vector layers."
+            "Halo-masked and hexagonal-binned MapSafe datasets.",
+            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id))
         )
         val packages = ensureResourceGroup(
             resolved.account,
             community.id,
             "Encrypted Packages",
             NextGisCommunityNames.packagesKey(resolved.group.id),
-            "OpenPGP packages and their integrity/notarisation metadata."
+            "OpenPGP packages and their integrity/notarisation metadata.",
+            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id))
         )
         return CommunityHierarchy(root, community, publicKeys, layers, packages)
     }
@@ -320,11 +443,15 @@ class NextGisCommunityPublisher(context: Context) {
     ): NextGisResource {
         findResourceByKey(account, keyname)?.let { existing ->
             validateResource(existing, RESOURCE_GROUP_CLASS, parentId, keyname)
+            permissions?.let { repairSelectedPrincipalsPermissions(account, existing.id, it) }
             return existing
         }
         childResources(account, parentId)
             .singleOrNull { it.cls == RESOURCE_GROUP_CLASS && it.displayName == displayName }
-            ?.let { return it }
+            ?.let { existing ->
+                permissions?.let { repairSelectedPrincipalsPermissions(account, existing.id, it) }
+                return existing
+            }
         val resource = JSONObject()
             .put("cls", RESOURCE_GROUP_CLASS)
             .put("parent", JSONObject().put("id", parentId))
@@ -350,13 +477,24 @@ class NextGisCommunityPublisher(context: Context) {
     private fun ensurePublisherRegistry(
         resolved: ResolvedCommunity,
         parent: NextGisResource,
-        storage: CommunityArtifactStorage
+        storage: CommunityArtifactStorage,
+        recordId: String,
+        fileName: String,
+        audience: CommunityArtifactAudience?
     ): NextGisResource {
-        val keyname = NextGisCommunityNames.publisherRegistryKey(
-            resolved.group.id,
-            resolved.user.id,
-            storage
-        )
+        val keyname = when (storage) {
+            CommunityArtifactStorage.PUBLIC_KEYS -> NextGisCommunityNames.publisherRegistryKey(
+                resolved.group.id,
+                resolved.user.id,
+                storage
+            )
+            CommunityArtifactStorage.PACKAGES -> NextGisCommunityNames.packageRegistryKey(
+                resolved.group.id,
+                resolved.user.id,
+                recordId
+            )
+            CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers do not use a registry.")
+        }
         findResourceByKey(resolved.account, keyname)?.let { existing ->
             validateResource(existing, VECTOR_LAYER_CLASS, parent.id, keyname)
             if (existing.ownerUserId != resolved.user.id) {
@@ -364,12 +502,26 @@ class NextGisCommunityPublisher(context: Context) {
                     "The reserved MapSafe publisher resource is owned by a different NextGIS user."
                 )
             }
+            val accessRules = when (storage) {
+                CommunityArtifactStorage.PUBLIC_KEYS ->
+                    NextGisCommunityAccessPolicy.communityReadableArtifact(resolved.group.id)
+                CommunityArtifactStorage.PACKAGES -> NextGisCommunityAccessPolicy.encryptedPackage(
+                    resolved.user.id,
+                    requireNotNull(audience)
+                )
+                CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers do not use a registry.")
+            }
+            repairSelectedPrincipalsPermissions(
+                resolved.account,
+                existing.id,
+                permissionsJson(accessRules)
+            )
             return existing
         }
         requireCreatePermission(resolved.account, parent.id, "create the MapSafe publisher registry")
         val label = when (storage) {
             CommunityArtifactStorage.PUBLIC_KEYS -> "Public keys"
-            CommunityArtifactStorage.PACKAGES -> "Encrypted packages"
+            CommunityArtifactStorage.PACKAGES -> "Protected package: ${displayNameWithoutExtension(fileName)}"
             CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers do not use a registry.")
         }
         val fields = JSONArray().apply {
@@ -383,11 +535,23 @@ class NextGisCommunityPublisher(context: Context) {
             stringField(FIELD_CREATED_AT)
             stringField(FIELD_STATUS)
             stringField(FIELD_FINGERPRINT)
+            stringField(FIELD_KEY_VERSION)
             stringField(FIELD_NETWORK)
             stringField(FIELD_CHAIN_ID)
             stringField(FIELD_CONTRACT_ADDRESS)
             stringField(FIELD_TRANSACTION_HASH)
             stringField(FIELD_BLOCKCHAIN_URL)
+            stringField(FIELD_RECIPIENT_USER_IDS)
+            stringField(FIELD_RECIPIENT_FINGERPRINTS)
+        }
+        val accessRules = when (storage) {
+            CommunityArtifactStorage.PUBLIC_KEYS ->
+                NextGisCommunityAccessPolicy.communityReadableArtifact(resolved.group.id)
+            CommunityArtifactStorage.PACKAGES -> NextGisCommunityAccessPolicy.encryptedPackage(
+                resolved.user.id,
+                requireNotNull(audience)
+            )
+            CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers do not use a registry.")
         }
         val payload = JSONObject()
             .put(
@@ -398,6 +562,7 @@ class NextGisCommunityPublisher(context: Context) {
                     .put("display_name", "$label — ${resolved.user.displayName}")
                     .put("keyname", keyname)
                     .put("description", "MapSafe attachment registry owned by NextGIS user ${resolved.user.id}.")
+                    .put("permissions", permissionsJson(accessRules))
             )
             .put(
                 "vector_layer",
@@ -495,18 +660,78 @@ class NextGisCommunityPublisher(context: Context) {
 
     private fun JSONObject?.orEmpty(): JSONObject = this ?: JSONObject()
 
-    private fun permission(
-        principalId: Long,
-        permission: String,
-        propagate: Boolean,
-        scope: String = "resource"
-    ): JSONObject = JSONObject()
-        .put("action", "allow")
-        .put("principal", JSONObject().put("id", principalId))
-        .put("identity", "")
-        .put("scope", scope)
-        .put("permission", permission)
-        .put("propagate", propagate)
+    private fun permissionsJson(rules: Collection<NextGisPermissionRule>): JSONArray =
+        JSONArray().apply {
+            rules.forEach { rule ->
+                put(JSONObject()
+                    .put("action", "allow")
+                    .put("principal", JSONObject().put("id", rule.principalId))
+                    .put("identity", "")
+                    .put("scope", rule.scope)
+                    .put("permission", rule.permission)
+                    .put("propagate", rule.propagate))
+            }
+        }
+
+    /**
+     * Replaces rules for the principals governed by this MapSafe resource while preserving
+     * unrelated administrator rules. This removes legacy propagated rules created by the
+     * earlier Free-plan prototype when the hierarchy is first used on a Premium instance.
+     */
+    private fun repairSelectedPrincipalsPermissions(
+        account: AccountUtil.AccountData,
+        resourceId: Long,
+        desired: JSONArray
+    ) {
+        val desiredPrincipalIds = buildSet {
+            for (index in 0 until desired.length()) {
+                desired.optJSONObject(index)
+                    ?.optJSONObject("principal")
+                    ?.optLong("id", -1L)
+                    ?.takeIf { it > 0L }
+                    ?.let(::add)
+            }
+        }
+        if (desiredPrincipalIds.isEmpty()) return
+        val container = getObject(account, resourceApiUrl(account, resourceId))
+        val resource = container.optJSONObject("resource") ?: container
+        val current = resource.optJSONArray("permissions") ?: JSONArray()
+        val merged = JSONArray()
+        for (index in 0 until current.length()) {
+            val rule = current.optJSONObject(index) ?: continue
+            val principalId = rule.optJSONObject("principal")?.optLong("id", -1L) ?: -1L
+            if (principalId !in desiredPrincipalIds) merged.put(JSONObject(rule.toString()))
+        }
+        for (index in 0 until desired.length()) {
+            merged.put(JSONObject(desired.getJSONObject(index).toString()))
+        }
+        if (normalisedPermissionSet(current) == normalisedPermissionSet(merged)) return
+        val response = NetworkUtil.put(
+            resourceApiUrl(account, resourceId),
+            JSONObject().put("resource", JSONObject().put("permissions", merged)).toString(),
+            account.login,
+            account.password,
+            true
+        )
+        if (!response.isOk) {
+            throw httpError("Could not apply the MapSafe community access rules", response)
+        }
+    }
+
+    private fun normalisedPermissionSet(value: JSONArray): Set<String> = buildSet {
+        for (index in 0 until value.length()) {
+            val rule = value.optJSONObject(index) ?: continue
+            add(
+                listOf(
+                    rule.optString("action"),
+                    rule.optJSONObject("principal")?.optLong("id", -1L).toString(),
+                    rule.optString("scope"),
+                    rule.optString("permission"),
+                    rule.optBoolean("propagate", false).toString()
+                ).joinToString("|")
+            )
+        }
+    }
 
     private fun JSONArray.stringField(keyname: String) {
         put(JSONObject().put("keyname", keyname).put("datatype", "STRING"))
@@ -678,6 +903,7 @@ class NextGisCommunityPublisher(context: Context) {
         private const val STATUS_ACTIVE = "active"
         private const val STATUS_HASH_CALCULATED = "hash_calculated"
         private const val STATUS_NOTARISED = "notarised"
+        private val SHA_256 = Regex("^[0-9a-f]{64}$")
 
         private const val FIELD_RECORD_ID = NextGisCommunityRecordSchema.FIELD_RECORD_ID
         private const val FIELD_ARTIFACT_TYPE = NextGisCommunityRecordSchema.FIELD_ARTIFACT_TYPE
@@ -689,11 +915,15 @@ class NextGisCommunityPublisher(context: Context) {
         private const val FIELD_CREATED_AT = NextGisCommunityRecordSchema.FIELD_CREATED_AT
         private const val FIELD_STATUS = NextGisCommunityRecordSchema.FIELD_STATUS
         private const val FIELD_FINGERPRINT = NextGisCommunityRecordSchema.FIELD_FINGERPRINT
+        private const val FIELD_KEY_VERSION = NextGisCommunityRecordSchema.FIELD_KEY_VERSION
         private const val FIELD_NETWORK = NextGisCommunityRecordSchema.FIELD_NETWORK
         private const val FIELD_CHAIN_ID = NextGisCommunityRecordSchema.FIELD_CHAIN_ID
         private const val FIELD_CONTRACT_ADDRESS = NextGisCommunityRecordSchema.FIELD_CONTRACT_ADDRESS
         private const val FIELD_TRANSACTION_HASH = NextGisCommunityRecordSchema.FIELD_TRANSACTION_HASH
         private const val FIELD_BLOCKCHAIN_URL = NextGisCommunityRecordSchema.FIELD_BLOCKCHAIN_URL
+        private const val FIELD_RECIPIENT_USER_IDS = NextGisCommunityRecordSchema.FIELD_RECIPIENT_USER_IDS
+        private const val FIELD_RECIPIENT_FINGERPRINTS =
+            NextGisCommunityRecordSchema.FIELD_RECIPIENT_FINGERPRINTS
     }
 }
 
@@ -710,11 +940,14 @@ internal object NextGisCommunityRecordSchema {
     const val FIELD_CREATED_AT = "created_at"
     const val FIELD_STATUS = "record_status"
     const val FIELD_FINGERPRINT = "fingerprint"
+    const val FIELD_KEY_VERSION = "key_version"
     const val FIELD_NETWORK = "network_name"
     const val FIELD_CHAIN_ID = "chain_id"
     const val FIELD_CONTRACT_ADDRESS = "contract_address"
     const val FIELD_TRANSACTION_HASH = "transaction_hash"
     const val FIELD_BLOCKCHAIN_URL = "blockchain_url"
+    const val FIELD_RECIPIENT_USER_IDS = "recipient_user_ids"
+    const val FIELD_RECIPIENT_FINGERPRINTS = "recipient_fingerprints"
 }
 
 /** Stable, globally unique NextGIS resource keynames used by the MapSafe schema. */
@@ -725,6 +958,12 @@ object NextGisCommunityNames {
     fun publicKeysKey(groupId: Long): String = "mapsafe_public_keys_g$groupId"
     fun layersKey(groupId: Long): String = "mapsafe_layers_g$groupId"
     fun packagesKey(groupId: Long): String = "mapsafe_packages_g$groupId"
+    fun publicKeyRegistryKey(groupId: Long, userId: Long): String = "mapsafe_keys_g${groupId}_u$userId"
+    fun packageRegistryPrefix(groupId: Long, userId: Long): String =
+        "mapsafe_packages_g${groupId}_u$userId"
+
+    fun packageRegistryKey(groupId: Long, userId: Long, recordId: String): String =
+        "${packageRegistryPrefix(groupId, userId)}_r${recordId.replace("-", "").take(16)}"
 
     fun attachmentDownloadPath(resourceId: Long, featureId: Long, attachmentId: Long): String =
         "/api/resource/$resourceId/feature/$featureId/attachment/$attachmentId/download"
@@ -739,7 +978,11 @@ object NextGisCommunityNames {
             CommunityArtifactStorage.PACKAGES -> "packages"
             CommunityArtifactStorage.NATIVE_LAYER -> "layers"
         }
-        return "mapsafe_${kind}_g${groupId}_u$userId"
+        return when (storage) {
+            CommunityArtifactStorage.PUBLIC_KEYS -> publicKeyRegistryKey(groupId, userId)
+            CommunityArtifactStorage.PACKAGES -> packageRegistryPrefix(groupId, userId)
+            CommunityArtifactStorage.NATIVE_LAYER -> "mapsafe_${kind}_g${groupId}_u$userId"
+        }
     }
 
     fun artifactKey(groupId: Long, userId: Long, recordId: String): String {

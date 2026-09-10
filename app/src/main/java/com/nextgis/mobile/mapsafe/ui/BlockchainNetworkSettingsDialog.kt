@@ -189,7 +189,7 @@ class BlockchainNetworkSettingsDialog : DialogFragment() {
                 MapSafeUi.text(context, "Public record format", 13f, MapSafeUi.MUTED, bold = true),
                 MapSafeUi.text(
                     context,
-                    MapSafeIntegrityRecordCodec.CANONICAL_PREFIX + "<64 lowercase hex>",
+                    "<encrypted-package filename>_<64 lowercase hex>",
                     13f,
                     MapSafeUi.TEXT,
                     bold = true

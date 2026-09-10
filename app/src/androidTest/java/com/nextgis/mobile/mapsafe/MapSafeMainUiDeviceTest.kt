@@ -58,34 +58,33 @@ class MapSafeMainUiDeviceTest {
 
             val beforeSample = layerNames(context)
             openMapSafe(context)
-            onView(withText("Access Features")).perform(click())
-            onView(withText("Access Features")).check(matches(isDisplayed()))
+            assertWorkflowTabs()
+            onView(withText("Access")).perform(click())
+            onView(withText("Verify, decrypt and display shared datasets"))
+                .check(matches(isDisplayed()))
+            onView(withText("Community Packages")).check(matches(isDisplayed()))
+            onView(withText("Verify Encrypted File")).check(matches(isDisplayed()))
+            onView(withText("Security & Sharing")).check(doesNotExist())
             onView(withText("Select a dataset first")).check(doesNotExist())
-            onView(withText("Back")).perform(click())
+            onView(withText("Safeguard")).perform(click())
 
-            onView(withText("Safeguard Features")).perform(click())
-            onView(withText("Select a dataset first")).check(matches(isDisplayed()))
-            onView(withText(containsString("Safeguard Features needs an active map dataset")))
-                .check(matches(isDisplayed()))
-            onView(withText("Load sample dataset")).perform(click())
-            val sampleName = waitForNewLayer(context, beforeSample, "MapSafe sample points - Suva")
+            onView(withText("Use sample dataset")).perform(scrollTo(), click())
+            val sampleName = waitForNewLayer(context, beforeSample, "North Whangārei infected trees")
             assertEquals(sampleName, selectedLayerName(scenario))
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Anonymise")).perform(click())
-            onView(withContentDescription("Safeguard progress: 1 of 3, Anonymise"))
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
+            onView(withText(containsString("Selected dataset: $sampleName")))
                 .check(matches(isDisplayed()))
-            onView(withText("Use sample dataset")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "anonymise-sample-dataset-option")
             val sampleLayer = context.map.getLayerByName(sampleName) as VectorLayer
             assertEquals(GeoConstants.GTPoint, sampleLayer.geometryType)
-            assertEquals(30, sampleLayer.query(null).size)
+            assertEquals(23, sampleLayer.query(null).size)
             MapSafeDeviceTestSupport.production(
                 "UI SAMPLE DATASET",
-                "main-menu action created and selected compatible 30-point vector layer $sampleName, then opened Anonymise"
+                "main-menu action created and selected the compatible 23-point North Whangārei layer $sampleName, then opened Anonymise"
             )
 
             val beforeDonut = layerNames(context)
-            onView(withText("Configure Halo Masking")).perform(click())
+            onView(withContentDescription("Open Halo Masking")).perform(click())
             onView(withText("Halo Masking")).check(matches(isDisplayed()))
             onView(withContentDescription("Safeguard progress: 1 of 3, Anonymise"))
                 .check(matches(isDisplayed()))
@@ -96,6 +95,7 @@ class MapSafeMainUiDeviceTest {
                 .check(matches(isDisplayed()))
             onView(withText(containsString("Privacy Rating"))).check(doesNotExist())
             onView(withContentDescription("Halo masking enabled")).check(doesNotExist())
+            onView(withText("Apply Halo Masking")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "tier1-real-donut-dialog")
             onView(withText("Apply Halo Masking")).perform(click())
             val firstDonutName = waitForNewLayer(context, beforeDonut, sampleName + "_masked")
@@ -157,21 +157,19 @@ class MapSafeMainUiDeviceTest {
                 "The masked result did not reach encryption.",
                 device.wait(Until.hasObject(By.text("Encrypt & Protect")), 30_000L)
             )
-            onView(withText("$sampleName.geojson")).check(matches(isDisplayed()))
-            onView(withText("Original Dataset")).check(matches(isDisplayed()))
+            onView(withText("$donutName.geojson")).check(matches(isDisplayed()))
+            onView(withText("Anonymised Dataset")).check(matches(isDisplayed()))
             onView(withText("Choose")).check(matches(isDisplayed()))
             onView(withText("Choose another file")).check(doesNotExist())
             onView(withContentDescription("Back")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.production(
                 "UI REMASK",
-                "$donutName was regenerated from $sampleName while the precise source was preloaded for encryption"
+                "$donutName was regenerated from $sampleName and carried to its own encryption package"
             )
 
             val beforeHexbin = layerNames(context)
-            onView(withText("Anonymise")).perform(click())
-            onView(withText("Configure Halo Masking")).check(matches(isDisplayed()))
-            onView(withText("Configure Hexagonal Binning")).perform(click())
+            onView(withContentDescription("Open Hexagonal Binning")).perform(scrollTo(), click())
             onView(withText("Hexagonal Binning")).check(matches(isDisplayed()))
             onView(withContentDescription("Safeguard progress: 1 of 3, Anonymise"))
                 .check(matches(isDisplayed()))
@@ -180,6 +178,7 @@ class MapSafeMainUiDeviceTest {
             onView(withText(containsString("Privacy Rating"))).check(doesNotExist())
             onView(withText("Spatial aggregation")).check(doesNotExist())
             onView(withContentDescription("Hexagonal binning enabled")).check(doesNotExist())
+            onView(withText("Apply Hexagonal Binning")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "tier1-real-hexbin-dialog")
             onView(withText("Apply Hexagonal Binning")).perform(click())
             val hexbinName = waitForNewLayer(context, beforeHexbin, donutName + "_hexbin")
@@ -214,12 +213,37 @@ class MapSafeMainUiDeviceTest {
                 "The hexbin result did not reach encryption.",
                 device.wait(Until.hasObject(By.text("Encrypt & Protect")), 30_000L)
             )
-            onView(withText("$sampleName.geojson")).check(matches(isDisplayed()))
-            onView(withText("Original Dataset")).check(matches(isDisplayed()))
+            onView(withText("$hexbinName.geojson")).check(matches(isDisplayed()))
+            onView(withText("Anonymised Dataset")).check(matches(isDisplayed()))
             onView(withText("Choose")).check(matches(isDisplayed()))
             onView(withContentDescription("Back")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-            onView(withText("Blockchain Notarisation")).perform(click())
+            assertTrue(
+                "The Safeguard tab did not regain focus after closing encryption.",
+                device.wait(Until.hasObject(By.desc("MapSafe full logo")), 10_000L)
+            )
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Encrypt")).perform(scrollTo(), click())
+            onView(withText("Choose Datasets to Encrypt")).check(matches(isDisplayed()))
+            onView(withText(containsString("Original  ·  $sampleName"))).check(matches(isDisplayed()))
+            onView(withText(containsString("Halo masked  ·  $donutName"))).check(matches(isDisplayed()))
+            onView(withText(containsString("Hexagonal bin  ·  $hexbinName"))).check(matches(isDisplayed()))
+            onView(withText("Select all")).perform(click())
+            onView(withText("Continue to Encryption")).perform(scrollTo(), click())
+            assertTrue(
+                "The multi-dataset encryption queue did not open.",
+                device.wait(Until.hasObject(By.text("Encrypt & Protect")), 30_000L)
+            )
+            onView(withText(containsString("1 of"))).check(matches(isDisplayed()))
+            onView(withContentDescription("Back")).perform(click())
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Upload to Community")).perform(scrollTo(), click())
+            onView(withText("Upload to Community")).check(matches(isDisplayed()))
+            onView(withText("Available community items")).check(matches(isDisplayed()))
+            onView(withText(containsString("Halo masked  ·  $donutName"))).check(matches(isDisplayed()))
+            onView(withText(containsString("Hexagonal bin  ·  $hexbinName"))).check(matches(isDisplayed()))
+            onView(withText("Back")).perform(click())
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Notarise Package")).perform(scrollTo(), click())
             onView(withText("Notarise on Blockchain")).check(matches(isDisplayed()))
             onView(withContentDescription("Safeguard progress: 3 of 3, Notarise"))
                 .check(matches(isDisplayed()))
@@ -241,16 +265,25 @@ class MapSafeMainUiDeviceTest {
     private fun openMapSafe(context: MainApplication) {
         openActionBarOverflowOrOptionsMenu(context)
         onView(withText(context.getString(R.string.mapsafe_menu_title))).perform(click())
-        onView(withText("MapSafe")).check(matches(isDisplayed()))
         onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
         MapSafeDeviceTestSupport.screenshot(context, "mapsafe-main-logo-workflows")
     }
 
     private fun openAnonymise(context: MainApplication) {
         openMapSafe(context)
-        onView(withText("Safeguard Features")).perform(scrollTo(), click())
-        onView(withText("Anonymise")).perform(click())
-        onView(withText("Configure Halo Masking")).check(matches(isDisplayed()))
+        onView(withContentDescription("Open Halo Masking")).perform(click())
+        onView(withText("Halo Masking")).check(matches(isDisplayed()))
+    }
+
+    private fun assertWorkflowTabs() {
+        onView(withContentDescription("Safeguard tab, selected")).check(matches(isDisplayed()))
+        onView(withContentDescription("Access tab")).check(matches(isDisplayed()))
+        onView(withText("Anonymise, encrypt, upload, or notarise a dataset for sharing."))
+            .check(matches(isDisplayed()))
+        onView(withText("Encrypt")).check(matches(isDisplayed()))
+        onView(withText("Upload to Community")).perform(scrollTo()).check(matches(isDisplayed()))
+        onView(withText("Notarise Package")).perform(scrollTo()).check(matches(isDisplayed()))
+        onView(withText("Security & Sharing")).perform(scrollTo()).check(matches(isDisplayed()))
     }
 
     private fun waitForNewLayer(

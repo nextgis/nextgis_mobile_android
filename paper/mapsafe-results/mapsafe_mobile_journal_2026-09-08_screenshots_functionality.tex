@@ -1,0 +1,826 @@
+\documentclass[a4paper,UKenglish,cleveref,autoref,thm-restate]{lipics-v2021}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{soul}
+\usepackage{float}
+\usepackage{longtable}
+
+\usepackage{placeins}
+
+\bibliographystyle{plainnat}
+
+\title{MapSafe Mobile: Embedding Geospatial Data Sovereignty into Mobile Field Data Collection and Controlled Inter-Organisational Sharing}
+\titlerunning{MapSafe Mobile and Capture-Time Data Sovereignty}
+
+\author{Pankajeshwara {Sharma}}%
+{Universal College of Learning, Palmerston North, New Zealand}%
+{p.sharma@ucol.ac.nz}%
+{https://orcid.org/0000-0001-9159-8332}%
+{}
+
+\authorrunning{P. Sharma}
+\Copyright{Pankajeshwara Sharma}
+\ccsdesc[500]{Information systems~Geographic information systems}
+\keywords{Indigenous Data Sovereignty, mobile GIS, geoprivacy, geomasking, H3, OpenPGP, secure spatial data sharing}
+\category{}
+\relatedversion{}
+\acknowledgements{}
+\nolinenumbers
+
+\EventEditors{}
+\EventNoEds{0}
+\EventLongTitle{International Conference on Geographic Information Science 2027}
+\EventShortTitle{GIScience 2027}
+\EventAcronym{GIScience 2027}
+\EventYear{2027}
+\EventDate{}
+\EventLocation{}
+\EventLogo{}
+\SeriesVolume{}
+\ArticleNo{}
+
+\providecommand{\mapsafefigdir}{screenshots/manuscript-north-whangarei-20260910-final}
+\providecommand{\mapsafearchdir}{architecture}
+\providecommand{\mapsafewebfigdir}{screenshots/nextgis-community-2026-09-09}
+\newcommand{\resultplaceholder}[1]{\textbf{[RESULT TO INSERT: #1]}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Sensitive geospatial observations are increasingly created on mobile devices, but decisions about spatial disclosure, authorised recipients, and integrity evidence are often postponed until after synchronisation. Precise culturally or ecologically sensitive coordinates may therefore cross an external trust boundary before their guardian has applied suitable controls. This paper introduces \emph{capture-time sovereignty} and asks how representation and access decisions can be incorporated into the established mobile field-data workflow. We implement the approach in MapSafe Mobile, an extension of the open-source NextGIS Mobile application. It preserves the authoritative observation, creates a separate halo-masked or hexagonally aggregated representation, encrypts a selected dataset once for one or more OpenPGP recipients, exchanges public keys and protected resources through a NextGIS Web community, and can anchor the encrypted filename and digest in an externally signed EVM transaction. The design is examined through a fictional community-governed biodiversity case, automated workflows using a 23-point North Whangārei dataset, and physical-device measurements over ten synthetic datasets. On a Samsung Galaxy A14, complete masking, signed encryption, and verified decryption of the 1,000-point rich dataset required median times of 5.96, 4.24, and 3.52~s; the corresponding 2,000-point stress-case medians were 11.52, 6.14, and 4.69~s. These results establish the computational practicality of field-scale protection on a modest handset. MapSafe Mobile does not itself confer anonymity, legitimate authority, or cultural safety; it provides an inspectable technical foundation through which communities can enact and communicate such decisions before sensitive observations leave the collecting device.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+Mobile devices have become important tools for participatory sensing, environmental monitoring, citizen science, and other forms of field-based spatial data collection. Smartphones can capture precise coordinates together with photographs, timestamps, observations, and other contextual information, allowing field data to be recorded efficiently and, increasingly, while disconnected from network infrastructure. However, the collection of precise location information creates significant privacy risks. Research on mobile participatory sensing has long recognised that fine-grained location and sensor observations can expose sensitive information about individuals and communities, and that privacy-preserving mechanisms are therefore required within mobile sensing systems \citep{christin2011survey,christin2016privacy}. More recent work on mobile crowdsensing similarly demonstrates that, despite extensive research on location privacy, practical crowdsourcing applications often provide limited protection during data collection and subsequent publication \citep{boukoros2019lack,kim2022privacy}. These findings suggest that privacy protection should not be treated solely as a post-processing activity performed after field data have already been transferred to external infrastructure.
+
+This issue is particularly significant in Indigenous and community-based environmental monitoring, where geographic observations may describe culturally sensitive places, species, resources, or activities. Mobile technologies have already demonstrated considerable value for participatory and Indigenous-led field mapping. For example, smartphone-based participatory mapping has been used by local communities to document fishing grounds and natural resources, demonstrating the practicality of mobile devices for community-based environmental governance \citep{paul2016piloting}. Platforms such as CyberTracker, which has been used by Indigenous land and sea management groups to integrate Indigenous ecological knowledge with environmental monitoring \citep{ens2012cybertracker}, and GeoKeeper, an offline-capable mobile application designed specifically for Indigenous environmental monitoring and guardianship programmes \citep{kwusen2024geokeeper}, demonstrate how mobile technologies can support community-led field data collection and ecological monitoring. However, the availability of mobile and offline field-data-collection platforms does not, by itself, resolve questions of geoprivacy or data sovereignty. Where precise observations are subsequently synchronised with institutional, commercial, or cloud-based infrastructure, communities may have reduced control over how sensitive locations are represented, accessed, redistributed, or reused. This highlights the need for privacy and governance mechanisms to be applied at, or immediately after, the point of data collection rather than relying solely on protections introduced after synchronisation.
+
+Indigenous data sovereignty scholarship provides a broader governance basis for addressing this problem. Indigenous data sovereignty emphasises the rights of Indigenous peoples to govern the collection, ownership, access, interpretation, and use of data relating to their peoples, lands, cultures, and resources \citep{kukutai2016indigenous}. The CARE Principles for Indigenous Data Governance further emphasise collective benefit, authority to control, responsibility, and ethics across the data lifecycle \citep{carroll2020care}. Importantly, these principles imply that sovereignty should apply not only to repositories or subsequently published datasets, but also to decisions made at the point of data creation. Recent work has consequently argued for changes to Indigenous research data-collection practices so that Indigenous communities exercise greater control over what data are collected, how they are managed, and how they may subsequently be accessed and reused \citep{marriott2025indigenous,engstrom2024indigenous}. For geospatial information, this requirement is especially important because disclosure of an exact coordinate may itself reveal sensitive knowledge even when other identifying attributes have been removed.
+
+Parallel research on geoprivacy has developed mechanisms for reducing disclosure risk through techniques such as geographic masking, spatial aggregation, encryption, and controlled sharing. MapSafe, for example, demonstrated an approach in which sensitive geographic information could be transformed and cryptographically protected under the control of the data owner rather than relying solely on a trusted external service \citep{sharma2023mapsafe,sharma2024indigenous}. Such approaches help operationalise the principle that sovereign data owners should determine the spatial precision and accessibility of information released to others. However, existing geoprivacy and data-sovereignty workflows have generally focused on protecting datasets after they have been collected and made available within desktop, web, or server-based environments. This leaves an important interval between the creation of a sensitive field observation and the application of privacy and access-control mechanisms.
+
+A significant research opportunity therefore exists at the intersection of mobile field data collection, location privacy, and Indigenous data sovereignty. Although mobile applications support field-based geographic data capture and geoprivacy research provides mechanisms for protecting spatial information, these capabilities have rarely been integrated into a mobile workflow in which protection is applied before sensitive observations leave the collecting device. In particular, there remains a need for approaches that allow field users to transform precise locations into privacy-preserving representations, cryptographically protect original observations, and control the information made available to different recipients while operating locally and, where necessary, offline. We refer to this principle as \emph{capture-time sovereignty}: the ability of sovereign data owners to exercise privacy, representation, and access-control decisions at the moment spatial information is created, rather than attempting to recover control after the original data have already been synchronised with external infrastructure.
+
+\section{Case study: community-governed biodiversity monitoring}
+\label{sec:case-study}
+
+This section grounds the capture-time problem in a fictional community-governed biodiversity-monitoring case. Building on the mobile and Indigenous monitoring context established in the Introduction, it focuses on the concrete decisions that arise after a sensitive observation is recorded but before it is synchronised: which spatial representation serves the intended purpose, who is authorised to receive it, and what evidence should accompany its release. The scenario is explanatory rather than empirical and does not claim to represent the governance practices of any actual Indigenous organisation.
+
+% Participation in digital data collection does not necessarily confer authority over the information produced. Indigenous Data Sovereignty, Māori data-sovereignty scholarship, CARE, and OCAP situate legitimate governance in collective authority, relationships, provenance, responsibility, ethics, ownership, control, access, and possession rather than in the technical possession of a record by a platform or researcher \citep{kukutai2016indigenous,walter2021indigenous,teManaRaraunga2018,kukutai2019mana,carroll2020care,carroll2021operationalizing,schnarch2004ocap,reyesgarcia2022,wilson2025selfdetermination}.
+
+The case study revisits the fictional \textit{north-whangarei-infected-trees} scenario used in earlier MapSafe work. \textit{Steven}, the field data custodian, manages 23 precise tree locations on behalf of the relevant BMAs, which are treated as the sovereign parties. \textit{Amber} is a researcher who may receive precise locations when that access is authorised for an agreed purpose. The public source archive supplies the WGS84 coordinates but contains no attribute fields; the mobile demonstration therefore preserves those coordinates exactly and adds eight explicitly synthetic fields for testing collection, export, encryption, and recovery. It must not be interpreted as reporting new observations from an actual Indigenous organisation.
+
+Steven must make two related but independent decisions under the BMAs' governance: which spatial representation serves the intended purpose, and which people may receive that representation. An authorised research task may justify encrypting the original coordinates for Amber and any selected BMA representatives. A recipient who needs only an approximate pattern may instead receive a halo-masked or hexagonally aggregated layer. A dependable community member is therefore not automatically entitled to every representation, and community membership does not replace purpose-specific authorisation by the sovereign parties.
+
+The case motivates complementary controls. Geomasking displaces individual coordinates while attempting to retain useful spatial structure \citep{armstrong1999geographically,zandbergen2014ensuring,swanlund2020maskmy}; H3 aggregation replaces points with count-bearing cells at a selected resolution \citep{sahr2003geodesic,uber2018h3}. Neither guarantees anonymity, particularly where auxiliary information or singleton cells remain revealing. OpenPGP instead controls who can recover a selected artefact, while SHA-256 and an optional EVM record provide evidence that a named encrypted package has not changed. The resulting workflow concerns governed alternatives---original and anonymised---rather than a universal hierarchy of trusted, semi-trusted, and untrusted people.
+
+MapSafe has progressively moved these controls closer to data creation: from a browser application, to protected inter-organisational and QGIS workflows, and now to the mobile device used in the field \citep{sharma2023mapsafe,sharma2024indigenous,sharma2025mapsafe}. The present case therefore focuses on the point immediately after collection, when Steven can still act before the precise observations are synchronised or otherwise transferred.
+
+
+\section{MapSafe Mobile architecture and workflow}
+\label{sec:mapsafeplugin}
+
+MapSafe Mobile is integrated into the existing NextGIS Mobile host rather than replacing its normal field-data workflow. The application starts with the standard NextGIS introduction, account, and map interface; Steven opens MapSafe from the host application's menu when safeguarding or access functions are required. This preserves the familiar process for collecting observations and makes MapSafe an explicit governance step between field capture and external sharing.
+
+The architecture in Fig.~\ref{fig:mapsafe-architecture} separates three boundaries. Spatial transformation, encryption, hashing, and decryption are performed on the Android device. NextGIS Web supplies authenticated accounts, group-scoped public-key exchange, access-controlled vector resources, and storage of encrypted packages. An EVM-compatible blockchain can independently bind an encrypted package filename to its SHA-256 digest. No plaintext dataset, private key, passphrase, or OpenPGP session key is written on-chain; nevertheless, because the encrypted filename is public, owners should use neutral package names that do not disclose sensitive places or subjects. The cloud service can therefore distribute protected material without receiving the OpenPGP private keys required to recover it.
+
+\begin{figure*}[h!]
+  \centering
+  \includegraphics[width=0.98\textwidth]{\mapsafearchdir/mapsafe_nextgis_mobile_architecture_2026-09-08.png}
+  \caption{MapSafe Mobile architecture. Sensitive processing occurs on the field device; NextGIS Web supports community membership, public-key exchange, and protected-resource distribution; an optional EVM record independently binds the encrypted package filename to its digest.}
+  \label{fig:mapsafe-architecture}
+\end{figure*}
+
+The mobile interface presents \emph{Safeguard} and \emph{Access} as two tabs in one MapSafe panel (Fig.~\ref{fig:mapsafe-entry}). Safeguard provides direct entry to halo masking, hexagonal binning, encryption, community upload, notarisation, and security settings. Access begins with community packages or a locally selected encrypted file and then supports verification, decryption, and display of the recovered dataset. Opening an option launches its focused activity, while the tabs return to the same vertical position and preserve a compact, consistent workflow overview. The stages shown within those activities are orientation cues rather than a compulsory wizard: \emph{Stop} lets Steven or Amber end after a useful derived representation or protected package, whereas \emph{Next} continues to the following safeguard or access stage. A compatible point-vector layer is required before a spatial anonymisation operation, while Access does not require a preselected map layer because its first step obtains an encrypted package.
+
+\begin{figure*}[ht]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-01-workflow-chooser.png}
+    \caption{Safeguard tab and its direct entry points.}
+  \end{subfigure}\hspace{0.12\textwidth}
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-06-access-community-local.png}
+    \caption{Access tab for community or local packages.}
+  \end{subfigure}
+  \caption{The compact MapSafe workflow panel. A two-state tab control separates safeguard operations from access operations while keeping both views aligned within the same interface.}
+  \label{fig:mapsafe-entry}
+\end{figure*}
+\FloatBarrier
+
+
+\subsection{Users, disclosure decisions, and community preparation}
+\label{sec:users-community}
+
+The case introduced in Section~\ref{sec:case-study} distinguishes Steven's custodial responsibilities, the BMAs' sovereign authority, Amber's purpose-specific access to precise coordinates, and the more limited disclosure appropriate for recipients who need only an anonymised representation. Table~\ref{tab:disclosure-decisions} applies those roles to the North Whangārei dataset without repeating the full case description.
+
+\begin{table}[h!]
+\centering
+\caption{Illustrative disclosure decisions for the North Whangārei dataset. Representation and recipient access are independent policy decisions.}
+\label{tab:disclosure-decisions}
+\small
+\begin{tabularx}{\linewidth}{p{0.22\linewidth}p{0.22\linewidth}Xp{0.20\linewidth}}
+\toprule
+\textbf{Use} & \textbf{Representation} & \textbf{Purpose} & \textbf{Protection} \\
+\midrule
+Steven's custodianship & Original & Monitoring and management & Local control \\
+BMA governance & Original & Sovereign oversight and authorised management & Selected BMA keys and resource ACLs \\
+Steven--Amber research & Original & Authorised research collaboration & Multi-recipient encryption \\
+Community communication & Halo-masked points & Approximate local pattern & Community sharing \\
+Regional planning & Hexagonal aggregate & Distribution and density & Community sharing \\
+Public communication & Coarse anonymised output & Non-sensitive reporting & Policy-controlled release \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Steven holds the dataset and initiates safeguarding as its custodian; the BMAs retain sovereign authority over its use, while Amber and other recipients receive only the representations authorised for their agreed purposes. These roles may overlap in other deployments. More importantly, representation and access remain independent: a community member may legitimately need to understand the distribution of infected trees without being authorised to receive their exact coordinates.
+
+
+
+NextGIS administration is intentionally separated from field operation. Before fieldwork, an authorised administrator creates or selects the Web GIS, configures NextGIS ID/team membership, creates the relevant authentication group, and applies resource access-control lists (ACLs). Group membership identifies the community but does not replace resource ACL configuration. Invitation acceptance, account recovery, compromised-account response, membership removal, and storage administration are best completed through the NextGIS Web browser interface. In the field, MapSafe consumes an existing authenticated account and group; group creation remains available only when the signed-in account has the necessary server permission.
+
+\FloatBarrier
+\subsection{Encryption identity, key custody, and community public-key exchange}
+\label{sec:key-management}
+
+Each participant creates one persistent local OpenPGP identity. Steven supplies a name, organisation, optional email address, and recovery passphrase of at least 12 characters. MapSafe generates an RSA-3072 primary key for certification and signing and a separate RSA-3072 encryption subkey. The transferable secret keyring is protected by an iterated-and-salted SHA-256 string-to-key process, and the application-private copy is additionally encrypted with AES-GCM under a non-exportable Android Keystore key. The recovery passphrase is not stored. On later application starts the repository checks the application-private identity store; if a valid identity exists, the encryption screen displays it and does not ask Steven to create another one.
+
+Only public-key material is distributed. A private key is unlocked in memory only for signing or decryption and is never uploaded through the NextGIS exchange. Steven, participating BMA representatives, and Amber may each explicitly export their own passphrase-protected secret-key backup before device loss, reset, or application removal. Such backups should be retained on encrypted removable media in a controlled location, with the passphrase held separately by its owner. An end-to-end encrypted channel is preferable if a backup must be transferred remotely. MapSafe cannot recover a forgotten passphrase.
+
+In \emph{Security \& Sharing}, Steven selects an authenticated NextGIS account and authentication group representing the relevant community. MapSafe creates or uses the group-scoped directory \path{mapsafe_keys_<group-id>}. Each member publishes a member-owned bucket containing \path{public-key.asc} and \path{key-metadata.json}. Publishing code rejects private-key and passphrase material. The same synchronisation operation is exposed through \emph{Refresh community keys} on the settings and encryption screens.
+
+Discovery is not proof of identity. The client checks current group membership, bucket ownership and uniqueness, manifest/group agreement, agreement between the manifest and downloaded OpenPGP fingerprint, and availability of a usable encryption subkey. Amber's discovered key remains ineligible until Steven compares its full fingerprint through an independent trusted channel and explicitly accepts it. Acceptance pins the fingerprint locally. Changed, missing, duplicate, revoked, or removed-member keys are quarantined and cannot be selected for new packages. Accepted keys are cached for offline use, although membership and key changes require later connectivity. Removing a member prevents selection for future packages but cannot withdraw access to a package already encrypted for that member's key \citep{chu2013key,zhang2010wireless}.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-18-identity-creation.png}
+    \caption{Identity and passphrase.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-19-identity-created.png}
+    \caption{Key ID and fingerprint.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-02-security-account-community.png}
+    \caption{Account and group.}
+  \end{subfigure}
+  % The broader Security & Sharing screen is retained for possible later use:
+  % \begin{subfigure}[t]{0.235\textwidth}
+  %   \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-03-security-identity-folder-network.png}
+  %   \caption{Public-key exchange, save folder, and network configuration.}
+  % \end{subfigure}
+  \caption{Persistent identity and group-scoped public-key exchange. Steven creates a locally protected identity, reviews its fingerprint, and selects the NextGIS account and community used to exchange public keys.}
+  \label{fig:mapsafe-key-exchange}
+\end{figure*}
+
+\FloatBarrier
+\subsection{Geospatial anonymisation and derived-layer sharing}
+\label{sec:anonymisation}
+
+% MapSafe offers halo masking and hexagonal binning as alternative derived representations. Neither overwrites the authoritative source. Halo masking retains one feature and its non-spatial attributes for each input point but replaces its coordinate. For input point $p_i=(\lambda_i,\phi_i)$, a cryptographically secure random generator selects a bearing uniformly from $[0,2\pi)$ and a displacement within the user-selected interval $[r_{\min},r_{\max}]$. The destination is calculated on a sphere of radius 6,371,000~m rather than by adding planar degree offsets. The compact mobile screen uses one dual-ended range slider for the minimum and maximum distance.
+
+% After each candidate is generated, MapSafe calculates Spruill's disclosure-risk measure. A candidate contributes to risk when its corresponding source point is the nearest member of the original point set. Nearest-neighbour search uses a three-dimensional unit-sphere $k$-d tree, with equal-distance ties containing the parent counted as parent-nearest. For $n$ pairs,
+% \begin{equation}
+%  R_{\mathrm{Spruill}}=\frac{100}{n}\sum_{i=1}^{n} I_i,
+%  \qquad
+%  P_{\mathrm{inv}}=100-R_{\mathrm{Spruill}},
+%  \label{eq:spruill}
+% \end{equation}
+% where $I_i=1$ when the source corresponding to masked point $i$ is its nearest original point, and $I_i=0$ otherwise. The interface displays the inverted score so a higher value communicates lower parent-nearest disclosure risk. The result card is collapsible so the map and candidate remain visible. \emph{Remask} returns to the controls but always starts from the precise source, preventing compounded displacement.
+
+As the first safeguarding step, MapSafe Mobile allows a field data custodian to create a less precise representation for people who need to understand the general spatial pattern but are not authorised to receive exact locations. Steven begins with the 23-point North Whangārei dataset, chooses \emph{Halo Masking}, and sets the minimum and maximum displacement on one dual-ended range slider (Figure~\ref{fig:mapsafe-anonymisation}a). MapSafe then creates a new masked layer while leaving the authoritative source unchanged. The synthetic demonstration attributes and one-to-one relationship between records are retained, but each coordinate is replaced by an approximate location that Steven can compare with the source on the unobstructed map (Figure~\ref{fig:mapsafe-anonymisation}b) before sharing it with an authorised community recipient.
+
+\begin{figure*}[h!]
+  \centering
+
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]
+      {\mapsafefigdir/ms2026-north-whangarei-20260909-10-halo-masking-configuration.png}
+    \caption{Dual-ended minimum and maximum displacement control.}
+  \end{subfigure}\hfill
+  %
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]
+      {\mapsafefigdir/ms2026-north-whangarei-20260909-29-original-and-halo-masked-unobstructed.png}
+    \caption{Original and halo-masked point layers with the result card collapsed.}
+  \end{subfigure}\hfill
+  %
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]
+      {\mapsafefigdir/ms2026-north-whangarei-20260909-11-halo-masking-applied-expanded.png}
+    \caption{Expanded result with the inverted Spruill score and workflow actions.}
+  \end{subfigure}
+
+  \caption{MapSafe Mobile halo-masking workflow for the North Whangārei dataset. Steven sets a displacement interval, compares the original and transformed points on an unobstructed map, and expands the result card when the score or next actions are required.}
+  \label{fig:mapsafe-anonymisation}
+\end{figure*}
+
+
+The native Kotlin implementation follows the donut-masking approach demonstrated by \emph{MaskMy.xyz} \citep{swanlund2020maskmy}. For each input point $p_i=(\lambda_i,\phi_i)$, a cryptographically secure random generator selects a bearing uniformly from $[0,2\pi)$ and a displacement within the chosen interval $[r_{\min},r_{\max}]$. The destination is calculated on a sphere of radius 6,371,000~m rather than by adding planar degree offsets. The minimum distance moves the candidate away from its precise source, whereas the maximum distance limits the accompanying loss of spatial utility. Figure~\ref{fig:mapsafe-anonymisation}b overlays the original red points and resulting blue masked points for visual comparison while the collapsed result card leaves most of the mobile map unobstructed.
+
+Protecting privacy generally favours greater displacement, while preserving analytical usefulness favours smaller displacement. To help Steven balance these competing aims, MapSafe automatically calculates Spruill's disclosure-risk measure after each masking attempt \citep{armstrong1999geographically,swanlund2020maskmy}. A transformed point contributes to disclosure risk when its corresponding source point remains the nearest member of the original point set.
+% For $n$ original--masked pairs,
+% \begin{equation}
+%  R_{\mathrm{Spruill}}=\frac{100}{n}\sum_{i=1}^{n} I_i,
+%  \qquad
+%  P_{\mathrm{inv}}=100-R_{\mathrm{Spruill}},
+%  \label{eq:spruill}
+% \end{equation}
+%where $I_i=1$ when the source corresponding to masked point $i$ is its nearest original point, and $I_i=0$ otherwise. Nearest neighbours are found using a three-dimensional unit-sphere $k$-d tree; an equal-distance tie that contains the parent is conservatively counted as parent-nearest.
+The interface reports the inverted value, $P_{\mathrm{inv}}$, so that a higher score communicates a lower parent-nearest disclosure risk and is easier for a field data guardian to interpret (Figure~\ref{fig:mapsafe-anonymisation}c). The score is guidance rather than a guarantee of anonymity, because disclosure also depends on local geography, attributes, auxiliary information, and the intended use.
+
+After reviewing the result, Steven may collapse the information card to expose almost the entire map, save the layer locally, upload it for an authorised community recipient through the selected NextGIS community, stop the safeguard process, or continue to encryption. If the displayed privacy--utility balance is unsuitable, \emph{Remask} returns to the same controls and generates another candidate. Remasking always begins with the precise source rather than the already displaced layer, preventing offsets from being compounded unintentionally.
+
+The physical-device measurements in Table~\ref{tab:performance-results} distinguish the fast numerical masking calculation from the complete workflow experienced by the guardian. For the 1,000-point typical dataset, coordinate displacement required a median of 35.72~ms, displacement plus Spruill assessment required 120.73~ms, and the complete production workflow required 5.71~s. The corresponding rich-profile medians were 35.79~ms, 120.87~ms, and 5.96~s. At 2,000 points, the typical and rich complete-workflow medians were 10.81 and 11.52~s respectively. Source reading and output-layer writing, rather than the displacement formula, therefore dominate the mobile operation.
+
+The earlier browser and QGIS studies remain useful contextual comparisons, but their shapefile conversion, nesting, implementation language, hardware, and timing boundaries differ from the present Android experiment. The mobile values are therefore reported from the production NextGIS workflow rather than interpreted as a direct speed-up or slowdown relative to JavaScript in a browser or Python in QGIS. This scope distinction also avoids attributing storage and layer-management costs to Spruill's nearest-neighbour calculation itself.
+
+% Hexagonal binning removes the individual-point representation. Points are assigned to cells at a selected resolution, records sharing a cell identifier are grouped, and one polygon with a count attribute is written for each occupied cell. ARM and ARM64 builds use H3 4.1.1. Because the x86/x86\_64 emulator cannot load the packaged H3 native library, it uses a portable Web Mercator hexagonal grid whose resolution-dependent sizes approximate the choices exposed by the interface. The result card is also collapsible and provides \emph{Bin Again}, \emph{Save Layer}, \emph{Stop}, and \emph{Next: Encrypt} actions.
+
+
+\emph{Hexagonal Binning} is the second anonymisation option in MapSafe Mobile. It is intended for situations in which a recipient needs to understand the distribution or concentration of observations but does not require a separate approximate location for every record. Rather than moving each point, MapSafe assigns the original observations to hexagonal cells at a resolution chosen by the data owner. Points sharing the same cell are replaced by one polygon carrying a \texttt{point\_count} attribute. The resulting layer therefore communicates where observations are concentrated while withholding their exact coordinates. The current interface displays the generated cells as translucent blue polygons; the stored count can also support density-based analysis or styling.
+
+\begin{figure*}[h!]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-28-original-sample-dataset-unobstructed.png}
+    \caption{Original point dataset.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-14-hexagonal-binning-configuration.png}
+    \caption{Selection of the H3 resolution.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-16-hexagonal-binning-applied-collapsed.png}
+    \caption{Binned layer with the result card collapsed.}
+  \end{subfigure}\hfill
+  % \begin{subfigure}[t]{0.24\textwidth}
+  %   \includegraphics[width=\linewidth]{figures/ms2026-16-hexagonal-binning-applied-collapsed.png}
+  %   \caption{Collapsed hexbin result and map.}
+  % \end{subfigure}
+  \caption{MapSafe Mobile hexagonal-binning workflow. The data owner selects an H3 resolution, applies aggregation to the original points, and collapses the result card to inspect the binned layer before saving, repeating, stopping, or continuing to encryption.}
+  \label{fig:mapsafe-hexagonal-binning}
+\end{figure*}
+
+Choosing the resolution requires the same kind of privacy--utility judgement as choosing masking distances. Lower H3 resolutions produce larger cells, grouping observations across a wider area and concealing more positional detail, but they may be too coarse for local analysis. Higher resolutions produce smaller cells and preserve more geographic detail, but can create a sparse surface or cells containing only one observation, which may provide little meaningful protection \citep{rao2021privacy}. The appropriate level therefore depends on the geographic extent, clustering, sensitivity, and intended use of the dataset rather than on a universal default. In the illustrated North Whangārei example, Steven selects resolution~8, shown in the interface as an approximate 460~m hexagon size, and immediately inspects the resulting coverage on the map (Figure~\ref{fig:mapsafe-hexagonal-binning}).
+
+On supported ARM and ARM64 devices, MapSafe performs the indexing with H3 Java 4.1.1 \citep{sahr2003geodesic,uber2018h3}. The x86/x86\_64 emulator used for the screenshots cannot load the packaged H3 native library, so it uses a portable Web Mercator hexagonal grid with resolution-dependent sizes approximating those presented by the interface. Each run creates one binned layer at the selected resolution while leaving the authoritative point layer unchanged. If a different balance is needed for the intended community purpose, \emph{Bin Again} returns Steven to the resolution control and creates another candidate from the precise source. Steven can then save the selected layer, upload it to the chosen NextGIS community, stop the safeguard process, or continue to encryption. The result card can be collapsed so that most of the screen remains available for comparing the aggregation with its geographic context.
+
+MapSafe Mobile supports two levels of data sharing: the original dataset and an anonymised representation. Access is determined by the recipient’s role and intended use rather than by fixed categories such as trusted'', semi-trusted'', or ``untrusted''. A recipient authorised to work with precise locations may receive the original dataset through multi-recipient OpenPGP encryption. A recipient who requires only general spatial patterns receives an anonymised representation created using either halo masking or hexagonal binning. Community membership does not automatically grant access to precise locations; the sovereign data owner remains responsible for selecting the appropriate anonymisation method and parameters, choosing the recipients, and ensuring that each representation is suitable for its intended purpose.
+
+
+
+
+
+
+
+Accepted masked and binned layers can remain on the map, be saved as files, or be uploaded to the selected NextGIS community as native vector resources. Local outputs use the fixed public folder \texttt{Downloads/MapSafe}; compact feedback shows only the saved filename and an \emph{Open Folder} action. This avoids repeatedly presenting a destination picker in the field. Sharing a derived layer without encryption is an intentional option, but the interface warns that spatial anonymisation reduces risk rather than guaranteeing safety. Attributes, filenames, photographs, timestamps, or small cell counts may still disclose sensitive information \citep{kessler2018geoprivacy,cassa2008re,zimmerman2008quantifying}.
+
+% \FloatBarrier
+% \subsection{Original-dataset encryption and multi-recipient OpenPGP}
+% \label{sec:encryption}
+
+% Following anonymisation, the encryption screen selects the original source dataset by default rather than the masked or binned candidate. This implements the business rule that the authoritative dataset is the object normally requiring recipient-specific confidentiality. A compact \emph{Choose} action permits a different file when required, and direct entry to encryption is supported without first performing masking or binning.
+
+% When a local identity exists, its public key is checked as a self-recipient by default, allowing the sender to recover the package later. The user may uncheck it, select one or more accepted community recipients, or use both self and community recipients. Creating an identity returns the user to recipient selection and does not initiate encryption automatically. Encryption may therefore address only the sender, only other recipients, or both.
+
+% The implementation uses standard OpenPGP hybrid encryption. A fresh random AES-256 content-encryption key encrypts the compressed dataset once using the RFC~9580 version-2 Symmetrically Encrypted Integrity Protected Data profile and AES-256-GCM. Each selected recipient's RSA encryption subkey encrypts that same content key into a separate public-key encrypted session-key packet. Adding a recipient adds a small key envelope rather than another encrypted copy of the dataset. The binary \texttt{.pgp} file contains the encrypted payload and all recipient envelopes; there is no separate session-key file. If signing is selected, the local passphrase unlocks the signing key in memory and a SHA-256 OpenPGP signature is embedded. Decryption remains compatible with the earlier AES-256/OpenPGP-MDC MapSafe profile.
+
+% \begin{figure*}[t]
+%   \centering
+%   \begin{subfigure}[t]{0.31\textwidth}
+%     \includegraphics[width=\linewidth]{figures/ms2026-20-encrypt-protect.png}
+%     \caption{Original selected by default.}
+%   \end{subfigure}\hfill
+%   \begin{subfigure}[t]{0.31\textwidth}
+%     \includegraphics[width=\linewidth]{figures/ms2026-21-recipient-selection.png}
+%     \caption{Self and community recipients.}
+%   \end{subfigure}\hfill
+%   \begin{subfigure}[t]{0.31\textwidth}
+%     \includegraphics[width=\linewidth]{figures/ms2026-22-encryption-success.png}
+%     \caption{Protected package saved.}
+%   \end{subfigure}
+%   \caption{Multi-recipient encryption. The dataset is encrypted once with an AES session key, which is independently wrapped for every checked OpenPGP public key.}
+%   \label{fig:mapsafe-encryption-flow}
+% \end{figure*}
+
+% The encrypted package is written automatically to \texttt{Downloads/MapSafe}; after encryption, the result card appears below the recipient action, followed by \emph{Stop} and \emph{Next: Notarise}. The user may reselect recipients and create a new package. No filesystem destination is requested for each run.
+
+% \FloatBarrier
+% \subsection{NextGIS community resources and encrypted-package exchange}
+% \label{sec:community-packages}
+
+% MapSafe uses different NextGIS resources for different artefacts. Public keys use the dedicated group-scoped key directory. Masked and hexagonally binned results may be uploaded as ordinary vector resources so authorised members can view them through the Web GIS. Encrypted \texttt{.pgp} packages are opaque files and are stored as attachments to a small publisher-owned vector registry. Each registry entry records an opaque package identifier, SHA-256 digest, publisher and group identifiers, creation time, status, and reserved blockchain metadata. The attachment is assigned an opaque UUID-based filename; the original dataset filename and geographic content are not disclosed in the registry.
+
+% On the sender's device, \emph{Upload to Community} associates the package with the selected account and group. On a recipient's device, the first Access screen lists \emph{Community datasets} in addition to \emph{Encrypted file on this device}. Selecting a community package downloads the attachment to \texttt{Downloads/MapSafe}, recalculates SHA-256, and compares it with the digest in the NextGIS registry before passing it to the integrity screen. A mismatch is rejected. Access remains subject to the Web GIS resource ACLs prepared by the administrator; MapSafe does not infer that every authenticated NextGIS user may read every community package.
+
+\FloatBarrier
+\subsection{Dataset selection and multi-recipient OpenPGP encryption}
+\label{sec:encryption}
+
+Within this two-level model, the original and anonymised representations remain separate artefacts rather than being placed inside a nested, multi-level encrypted volume. In the running example, Steven may protect the precise North Whangārei observations for Amber and selected BMA representatives, protect a halo-masked or hexagonally binned representation for other authorised community recipients, or select any combination of these artefacts. MapSafe encrypts every selected artefact separately, producing one \texttt{.pgp} package per dataset; it does not combine several representations inside one package. When several datasets are selected, recipient review is repeated for each package so Steven can deliberately apply the same or different recipient set. The \emph{Encrypt} activity can be opened after anonymisation or directly from the Safeguard tab, and its compact \emph{Choose} action lets Steven review or change the current dataset before recipient selection (Figure~\ref{fig:mapsafe-encryption-flow}a).
+
+\begin{figure*}[h!]
+  \centering
+
+  \begin{subfigure}[t]{0.31\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]
+      {\mapsafefigdir/ms2026-north-whangarei-20260909-20-encrypt-protect.png}
+    \caption{Selected North Whangārei dataset and persistent local identity.}
+    \label{fig:encrypt-protect}
+  \end{subfigure}\hfill
+  %
+  \begin{subfigure}[t]{0.31\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]
+      {\mapsafefigdir/ms2026-north-whangarei-20260909-21-recipient-selection.png}
+    \caption{Selection of self and authorised community recipients.}
+    \label{fig:recipient-selection}
+  \end{subfigure}\hfill
+  %
+  \begin{subfigure}[t]{0.31\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]
+      {\mapsafefigdir/ms2026-north-whangarei-20260909-22-encryption-success.png}
+    \caption{Protected package saved with continuation actions.}
+    \label{fig:encryption-success}
+  \end{subfigure}
+
+  \caption{MapSafe Mobile multi-recipient encryption workflow. One selected dataset is encrypted once with an AES-256 session key, which is independently wrapped for every selected OpenPGP public key. If several datasets are selected, each becomes a separate protected package.}
+  \label{fig:mapsafe-encryption-flow}
+\end{figure*}
+
+Steven next chooses exactly who should be able to recover the package. If his persistent local identity is available, MapSafe selects Steven's public key as a self-recipient by default so that he can decrypt the package later. Steven may retain or remove that selection and may add Amber's accepted public key or those of authorised BMA representatives and other members of the selected NextGIS community (Figure~\ref{fig:mapsafe-encryption-flow}b). Encryption can therefore address Steven alone, Amber alone, or Steven and several recipients together. If Steven must create an encryption identity at this point, MapSafe returns to recipient selection afterwards rather than beginning encryption automatically.
+
+After the recipients have been confirmed, MapSafe uses standard OpenPGP hybrid encryption to create one \texttt{.pgp} package. The application compresses the selected dataset, generates a fresh random AES-256 content-encryption key, and encrypts the dataset once using the RFC~9580 version-2 Symmetrically Encrypted Integrity Protected Data profile and AES-256-GCM. It then encrypts that same content key separately with each selected recipient's RSA encryption subkey. These public-key encrypted session-key envelopes and the encrypted payload are stored together inside the single package. Adding another recipient therefore adds a small key envelope rather than another encrypted copy of the dataset.
+
+This design removes the need to distribute a shared symmetric key or a common dataset passphrase. Each recipient uses their own private key to recover their copy of the session key, while their personal passphrase is used only to unlock that private key locally. Neither the private key nor its passphrase is added to the package or uploaded to NextGIS. If signing is enabled, the owner's passphrase temporarily unlocks the local signing key and MapSafe embeds a SHA-256 OpenPGP signature, allowing recipients to distinguish confidentiality from evidence about the sender. New packages use the AES-256-GCM profile, while decryption remains compatible with the earlier AES-256/OpenPGP-MDC MapSafe profile.
+
+
+
+
+
+
+
+Table~\ref{tab:performance-results} is the mobile equivalent of the masking, encryption, and decryption tables reported for the earlier browser and QGIS versions of MapSafe. The primary datasets contain 50, 250, 500, and 1,000 points because these sizes reflect observations likely to be collected during a NextGIS Mobile field session; 2,000-point datasets provide an additional stress case. Every point-count class has two GeoJSON attribute profiles. Both contain the same 18-field typed schema, but the \emph{rich} profile uses longer, non-repeating notes and stewardship text and is approximately four times larger than the corresponding \emph{typical} file. Attachments are excluded because the current MapSafe GeoJSON exporter does not embed NextGIS attachments.
+
+The performance experiment was conducted on the physical Samsung handset summarised in Table~\ref{tab:performance-device}. Ten synthetic GeoJSON datasets represented five point counts---50, 250, 500, 1,000, and 2,000---under typical and rich attribute profiles. For every dataset, the test harness evaluated the complete halo-masking workflow, signed OpenPGP encryption, and verified OpenPGP decryption, producing 30 dataset--operation cells. Their execution order was randomised using the fixed seed 20260811. Each cell was completed once as an unreported warm-up and then five times for measurement. Table~\ref{tab:performance-results} reports the median of these five measurements to two decimal places; the corresponding first and third quartiles are retained in the archived result files. Halo masking used fixed 100--2,000~m displacement bounds. The OpenPGP tests used one RSA-3072 identity generated before measurement, one selected recipient, signing enabled, compression, AES-256-GCM encryption, integrity checking, and signature verification.
+
+\begin{table}[t]
+\centering
+\caption{Main specifications of the physical handset used for the MapSafe Mobile performance experiment.}
+\label{tab:performance-device}
+\small
+\begin{tabularx}{\linewidth}{p{0.34\linewidth}X}
+\toprule
+\textbf{Item} & \textbf{Configuration} \\
+\midrule
+Handset & Samsung Galaxy A14 (SM-A145F; product \texttt{a14nsxx}) \\
+System-on-chip & Samsung Exynos 850; eight logical processors \\
+Usable system memory & 3,863,203,840 bytes (approximately 3.60~GiB; 4~GB class) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The three masking columns deliberately use different boundaries. \emph{Mask core} records source-coordinate normalisation, cryptographically secure displacement, and spherical destination calculation. \emph{Core+SM} includes Spruill's nearest-neighbour assessment on that same candidate. \emph{Complete mask} begins when the already selected NextGIS source layer is read and ends after output-feature construction, transactional insertion, spatial-index rebuilding, and map saving. The cryptographic cells exercise the same production OpenPGP engine over in-memory byte streams. Encryption starts with prepared WGS84 GeoJSON bytes and ends when the signed single-recipient package bytes have been produced; decryption includes private-key unlocking, payload recovery, integrity checking, and signature verification and ends when the plaintext bytes have been recovered. Android file-picker interaction and filesystem input/output are not part of these two cryptographic timings. Human interaction, initial dataset import, UI rendering, community transfer, blockchain access, and result-log writing are also excluded. Hexagonal binning was not timed in this experiment and must be evaluated separately on the physical H3 implementation.
+
+\begin{table*}[t]
+\centering
+\caption{Median MapSafe Mobile processing times on the Samsung SM-A145F after one warm-up and five measured repetitions.}
+\label{tab:performance-results}
+\small
+\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llrrrrrrr@{}}
+\toprule
+\textbf{Points} & \textbf{Profile} & \multicolumn{1}{c}{\textbf{Input}} & \multicolumn{3}{c}{\textbf{Masking}} & \multicolumn{2}{c}{\textbf{OpenPGP}} & \multicolumn{1}{c}{\textbf{Output}} \\
+\cmidrule(lr){3-3}\cmidrule(lr){4-6}\cmidrule(lr){7-8}\cmidrule(lr){9-9}
+& & \textbf{KiB} & \begin{tabular}[c]{@{}c@{}}\textbf{Core}\\\textbf{(ms)}\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Core+SM}\\\textbf{(ms)}\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Complete}\\\textbf{(s)}\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Encrypt}\\\textbf{(s)}\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Decrypt}\\\textbf{(s)}\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{PGP}\\\textbf{KiB}\end{tabular} \\
+\midrule
+50    & Typical & 39.76    & 1.90 & 5.35 & 0.32 & 2.34 & 2.32 & 15.12 \\
+50    & Rich    & 163.20   & 1.81 & 4.11 & 0.32 & 2.42 & 2.38 & 111.34 \\
+250   & Typical & 198.98   & 12.61 & 78.33 & 1.75 & 2.41 & 2.36 & 67.74 \\
+250   & Rich    & 816.16   & 8.97 & 21.40 & 1.43 & 2.80 & 2.63 & 550.12 \\
+500   & Typical & 398.12   & 17.61 & 46.76 & 2.87 & 2.49 & 2.42 & 133.53 \\
+500   & Rich    & 1,632.49 & 16.35 & 41.99 & 2.79 & 3.36 & 2.93 & 1,098.60 \\
+1,000$^{\dagger}$ & Typical & 796.39   & 35.72 & 120.73 & 5.71 & 2.68 & 2.52 & 265.18 \\
+1,000 & Rich    & 3,265.13 & 35.79 & 120.87 & 5.96 & 4.24 & 3.52 & 2,195.48 \\
+2,000 & Typical & 1,594.87 & 65.04 & 180.31 & 10.81 & 3.06 & 2.73 & 528.41 \\
+2,000 & Rich    & 6,532.37 & 70.06 & 200.23 & 11.52 & 6.14 & 4.69 & 4,389.20 \\
+\bottomrule
+\end{tabular*}
+\end{table*}
+
+\noindent Each timing is reported to two decimal places. Milliseconds are retained for the two numerical masking phases because expressing them to hundredths of a second would obscure their differences; complete masking, encryption, and decryption are shown in seconds. Encryption and decryption concern one dataset in one single-recipient package rather than nested representation levels, and the 2,000-point rows are stress cases. The 1,000-point typical masking median marked $^{\dagger}$ comes from a verification repeat after transient device contention affected three repetitions in the complete run; its cryptographic medians remain from the complete run.
+
+Only one encryption and one decryption column are required because MapSafe Mobile does not repeatedly encrypt nested fine, medium, and coarse representations. The anonymised output remains a separate shareable layer, while the original dataset is encrypted once for the selected recipients. For 50 points, the typical and rich profiles each completed the masking workflow in a median of 0.32~s. At 1,000 points, the typical profile required 5.71~s and the rich profile 5.96~s. The similar values at a fixed point count, despite the rich input being approximately four times larger, show that feature count and NextGIS layer I/O influence complete masking more strongly than exported GeoJSON byte size. For the 1,000-point rich dataset, coordinate displacement itself required a median of 35.79~ms and displacement plus Spruill assessment required 120.87~ms. These calculation times are small compared with the 5.96~s complete workflow because reading, constructing, inserting, indexing, and saving the derived layer dominate the operation experienced by the guardian.
+
+Signed encryption and verified decryption showed a fixed cryptographic and stream-processing cost for small inputs and then increased with GeoJSON byte size. The 50-point typical dataset required median times of 2.34~s for encryption and 2.32~s for decryption. At 1,000 points, the typical dataset required 2.68~s and 2.52~s respectively, whereas the larger rich dataset required 4.24~s and 3.52~s. The 2,000-point rich stress file (6.38~MiB) required 6.14~s for encryption and 4.69~s for decryption, corresponding to median throughputs of 1.04 and 1.36~MiB/s. The 1,000-point rich dataset reached 0.75~MiB/s for encryption and 0.91~MiB/s for decryption. Compression made every \texttt{.pgp} package smaller than its GeoJSON input. The archived quartiles show generally modest variability, but they are omitted from the compact table in favour of one median per cell. Repeating the initially contended 1,000-point typical masking cell produced a complete-workflow median of 5.71~s, which is the masking value reported in Table~\ref{tab:performance-results}.
+
+These Android values should not be compared directly with the throughput reported for the earlier browser and QGIS implementations. The mobile experiment includes the production NextGIS read/write path and signed OpenPGP processing, uses different input formats and hardware, and tests field-scale rather than national datasets. The 1,000-point rich dataset provides a useful upper reference for the intended field workflow: its median complete-masking, encryption, and decryption times were 5.96, 4.24, and 3.52~s respectively. The longest measured median was 11.52~s for complete masking of the 2,000-point rich stress dataset. Raw measurements, phase timings, dataset hashes, device metadata, and both the complete and verification runs are archived with the source repository at commit \texttt{6edcbb27a03ba76eea78915f097a877969d733d4}.\footnote{\url{https://github.com/sharmapn/nextgis_mobile_mapsafe_geoprivacy/tree/codex/mapsafe-integration/paper/mapsafe-results/performance/samsung-sm-a145f-20260829}}
+
+Recipient scaling should be measured separately because the payload is encrypted once. Increasing recipients should principally add public-key envelopes and wrapping time, not repeat full-payload encryption. The present physical-phone benchmark used one recipient throughout; consequently, Table~\ref{tab:recipient-scaling} retains the planned recipient-count experiment but does not invent unmeasured values.
+
+\begin{table}[t]
+\centering
+\caption{Planned effect-of-recipient-count experiment for the same 1,000-point input package. Recipient scaling was not measured in the present single-recipient run.}
+\label{tab:recipient-scaling}
+\small
+\begin{tabular}{rrrr}
+\toprule
+\textbf{Recipients} & \textbf{Encrypt (s)} & \textbf{PGP size (KB)} & \textbf{Decrypt (s)} \\
+\midrule
+1  & -- & -- & -- \\
+2  & -- & -- & -- \\
+5  & -- & -- & -- \\
+10 & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+
+
+
+The completed package is written automatically to \texttt{Downloads/MapSafe}, and the result card confirms the saved filename (Figure~\ref{fig:mapsafe-encryption-flow}c). The owner may stop at this point, continue to notarisation, upload the package to the selected NextGIS community, or reselect recipients and create a new package. The package payload remains opaque to NextGIS because the service does not possess an addressed private key; the package filename and descriptive registry metadata remain visible to authorised community members and should therefore avoid sensitive wording. Encryption and decryption performance for the intended 50--1,000-point mobile datasets is reported in Table~\ref{tab:performance-results}; unlike the earlier nested scheme, the measured single-recipient processing time increases principally with dataset size, while the effect of additional recipient envelopes remains to be measured separately.
+
+\FloatBarrier
+\subsection{NextGIS community resources and protected-resource exchange}
+\label{sec:community-packages}
+
+MapSafe uses different NextGIS resources for different artefacts. Public keys use a dedicated group-scoped key directory. Halo-masked and hexagonally binned results are uploaded as native vector resources so authorised members can view or reuse them through the Web GIS. Encrypted \texttt{.pgp} packages remain opaque attachments associated with a publisher-owned package registry. A registry entry records the package filename, SHA-256 digest, publisher and group identifiers, creation time, status, and available blockchain metadata. MapSafe never offers an unencrypted original dataset through this upload workflow.
+
+Steven opens \emph{Upload to Community} from the Safeguard tab and may select a public key, one or more anonymised datasets, one or more encrypted packages, or any combination of these items (Figure~\ref{fig:mapsafe-community-exchange}a). Each selection is published under his authenticated account and currently selected group. On Amber's device, \emph{Community Packages} is the first Access option and lists the protected packages and public keys permitted by the resource ACLs; a BMA representative who was assigned anonymised-only access for a particular release sees the authorised derived resources but not a protected original for which that representative was not selected (Figure~\ref{fig:mapsafe-community-exchange}b). Public keys can be downloaded for later recipient selection, anonymised layers can be opened as spatial resources, and protected packages can be downloaded to \texttt{Downloads/MapSafe} for verification and decryption.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-30-community-upload-selection.png}
+    \caption{Sender selects public keys and protected resources to publish.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-31-community-packages.png}
+    \caption{Access view separates keys, anonymised datasets, and encrypted packages.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-23-notarisation-hash-network.png}
+    \caption{Steven binds the protected filename to its digest for optional notarisation.}
+  \end{subfigure}
+  \caption{Mobile community-exchange workflow. Steven selects public keys and protected resources to publish; Amber or a BMA representative sees the resource classes allowed by the configured ACLs; a protected package can then be notarised.}
+  \label{fig:mapsafe-community-exchange}
+\end{figure*}
+
+% The earlier single-account Suva Web GIS screenshots are retained below for provenance
+% but are intentionally excluded from the North Whangārei manuscript. Replace this
+% block with the Premium multi-account browser evidence after the acceptance test.
+\iffalse
+\begin{figure*}[t]
+  \ContinuedFloat
+  \centering
+  \begin{subfigure}[t]{0.45\textwidth}
+    \includegraphics[width=\linewidth,trim=0 320 300 0,clip]{\mapsafewebfigdir/nextgis-community-public-keys.png}
+    \caption{Community public-key registry.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.45\textwidth}
+    \includegraphics[width=\linewidth,trim=0 320 300 0,clip]{\mapsafewebfigdir/nextgis-community-encrypted-packages.png}
+    \caption{Publisher-owned package registry.}
+  \end{subfigure}
+  \par\medskip
+  \begin{subfigure}[t]{0.70\textwidth}
+    \includegraphics[width=\linewidth,trim=0 180 300 0,clip]{\mapsafewebfigdir/nextgis-community-anonymised-datasets.png}
+    \caption{Suva halo-masked and hexagonally aggregated resources.}
+  \end{subfigure}
+  \caption{Archived single-account Web GIS transport evidence. This preliminary test used the earlier Suva fixture and does not provide evidence for the North Whangārei case or multi-account ACL isolation.}
+  \label{fig:mapsafe-nextgis-live-community}
+\end{figure*}
+\fi
+
+A four-account Premium acceptance test has been prepared for the North Whangārei case. It publishes Steven's key, Amber's key, a BMA representative's key, two anonymised layers, and an original dataset encrypted for Steven and Amber; it then checks authorised listing and download, digest equality, signature verification, byte-exact decryption, and denied access for non-recipients and an external non-member. The test and corresponding browser evidence will be reported only after execution against the Premium resource ACLs; preliminary single-account transport evidence is retained separately in the research archive and is not used as evidence for this case.
+
+When an encrypted community package is selected, MapSafe downloads it, recalculates SHA-256, and compares the result with the digest in the NextGIS registry before passing it to the integrity screen; a mismatch is rejected. Access remains subject to the Web GIS resource ACLs prepared by the administrator. Group membership identifies the relevant community, but MapSafe does not infer that every authenticated NextGIS user may read every resource.
+
+\subsection{Notarisation and blockchain-verification boundary}
+\label{sec:notarisation}
+
+The Notarise screen automatically receives the encrypted package created by the preceding step and calculates its SHA-256 digest. If Steven opens it independently, he can select an existing encrypted package. Only the active network name is shown on the operational screen. Network details are configured in \emph{Security \& Sharing}, where MapSafe stores encrypted app-private profiles for Ethereum Sepolia, Ethereum Mainnet, or a custom EVM-compatible network. Preflight checks validate the RPC chain identifier, deployed bytecode, expected \texttt{mintNFT(string)} and \texttt{locations(uint256)} selectors, and ERC-721 interface support before the profile is used.
+
+For a new notarisation, MapSafe normalises the encrypted package basename and appends an underscore followed by its 64-character lowercase SHA-256 digest. This filename--digest string is encoded as the argument to \texttt{mintNFT(string)}. Binding the public package name to the digest gives the resulting assertion more evidential context than a hash alone: the signing wallet asserted that the named encrypted package had those bytes at the transaction time. It does not expose the plaintext dataset or cryptographic secrets, and it cannot by itself prove the human identity controlling the wallet, prevent another transaction from recording a competing assertion, or make a user-selected filename an intrinsic property of the bytes. Neutral encrypted-package names should therefore be used where a descriptive name would itself disclose sensitive information.
+
+MapSafe constructs a zero-value transaction and hands it through Reown WalletConnect to an installed external wallet, such as Trust Wallet or MetaMask, for explicit review, fee approval, and signing. The application neither collects nor stores the blockchain private key or recovery phrase. After submission, MapSafe retrieves the receipt, verifies that the call was mined successfully on the configured chain and contract, and compares the decoded filename and digest with the local package before reporting success. The transaction hash and network can then be associated with the corresponding community package. This function is complementary to OpenPGP: the blockchain record supplies an independently retrievable public assertion about the protected package, while recipient encryption and the optional OpenPGP signature establish confidentiality, package integrity, and signer status.
+
+Figure~\ref{fig:mapsafe-community-exchange}c separates configuration from field operation. Network and contract details, including RPC and contract preflight checks, remain in \emph{Security \& Sharing}; the operational Notarise screen carries forward the encrypted filename, calculates its digest, displays the active network and connected wallet, and requests external-wallet approval. The Verification screen in Figure~\ref{fig:mapsafe-access-flow}a accepts the resulting transaction reference and performs the local-to-chain filename and digest comparison.
+
+\FloatBarrier
+\subsection{Verification, decryption, and map display}
+\label{sec:verification}
+
+Access begins either from the community package list or the Android file picker. MapSafe calculates the local SHA-256 digest immediately. For a community download, it first compares the digest with the NextGIS registry value. If a compatible blockchain transaction URL or hash is supplied, the application retrieves the transaction and receipt, checks the chain, contract, call, and receipt status, strictly decodes the record, and reports whether both the normalised encrypted filename and digest match. Earlier MapSafe hash-only records remain readable but can establish only a digest match. Blockchain comparison remains optional for packages that were not notarised, and \emph{Next: Decrypt} becomes available once the local digest has been calculated.
+
+The OpenPGP package contains one encrypted dataset. On Amber's device, MapSafe inspects its recipient identifiers and locates a matching locally held secret encryption key. Amber's passphrase unlocks that private key, which recovers the AES session key from the matching envelope; the session key then decrypts the payload. At that point the complete dataset plaintext has been recovered---the session key is not a second dataset Amber must handle. A package addressed only to other recipients is rejected.
+
+AEAD/MDC integrity and signature authenticity are reported separately. Modified or structurally invalid packages are rejected before plaintext is accepted. When a signature is present, MapSafe reports it as valid, invalid, or made by an unknown signer; unsigned material is labelled unsigned rather than authenticated. A valid GeoJSON result is saved to \texttt{Downloads/MapSafe}, imported as one local NextGIS vector layer, selected, and zoomed to its extent. Before display, the application clears previously loaded map layers so only the dataset just decrypted is visible. The former intermediate \emph{Access Datasets} catalogue screen is not shown.
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-07-verification-file-and-blockchain.png}
+    \caption{Local hashing and optional blockchain comparison.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-24-decrypt-and-access.png}
+    \caption{Recipient-key decryption.}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.31\textwidth}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-26-decryption-success.png}
+    \caption{Recovered dataset ready for access.}
+  \end{subfigure}
+  % The unobstructed post-decryption map is retained for possible later use:
+  % \begin{subfigure}[t]{0.235\textwidth}
+  %   \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-27-decrypted-dataset-map.png}
+  %   \caption{Decrypted dataset displayed as the only map layer.}
+  % \end{subfigure}
+  \caption{Access workflow. A local or community package is hashed and optionally checked against its blockchain record, decrypted by an addressed local identity, and displayed directly after previously loaded layers are cleared.}
+  \label{fig:mapsafe-access-flow}
+\end{figure*}
+
+% \FloatBarrier
+% \subsection{Implementation profile and current evidential limits}
+% \label{sec:implementation-status}
+
+% \begin{table}[t]
+% \centering
+% \caption{Implementation profile of the evaluated MapSafe Mobile build.}
+% \label{tab:implementation-profile}
+% \small
+% \begin{tabularx}{\linewidth}{p{0.34\linewidth}X}
+% \toprule
+% \textbf{Component} & \textbf{Implementation} \\
+% \midrule
+% Host application & NextGIS Mobile fork, version 3.2.1 (199) \\
+% Android configuration & Minimum API 26; compile and target API 36 \\
+% Halo masking & Kotlin; WGS84 spherical destination calculation \\
+% Spatial aggregation & H3 Java 4.1.1 on ARM/ARM64; portable grid fallback on x86/x86\_64 \\
+% OpenPGP & Bouncy Castle 1.84; RSA-3072 identity; RFC~9580 AES-256-GCM packages \\
+% Local private-key protection & Passphrase-protected keyring plus Android Keystore AES-GCM \\
+% Community exchange & NextGIS public-key buckets, vector resources, and encrypted-package attachment registries \\
+% Local outputs & Fixed \texttt{Downloads/MapSafe} folder \\
+% Blockchain & Configurable read-only EVM profiles and digest verification; no wallet signing or submission \\
+% \bottomrule
+% \end{tabularx}
+% \end{table}
+
+% The host-side unit suite and debug APK build pass in the current source tree. Automated tests cover the OpenPGP engine, identity persistence and trust states, Spruill calculation, masking and portable hexagonal aggregation, blockchain parsing and integrity records, community manifest and package handling, and workflow state. These tests support claims about implemented logic but do not substitute for deployment evidence.
+
+% Three Tier~2 validations remain. Public-key publication, ACL isolation, package upload, listing, download, and removal must be exercised end-to-end with several real NextGIS accounts and a physical Android device; emulator account sign-in has been unreliable in the development environment. The automated workflow confirms decryption and verified-layer import, but the final clean-emulator capture did not render a visible basemap; post-import map rendering and basemap preservation should therefore be confirmed on physical devices. OpenPGP interoperability should be tested with external implementations such as GnuPG and OpenKeychain. Live EVM signing and submission must not be described as implemented until a wallet approach is selected and tested.
+
+% \FloatBarrier
+% \section{Evaluation}
+% \label{sec:evaluation}
+
+% The evaluation asks whether MapSafe Mobile preserves the source record, creates the selected derived representation, restricts the original dataset to intended OpenPGP recipients, detects altered packages, and remains practical for mobile field datasets. It considers functional security, spatial privacy and utility, NextGIS community exchange, offline behaviour, and processing performance.
+
+% \FloatBarrier
+% \subsection{Experimental setup}
+
+% The final experiment should report the physical handset model, processor, memory, Android version, NextGIS/MapSafe build and commit, and library versions. The principal datasets contain 50, 250, 500, and 1,000 point observations. These sizes reflect the anticipated workflow in which a field user protects data collected through NextGIS Mobile rather than a large archival layer. The same logical schema and representative attribute sizes should be used at all four scales.
+
+% Each operation should be repeated \resultplaceholder{number of measured repetitions} after \resultplaceholder{warm-up and cache procedure}. Report the median and \resultplaceholder{interquartile range or standard deviation}. Halo masking should use fixed \resultplaceholder{minimum and maximum distances}; hexagonal binning should use \resultplaceholder{resolution}. Encryption and decryption should use the same identity profile and record both the exported GeoJSON size and final \texttt{.pgp} size. Tests should be performed on at least one physical ARM/ARM64 handset because emulator fallback aggregation is not identical to native H3.
+
+% \FloatBarrier
+% \subsection{Functional, community, and security validation}
+
+% The functional matrix should record whether the original layer remains unchanged after repeated masking and binning; whether \emph{Remask} always starts from the original; whether self-only, recipient-only, and combined recipient selections decrypt as intended; whether an unlisted private key is rejected; and whether package tampering is detected. Restart tests should confirm the local identity and accepted community keys remain available without creating a new key pair.
+
+% The NextGIS experiment requires at least three accounts: an owner/publisher, an authorised group member, and an outsider. It should verify public-key publication without private material, full-fingerprint acceptance, quarantine after a changed key, ACL-controlled visibility of vector resources and encrypted packages, attachment download, and rejection after a NextGIS digest mismatch. \resultplaceholder{Insert physical-device multi-account and ACL results.}
+
+% Offline tests should disconnect the device after accepted keys have been synchronised, then repeat masking, binning, encryption, hashing, restart, and local decryption. Reconnection should upload only the selected derived resource or encrypted package and must not silently upload the authoritative source. \resultplaceholder{Insert offline and reconnection observations.}
+
+% \subsection{Spatial privacy and utility}
+
+% For halo masking, every output displacement should satisfy the configured $[r_{\min},r_{\max}]$ interval. Report its distribution, inverted Spruill score, repeated-run variability, and \resultplaceholder{selected utility measure, such as nearest-neighbour or cluster preservation}. Because the mask is stochastic, a score from one screenshot is illustrative rather than a benchmark.
+
+% For hexagonal aggregation, report the selected resolution, approximate cell area, number of occupied cells, counts per cell, and singleton cells. A cell containing one observation can remain revealing, so aggregation must not be described as automatically anonymous. Where appropriate, evaluate a minimum-count or coarser-resolution policy. Attribute and metadata inspection should determine whether descriptive fields, filenames, image EXIF, temporary exports, or caches reveal the protected location.
+
+% \subsection{Performance and scalability}
+% \label{sec:performance}
+
+% Masking time is expected to depend mainly on point count, whereas encryption and decryption depend mainly on exported byte size. These relationships must be measured rather than inferred from earlier browser or QGIS implementations. Table~\ref{tab:performance-results} contains no invented throughput figures. The \emph{without Spruill} measurement times displacement alone; the \emph{with Spruill} measurement includes the disclosure-risk calculation used by the mobile result screen.
+
+% \begin{table*}[t]
+% \centering
+% \caption{MapSafe Mobile anonymisation, encryption, and decryption performance on \resultplaceholder{device model, processor, memory, and Android version}. Times are seconds and should be reported as median \resultplaceholder{variability} over \resultplaceholder{repetitions}.}
+% \label{tab:performance-results}
+% \small
+% \begin{tabular}{rrrrrrrr}
+% \toprule
+% \textbf{Points} &
+% \textbf{Input (KB)} &
+% \multicolumn{2}{c}{\textbf{Halo masking}} &
+% \textbf{Hexbin} &
+% \textbf{Encryption} &
+% \textbf{Decryption} &
+% \textbf{PGP size (KB)} \\
+% \cmidrule(lr){3-4}
+% & & \textbf{without SM} & \textbf{with SM} & & & & \\
+% \midrule
+% 50    & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% 250   & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% 500   & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% 1,000 & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
+
+% Recipient scaling is measured separately because the payload is encrypted once. Increasing recipients should principally add public-key envelopes and wrapping time, not repeat full-payload encryption.
+
+% \begin{table}[t]
+% \centering
+% \caption{Effect of recipient count on the same 1,000-point input package.}
+% \label{tab:recipient-scaling}
+% \small
+% \begin{tabular}{rrrr}
+% \toprule
+% \textbf{Recipients} & \textbf{Encrypt (s)} & \textbf{PGP size (KB)} & \textbf{Decrypt (s)} \\
+% \midrule
+% 1  & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% 2  & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% 5  & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% 10 & \texttt{[TBD]} & \texttt{[TBD]} & \texttt{[TBD]} \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+% Record peak memory, battery change where measurable, SHA-256 time, NextGIS upload/download time, and final import time as secondary observations. Network timings should be separate from cryptographic processing because they depend on connectivity and server conditions. \resultplaceholder{Insert the main 50--1,000-point runtime, package-size, and recipient-scaling findings.}
+
+
+\section{Usability Evaluation}
+\label{sec:usability-evaluation}
+
+MapSafe Mobile was designed to make safeguarding decisions understandable at the point of field collection without hiding their consequences. A single workflow panel separates \emph{Safeguard} from \emph{Access} with a two-state tab control, presents the current stage through compact progress indicators, and uses \emph{Stop} and \emph{Next} to let a participant end with a useful intermediate artefact or continue through the workflow. Halo-masking and hexabinning result cards can be collapsed so that the map remains visible, while encryption, verification, and decryption screens show only the information needed for the current decision. The fixed \texttt{Downloads/MapSafe} folder, automatic recognition of an existing encryption identity, explicit dataset selection, community resource lists, and direct display of a recovered layer were intended to reduce repeated file selection and unnecessary navigation.
+
+The evaluation followed the effectiveness, efficiency, and satisfaction dimensions of ISO~9241-11:2018 \citep{ISO2018ergonomics}, consistent with earlier usability studies involving GIS and spatial-data protection \citep{kalantari2020spatial,he2012geoportal,sharma2024usable}. A moderated task-based study was completed by \resultplaceholder{number of participants and relevant GIS, mobile, cybersecurity, or community-data-governance backgrounds}. Participants used \resultplaceholder{physical handset model and Android version} and received \resultplaceholder{the task sheet, introductory explanation, and any help material made available}. To distinguish initial learnability from familiarity, each participant completed the Safeguard and Access workflows twice. The facilitator observed task completion, errors, requests for assistance, recovery behaviour, and completion time, and recorded comments without directing participants toward particular controls.
+
+\begin{table*}[t]
+\centering
+\caption{Tasks used in the MapSafe Mobile usability evaluation. Success required completion without the facilitator performing an application action for the participant.}
+\label{tab:usability-tasks}
+\small
+\begin{tabularx}{\textwidth}{p{0.18\textwidth}p{0.46\textwidth}X}
+\toprule
+\textbf{Task group} & \textbf{Participant task} & \textbf{Observed success condition} \\
+\midrule
+Workflow entry & Select a compatible point layer and enter Safeguard; enter Access without first selecting a map layer. & Safeguard rejects missing input at entry, while Access reaches package selection. \\
+Halo masking & Set minimum and maximum distances, apply masking, collapse and expand the result, then save or continue. & A separate masked layer is created; the source remains unchanged and the participant locates the result actions. \\
+Hexagonal binning & Select a resolution, apply binning, inspect the collapsed result, and use \emph{Bin Again} or save. & A count-bearing polygon layer is created without overwriting the original. \\
+Encryption & Select an original, halo-masked, or binned dataset, review the recognised local identity, select self and/or community recipients, and create its package. & One \texttt{.pgp} package is saved for each selected dataset and only selected public keys are addressed. \\
+Community exchange & Select public keys, anonymised layers, encrypted packages, or a combination for upload; then browse the community list. & Selected resources are published under the configured group and an unencrypted original is never offered. \\
+Notarisation and verification & Bind an encrypted filename to its calculated SHA-256, approve the transaction in an external wallet, and verify the resulting reference. & A successful receipt is reported and a supplied filename or digest mismatch is rejected. \\
+Decryption and map access & Unlock a matching private key, decrypt, import, and open the recovered dataset. & The recovered original is saved and displayed without the former multi-layer catalogue. \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\textit{Effectiveness} was assessed using unaided task-completion rates, the number and type of errors, assistance requests, and successful recovery from an incorrect action. Across \resultplaceholder{total task attempts}, participants completed \resultplaceholder{number or percentage} without assistance and \resultplaceholder{number or percentage} after a recoverable error. \resultplaceholder{Describe the tasks in which errors or uncertainty occurred and whether any participant failed to complete a task.} Error-prevention behaviour was also examined directly. Safeguard checks for a selected compatible layer before spatial parameters are entered; encryption requires deliberate selection of each dataset to protect; an existing identity suppresses unnecessary key creation; creating a new identity returns to recipient selection rather than encrypting immediately; unencrypted originals are excluded from community upload; and packages not addressed to the local private key are rejected. The evaluation considered only the two implemented representation levels---original and anonymised---and did not ask participants to navigate nested or multi-level encrypted volumes.
+
+\textit{Efficiency} was measured as participant task time rather than cryptographic processing time. The median first-attempt Safeguard time was \resultplaceholder{time and variability}, compared with \resultplaceholder{time and variability} on the second attempt. The corresponding Access times were \resultplaceholder{first-attempt time} and \resultplaceholder{second-attempt time}. \resultplaceholder{Report the size and interpretation of any improvement between attempts.} System processing for masking, binning, encryption, and decryption is reported separately in Table~\ref{tab:performance-results}; community transfer, blockchain retrieval, and the time spent reviewing and approving a transaction in an external wallet were recorded separately because they depend on network, wallet, and user conditions.
+
+\textit{User satisfaction} was examined through a post-task heuristic review based on Nielsen's principles \citep{nielsen1995conduct}. Participants considered visibility of system status, correspondence between labels and the field workflow, consistency, error prevention, user control, recognition rather than recall, and the amount of information shown over the map. \resultplaceholder{Report the rating method, aggregate result, and principal positive observations.} The review specifically asked whether the two-level distinction between the original and anonymised representations was understandable; whether the difference between the participant's identity and selected recipients was clear; whether \emph{Stop}, \emph{Next}, \emph{Remask}, and \emph{Bin Again} behaved as expected; and whether verification, private-key unlocking, and successful decryption were distinguishable stages. \resultplaceholder{Report the principal usability problems and representative anonymised comments, without converting suggestions into measured findings.}
+
+The evaluated interface incorporated several refinements intended to address issues encountered during iterative development: the workflow chooser and separate feature menus were combined into aligned Safeguard and Access tabs; long result screens were replaced with collapsible panels; non-functional privacy sliders and explanatory clutter were removed; the masking controls were combined into one dual-ended slider; file outputs were directed to one predictable folder; identity persistence and default self-recipient selection reduced repeated setup; recipient selection was restored after identity creation; blockchain configuration was moved away from operational screens; external-wallet approval kept wallet credentials outside MapSafe; and successful decryption proceeded directly toward map access. \resultplaceholder{State which of these choices the evaluation supported, which remained problematic, and any changes made after the sessions.}
+
+This evaluation was formative and assessed technical usability rather than the cultural legitimacy of the workflow. Its \resultplaceholder{small expert or purposive sample}, synthetic dataset, controlled tasks, and \resultplaceholder{laboratory or field setting} limit generalisation to routine community use. In particular, successful task completion does not establish that the terminology, disclosure choices, key-custody arrangements, or NextGIS administrative model are appropriate for a specific Indigenous organisation. Those matters require participatory evaluation with the communities whose authority and information are represented.
+
+
+\section{Discussion}
+\label{sec:discussion}
+
+Sensitive geospatial information is increasingly created on a mobile device, yet privacy and access controls are often applied only after the observation has been synchronised, downloaded, or transferred to a desktop environment. This delay is particularly consequential when the coordinate itself reveals culturally significant places, threatened species, harvesting areas, or other information whose disclosure cannot simply be reversed. MapSafe Mobile addresses this interval by moving representation and access decisions to the device on which the observation is first handled. Its contribution is therefore not merely the transfer of earlier MapSafe functions from a browser or QGIS to Android. It demonstrates how an established mobile GIS workflow can support \emph{capture-time sovereignty}: the ability to apply a legitimate decision about spatial detail, recipients, and integrity evidence before the precise record crosses an external trust boundary.
+
+The two-level sharing model is central to this contribution. MapSafe Mobile treats the original dataset and an anonymised representation as separate artefacts rather than placing several representations inside a nested encrypted volume. A sovereign data owner can share a halo-masked or hexagonally aggregated layer when a recipient requires only general spatial information, while an original or anonymised artefact may also be protected with multi-recipient OpenPGP when recipient-specific confidentiality is required. If several artefacts are selected, MapSafe creates a separate package for each rather than joining them inside one \texttt{.pgp} file. This arrangement avoids treating trust as a universal ranking. A recipient may be a dependable community member but still lack a legitimate reason to receive a precise location. The relevant question is instead which representation and protection are appropriate for the person's role, purpose, and responsibilities. Representation control and cryptographic access control are related, but neither substitutes for the other.
+
+Embedding these functions in NextGIS Mobile also reduces the number of systems through which unprotected data must pass. Halo masking, hexagonal binning, export, encryption, hashing, verification, and decryption are performed locally. Steven can inspect the original or derived layer in its geographic context, save it to a predictable folder, or share the selected artefact through an existing NextGIS community. This integration is important for field practice: a separate specialist application may offer a strong algorithm but still fail operationally if field custodians must export plaintext, understand unfamiliar file conventions, or postpone protection until they return to an office. The open-source implementation additionally permits inspection and adaptation, although source availability alone does not establish that a deployment is secure or governed appropriately.
+
+\subsection{Performance and operational practicality}
+
+The performance evaluation was deliberately centred on datasets containing 50, 250, 500, and 1,000 points. This differs from the large national and archival layers used to assess the earlier browser and desktop implementations, but reflects the intended mobile scenario: a person protects observations collected during a field session. A 2,000-point class was added as a stress case. For the 1,000-point rich dataset, the median complete halo-masking, signed-encryption, and verified-decryption times were 5.96, 4.24, and 3.52~s respectively. For the 2,000-point rich stress dataset, the corresponding medians were 11.52, 6.14, and 4.69~s. All 30 cells in the complete run finished, and the archived quartiles show that the medians were generally stable under the recorded thermal conditions. These results support the operational practicality of local protection for the intended field-session scale on the evaluated handset. They do not measure participant interaction time or learnability, which are addressed separately by the usability protocol.
+
+The results should be interpreted according to the work performed by each operation. Halo displacement is driven mainly by point count, while the production workflow is dominated by reading the source layer and writing and indexing the derived layer. This distinction is empirically important: for the 1,000-point rich dataset, coordinate calculation plus Spruill assessment took a median of 120.87~ms, whereas the complete workflow took 5.96~s. OpenPGP encryption and decryption showed an approximately 2.30-second fixed cost for the smallest files and then increased with the number of exported bytes. The rich attribute profile changed cryptographic time more strongly than masking time at the same point count. Recipient scaling still does not repeat full-payload encryption: the AES-256 content key encrypts the original once, and each additional recipient adds public-key wrapping work and a small session-key envelope. However, because the present experiment used one recipient throughout, it provides no observed recipient-count effect on time or package size; the proposed 1, 2, 5, and 10-recipient experiment remains necessary before making a scaling claim.
+
+Physical-device evaluation is important because processor, storage, memory pressure, Android power management, and thermal behaviour affect field performance. The Samsung SM-A145F remained at Android thermal status~0, and its battery temperature fell slightly from 34.4$^{\circ}$C to 34.1$^{\circ}$C while connected to external power, providing no indication of thermal throttling during the complete run. The benchmark nevertheless used a debug build and the shorter Quick protocol, so it should be treated as preliminary rather than as the final publication run. H3 processing must also be timed separately on ARM or ARM64 hardware; the portable grid used by the x86/x86\_64 emulator is a compatibility fallback rather than an identical benchmark substitute. Network upload, package download, and blockchain retrieval were kept separate from local processing because they depend on connectivity and server conditions. This separation prevents a slow field connection from being presented as a cryptographic limitation, or a fast laboratory connection from obscuring the practical cost of remote exchange.
+
+\subsection{Security and privacy analysis}
+
+The local processing boundary reduces unnecessary disclosure but does not eliminate the need to trust the device. Precise coordinates exist in memory and local storage before transformation, and a compromised operating system, malicious application, insecure backup, screen capture, or retained temporary file could expose them. MapSafe reduces some of this surface by avoiding remote anonymisation and encryption services, deleting temporary exports after use, protecting the application-private secret keyring with Android Keystore encryption, and requiring a passphrase for private-key operations. These measures should complement device encryption, secure updates, controlled backups, and organisational incident-response procedures rather than be treated as replacements for them.
+
+Halo masking offers an understandable privacy--utility control because the minimum distance prevents a transformed point from remaining immediately adjacent to its source and the maximum distance limits loss of geographic usefulness. The inverted Spruill score assists comparison between stochastic candidates. Nevertheless, neither displacement nor a favourable score guarantees anonymity. Re-identification may exploit clustering, road or coastline constraints, attributes, timestamps, photographs, filenames, or external datasets \citep{kessler2018geoprivacy,zhang2022rehumanize,cassa2008re,zimmerman2008quantifying}. Hexagonal binning similarly conceals exact coordinates but may remain revealing when a cell contains a single observation or when a high resolution produces a sparse pattern. MapSafe therefore provides alternative representations and decision support, not a universal privacy certificate.
+
+The OpenPGP design addresses a different problem: who may recover a selected artefact. A fresh AES-256 session key encrypts each dataset once, and that key is independently protected for each selected recipient. The data owner does not need to transmit a shared symmetric key or disclose a common dataset passphrase. Each recipient instead uses a locally held private key and its own passphrase. The sender's key is selected by default as a self-recipient so that the package remains recoverable, while accepted community public keys permit several authorised organisations to receive the same encrypted bytes. Optional signing separates evidence about the sender from encrypted-data integrity. This use of a standard container is preferable to a MapSafe-specific nested format, but interoperability with independent OpenPGP applications remains an important release test.
+
+Public-key encryption shifts rather than removes the identity problem. A mathematically valid public key is not proof that it belongs to the intended person. MapSafe therefore requires fingerprint review before a discovered community key becomes selectable and quarantines changed or inconsistent entries. This limits silent key substitution but introduces a human verification responsibility. Cached accepted keys permit offline field encryption, while delayed synchronisation means that membership changes, revocations, or compromised keys may not be visible until connectivity returns. Removing someone from a NextGIS group prevents their selection for future packages; it cannot withdraw access to a package that was already encrypted for their private key. Key rotation, recovery, revocation, and the handling of device loss consequently remain organisational as well as technical processes \citep{chu2013key,zhang2010wireless,wouters2024openpgp}.
+
+The NextGIS community performs three distinct functions: it identifies the collaboration context, distributes public keys and selected artefacts, and applies server-side resource permissions. These functions should not be conflated. Group membership does not automatically grant access to every resource, so Web GIS ACLs must still be administered. Conversely, permission to download an opaque \texttt{.pgp} attachment does not grant the ability to decrypt it. NextGIS Web can store viewable anonymised layers and encrypted packages without receiving an OpenPGP private key; the upload interface deliberately excludes unencrypted originals. The platform nevertheless remains operationally trusted for account administration, availability, ACL enforcement, and delivery of the current key directory. Community exchange therefore combines server permissions with end-to-end encryption rather than claiming that either mechanism is sufficient alone.
+
+Blockchain evidence has a narrower role. The current record binds a normalised encrypted-package filename to its SHA-256 digest, enabling a verifier to test whether a selected named package is byte-for-byte identical to the artefact asserted by the signing wallet at the transaction time. It cannot establish that the underlying observation was accurate, that collection was authorised, that the selected recipients were legitimate, or that disclosure is ethically acceptable. The current build supports configurable EVM profiles, contract preflight, external-wallet signing and submission, receipt validation, transaction retrieval, and strict filename--digest comparison without storing a wallet key. This is completed technical notarisation in the evaluated research configuration, but it is not trustless proof of authorship or meaning. Production deployment still requires evaluation of contract security, wallet identity, fees, network selection, confirmation depth, recovery, comprehension, and failure handling.
+
+\subsection{Usability analysis}
+
+Security controls are ineffective when users cannot understand the decisions they are being asked to make. The usability evaluation in Section~\ref{sec:usability-evaluation} examined effectiveness, efficiency, and satisfaction across both Safeguard and Access. Participants completed \resultplaceholder{task-completion result}, and second-attempt times \resultplaceholder{summarise the observed learnability effect}. The heuristic review identified \resultplaceholder{principal strengths and problems}. These findings should be interpreted as evidence about the evaluated interface and participant group, not as a general claim that public-key management, spatial anonymisation, or blockchain verification is inherently easy.
+
+Several design choices seek to make secure behaviour the natural path. Missing input is reported before spatial parameters are entered. Encryption makes the selected dataset visible, recognises an existing identity automatically, and preselects the owner's key as a recoverable self-recipient. Creating an identity returns to recipient selection instead of silently starting encryption, and unencrypted originals are omitted from community uploads. Collapsible result cards preserve the map as the main visual evidence, while \emph{Stop} and \emph{Next} preserve user control without imposing a compulsory wizard. Verification, private-key unlocking, successful decryption, and map access are presented as separate stages. The predictable save folder removes repeated destination dialogs but also requires a clear retention and cleanup policy.
+
+These choices illustrate why security and usability need not be treated as simple opposites. Error prevention, visible state, familiar map context, and reduced repetition can support stronger behaviour rather than dilute it \citep{nielsen1995conduct}. At the same time, simplifying labels must not obscure consequences. Users still need to understand that anonymisation does not guarantee safety, that accepting a public-key fingerprint is an identity decision, that a passphrase protects a private key rather than the dataset directly, and that successful decryption transfers responsibility for the plaintext to the recipient. Documentation and participatory training remain necessary even when the interface performs well in a controlled evaluation.
+
+\subsection{Limitations and future work}
+
+MapSafe Mobile currently focuses on point-vector data. Lines, polygons, trajectories, raster layers, photographs, sensor streams, and complete NextGIS layer packages raise different representation and metadata problems. Sequential mobility points may reveal routes even when individual observations are displaced, and an attached image may retain EXIF coordinates after its map geometry is protected. Future work should develop explicit attachment and metadata policies and evaluate techniques appropriate to these additional data types rather than applying point masking indiscriminately.
+
+The present anonymisation choices are intentionally understandable but limited. Donut masking does not account for population density, address plausibility, networks, coastlines, or other contextual constraints. Verified-neighbour, location-swapping, adaptive urban--rural, and network-constrained masks may offer stronger protection in some settings, but require auxiliary data and introduce new computation, licensing, availability, and privacy concerns. Hexagonal aggregation would benefit from organisation-defined resolution guidance and, where appropriate, minimum-count policies that warn about or suppress singleton cells. Repeated evaluation is needed to determine whether such safeguards improve decisions without making the field interface unmanageable.
+
+Key management also requires further development. The current application supports one local identity per installation and does not yet provide a complete revocation-certificate, organisational certification, key-rotation, or managed recovery interface. Passphrase-protected secret-key backups must be tested across device replacement and application removal, and interoperability should be verified with tools such as GnuPG and OpenKeychain. Live NextGIS evaluation must exercise several accounts, group changes, ACL isolation, package removal, quota behaviour, offline cache staleness, and compromised-account response on physical devices. A community should not depend on an untested recovery path for access to an irreplaceable encrypted archive.
+
+The implemented external-wallet workflow avoids storing a raw Ethereum private key in application preferences or a text file, but its interaction, transaction fees, chain selection, confirmation depth, failure recovery, and accessibility require broader study. The current filename-bound Sepolia deployment is a research configuration; production use requires an audited and governed contract deployment, pinned contract evidence, appropriate network policy, and testing across supported wallets and failure conditions. Further work should also evaluate energy and network costs across the whole workflow rather than attributing them only to the blockchain. More broadly, performance, usability, and technical correctness do not establish cultural legitimacy. Reusing the North Whangārei coordinates with synthetic demonstration attributes cannot substitute for co-design with the relevant BMAs concerning terminology, acceptable spatial detail, authority, retention, reuse, and accountability \citep{kukutai2016indigenous,lovett2019gooddata,carroll2020care,jennings2023care,reyesgarcia2022}.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+MapSafe Mobile demonstrates that geoprivacy and recipient control can be introduced at the point where sensitive spatial observations are first handled. By embedding halo masking, hexagonal aggregation, persistent OpenPGP identities, multi-recipient encryption, community exchange, filename-bound notarisation, verification, and direct post-decryption map access within NextGIS Mobile, the approach reduces the need to move plaintext through separate browser, desktop, or server workflows before it can be safeguarded. The authoritative observation remains unchanged, while the data owner chooses between two explicit representation levels: the original and an anonymised alternative. Either may be encrypted for selected recipients as a separate package, while only anonymised layers and encrypted packages---never an unencrypted original---are offered for community upload.
+
+The implementation also clarifies the different responsibilities of its components. Spatial transformation controls what geographic detail is disclosed; OpenPGP controls which selected keys may recover a package; NextGIS groups and ACLs control discovery and server-side access; and the EVM workflow binds an encrypted filename to a digest for later comparison. Each selected payload is encrypted once, with a small public-key envelope added for every recipient, so no shared dataset passphrase or nested representation volume is required. Private keys remain locally protected, the sharing platform cannot decrypt a correctly addressed package, and transaction approval remains inside an external wallet. The physical-device experiment completed all 30 dataset--operation cells and showed that complete masking, signed encryption, and verified decryption remained within approximately six seconds for the primary 50--1,000-point datasets. It did not measure recipient-count scaling, multi-account community exchange, offline reconnection, blockchain latency, or participant usability; these remain distinct evaluation requirements and are not inferred from the processing-time results.
+
+These controls do not by themselves produce anonymity, trustworthy data, legitimate authority, or Indigenous Data Sovereignty. Masking and aggregation remain vulnerable to contextual inference; public-key security depends on identity verification, recovery, and revocation; authorised recipients can redistribute plaintext; NextGIS administration remains important for membership and resource permissions; and a successful filename-bound blockchain transaction records a wallet's assertion rather than proving the truth or legitimacy of the underlying observation. Subject to these boundaries, broader physical-device functional and multi-account validation, external OpenPGP interoperability, production contract review, and participatory co-design, MapSafe Mobile provides a practical open-source foundation for protecting sensitive field observations before external synchronisation and for making representation, access, and integrity decisions visible within the mobile GIS workflow.
+
+On the Samsung Galaxy A14, the 1,000-point rich dataset produced median complete-masking, encryption, and decryption times of 5.96, 4.24, and 3.52~s respectively after one warm-up and five measured repetitions. For the 2,000-point rich stress dataset, the corresponding medians were 11.52, 6.14, and 4.69~s. The result demonstrates local computational feasibility, while security, offline behaviour, community exchange, recipient scaling, blockchain latency, and usability require their own evidence and should not be inferred from runtime alone. Current EVM support includes configurable profiles, contract preflight, external-wallet transaction approval and submission, receipt retrieval, and filename--digest comparison. Subject to the stated evidential boundaries and participatory validation, MapSafe Mobile provides a practical foundation for protecting sensitive field observations before external synchronisation.
+
+
+\section*{Appendix}
+
+\noindent Table~\ref{tab:usabilitytasks} provides the recording framework for the MapSafe Mobile task-based usability evaluation described in Section~\ref{sec:usability-evaluation}. Each participant completes the Safeguard and Access activities twice so that initial learnability can be distinguished from performance after one exposure. \emph{Effectiveness} is recorded through the outcome and error columns, while \emph{efficiency} is recorded as completion time in seconds. Suggested outcome codes are \texttt{S} (completed without assistance), \texttt{R} (completed after a recoverable error), \texttt{A} (completed with facilitator assistance), and \texttt{F} (not completed). The final column records assistance, recovery behaviour, interface problems, and relevant participant comments. Processing time reported in Table~\ref{tab:performance-results} is not included in participant task time unless the evaluation protocol explicitly chooses to include waiting time.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{longtable}{@{}c p{0.43\linewidth} c p{0.105\linewidth} p{0.105\linewidth} p{0.16\linewidth}@{}}
+\caption{MapSafe Mobile usability-evaluation recording matrix. Each attempt cell records outcome, time in seconds, and error count; blank values are completed separately for every participant.}
+\label{tab:usabilitytasks}\\
+\toprule
+\textbf{Task} & \textbf{Participant activity and observed success condition} & \textbf{Fig.} & \textbf{Attempt 1} & \textbf{Attempt 2} & \textbf{Notes} \\
+& & & \scriptsize \begin{tabular}[c]{@{}c@{}}Outcome\\time\\errors\end{tabular} & \scriptsize \begin{tabular}[c]{@{}c@{}}Outcome\\time\\errors\end{tabular} & \\
+\midrule
+\endfirsthead
+\caption[]{MapSafe Mobile usability-evaluation recording matrix (continued).}\\
+\toprule
+\textbf{Task} & \textbf{Participant activity and observed success condition} & \textbf{Fig.} & \textbf{Attempt 1} & \textbf{Attempt 2} & \textbf{Notes} \\
+& & & \scriptsize \begin{tabular}[c]{@{}c@{}}Outcome\\time\\errors\end{tabular} & \scriptsize \begin{tabular}[c]{@{}c@{}}Outcome\\time\\errors\end{tabular} & \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{\scriptsize Continued on next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
+
+\multicolumn{6}{@{}l}{\textit{Workflow entry and anonymised representations}} \\
+1 & From the NextGIS Mobile map, open MapSafe, switch between the aligned \emph{Safeguard} and \emph{Access} tabs, and attempt a spatial safeguard with and without a compatible point layer. Success requires stable tab placement, entry with valid input, and an immediate, understandable warning for missing spatial input. & \ref{fig:mapsafe-entry} & -- / -- / -- & -- / -- / -- & -- \\
+2 & Set the minimum and maximum halo distances using the dual-ended slider, apply masking, collapse and expand the result card, and inspect the inverted Spruill score. Success requires a separate masked layer while the source remains unchanged and visible map inspection remains possible. & \ref{fig:mapsafe-anonymisation} & -- / -- / -- & -- / -- / -- & -- \\
+3 & Save the accepted masked layer, identify its filename and folder, then use \emph{Remask}, \emph{Stop}, or \emph{Next: Encrypt} as directed. Success requires predictable output and a new candidate generated from the precise source rather than the preceding mask. & \ref{fig:mapsafe-anonymisation} & -- / -- / -- & -- / -- / -- & -- \\
+\addlinespace
+
+\multicolumn{6}{@{}l}{\textit{Hexagonal binning, dataset choice, and identity}} \\
+4 & Choose an H3 resolution, apply hexagonal binning, collapse the result card, and use \emph{Bin Again} or \emph{Save Layer}. Success requires a count-bearing polygon layer without overwriting the original points. & \ref{fig:mapsafe-hexagonal-binning} & -- / -- / -- & -- / -- / -- & -- \\
+5 & Open \emph{Encrypt} directly, without first masking or binning, and choose an original, masked, or binned dataset. Success requires the selected source to be clearly named and a compact \emph{Choose} action to permit an intentional replacement. & \ref{fig:mapsafe-encryption-flow} & -- / -- / -- & -- / -- / -- & -- \\
+6 & Confirm that an existing local encryption identity is recognised. If no identity exists, create one, compare the two passphrase entries using their visibility icons, and return to recipient selection. Success requires no automatic encryption and no repeated identity creation after restart. & \ref{fig:mapsafe-key-exchange} & -- / -- / -- & -- / -- / -- & -- \\
+\addlinespace
+
+\multicolumn{6}{@{}l}{\textit{Recipients, encryption, and community upload}} \\
+7 & Refresh community public keys, retain or clear Steven's default self-recipient, and select Amber's accepted community key. Success requires the participant to distinguish the custodian's identity from the people authorised to decrypt the package. & \ref{fig:mapsafe-encryption-flow} & -- / -- / -- & -- / -- / -- & -- \\
+8 & Select recipients, unlock the signing key, and encrypt the chosen dataset. Success requires one signed \texttt{.pgp} package for that dataset in \texttt{Downloads/MapSafe}, a clear saved-filename confirmation, and the option to reselect recipients without recreating the identity. & \ref{fig:mapsafe-encryption-flow} & -- / -- / -- & -- / -- / -- & -- \\
+9 & Open \emph{Upload to Community}, select a public key, anonymised layer, encrypted package, or combination, and publish the selection. Success requires the chosen items to appear in \emph{Community Packages} and an unencrypted original never to be offered. & \ref{fig:mapsafe-community-exchange} & -- / -- / -- & -- / -- / -- & -- \\
+\addlinespace
+
+\multicolumn{6}{@{}l}{\textit{Notarisation, package selection, and verification}} \\
+10 & Continue to Notarise, identify the carried-forward encrypted filename, calculated SHA-256 digest, and active EVM network, then approve submission in the external wallet. Success requires a mined receipt whose decoded filename and digest match the local package. & \ref{fig:mapsafe-community-exchange} & -- / -- / -- & -- / -- / -- & -- \\
+11 & Enter \emph{Access} without selecting a map layer, then choose an encrypted package from \emph{Community Packages} or local storage. Success requires reaching package selection and choosing the intended \texttt{.pgp} file without a Safeguard-style layer warning. & \ref{fig:mapsafe-community-exchange} & -- / -- / -- & -- / -- / -- & -- \\
+12 & Review the automatically calculated local SHA-256 and, when directed, provide a compatible blockchain transaction reference. Success requires a clear filename--digest match or mismatch result and an enabled \emph{Next: Decrypt} action after local hashing. & \ref{fig:mapsafe-access-flow} & -- / -- / -- & -- / -- / -- & -- \\
+\addlinespace
+
+\multicolumn{6}{@{}l}{\textit{Decryption and map access}} \\
+13 & As Amber, enter the matching private-key passphrase, use the visibility icon if needed, and decrypt the verified package. Success requires valid integrity/signature reporting, rejection of an incorrect or non-addressed key, and removal or disabling of the decrypt action after success. & \ref{fig:mapsafe-access-flow} & -- / -- / -- & -- / -- / -- & -- \\
+14 & Open the recovered dataset on the map. Success requires the plaintext output to be saved in \texttt{Downloads/MapSafe}, previously loaded layers to be cleared, and only the newly decrypted layer to be selected and displayed. & \ref{fig:mapsafe-access-flow} & -- / -- / -- & -- / -- / -- & -- \\
+\end{longtable}
+}
+
+\clearpage
+\bibliography{biblio_cleaned}
+\end{document}

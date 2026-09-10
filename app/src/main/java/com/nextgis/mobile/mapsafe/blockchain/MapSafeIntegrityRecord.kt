@@ -4,13 +4,13 @@ import java.util.Locale
 
 enum class MapSafeIntegrityRecordFormat {
     MAPSAFE_V1,
-    LEGACY_QGIS_FILENAME_HASH
+    FILENAME_HASH
 }
 
 data class MapSafeIntegrityRecord(
     val sha256: String,
     val format: MapSafeIntegrityRecordFormat,
-    val legacyFileName: String? = null
+    val fileName: String? = null
 )
 
 sealed class MapSafeIntegrityRecordValidation {
@@ -19,21 +19,41 @@ sealed class MapSafeIntegrityRecordValidation {
 }
 
 /**
- * Canonical on-chain payload for new MapSafe records.
+ * Encodes and parses MapSafe integrity records.
  *
- * File names are deliberately excluded because blockchain data is public and
- * permanent. The legacy QGIS filename_hash form remains read-only compatible.
+ * New records bind a safe package basename to its SHA-256 as `<filename>_<hash>`.
+ * The earlier hash-only MapSafe v1 form remains read-only compatible.
  */
 object MapSafeIntegrityRecordCodec {
     const val CANONICAL_PREFIX = "mapsafe:v1:sha256:"
-    private const val MAX_LEGACY_FILENAME_LENGTH = 255
+    const val MAX_MINTED_FILENAME_LENGTH = 120
+    private const val MAX_PARSED_FILENAME_LENGTH = 255
     private val sha256Pattern = Regex("^[0-9a-fA-F]{64}$")
+    private val unsafeMintedFileNameCharacters = Regex("[^A-Za-z0-9._ -]+")
 
     fun encodeSha256(sha256: String): String {
         require(sha256Pattern.matches(sha256)) {
             "SHA-256 must contain exactly 64 hexadecimal characters."
         }
         return CANONICAL_PREFIX + sha256.lowercase(Locale.US)
+    }
+
+    fun encodeFileHash(fileName: String, sha256: String): String {
+        require(sha256Pattern.matches(sha256)) {
+            "SHA-256 must contain exactly 64 hexadecimal characters."
+        }
+        return "${normalizeFileName(fileName)}_${sha256.lowercase(Locale.US)}"
+    }
+
+    fun normalizeFileName(value: String): String {
+        val baseName = value.substringAfterLast('/').substringAfterLast('\\')
+        val normalized = baseName
+            .replace(unsafeMintedFileNameCharacters, "_")
+            .trim('.', ' ')
+            .take(MAX_MINTED_FILENAME_LENGTH)
+            .trimEnd('.', ' ')
+        require(normalized.isNotBlank()) { "The encrypted package filename is invalid." }
+        return normalized
     }
 
     fun parse(value: String): MapSafeIntegrityRecordValidation {
@@ -60,19 +80,21 @@ object MapSafeIntegrityRecordCodec {
         }
         val fileName = value.substring(0, separator)
         val hash = value.substring(separator + 1)
-        if (fileName.length > MAX_LEGACY_FILENAME_LENGTH ||
+        if (fileName.length > MAX_PARSED_FILENAME_LENGTH ||
             fileName.any(Char::isISOControl) ||
+            fileName.contains('/') ||
+            fileName.contains('\\') ||
             !sha256Pattern.matches(hash)
         ) {
             return MapSafeIntegrityRecordValidation.Invalid(
-                "The on-chain value is not a valid legacy MapSafe record."
+                "The on-chain value is not a valid filename-bound MapSafe record."
             )
         }
         return MapSafeIntegrityRecordValidation.Valid(
             MapSafeIntegrityRecord(
                 sha256 = hash.lowercase(Locale.US),
-                format = MapSafeIntegrityRecordFormat.LEGACY_QGIS_FILENAME_HASH,
-                legacyFileName = fileName
+                format = MapSafeIntegrityRecordFormat.FILENAME_HASH,
+                fileName = fileName
             )
         )
     }

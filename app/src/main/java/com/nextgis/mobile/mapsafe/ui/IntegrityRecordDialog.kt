@@ -21,6 +21,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import com.nextgis.mobile.mapsafe.access.check.EvmReferenceValidation
@@ -35,10 +36,16 @@ import com.nextgis.mobile.mapsafe.blockchain.EthereumTransactionVerificationRepo
 import com.nextgis.mobile.mapsafe.blockchain.EthereumTransactionVerificationState
 import com.nextgis.mobile.mapsafe.blockchain.EthereumTransactionVerifier
 import com.nextgis.mobile.mapsafe.blockchain.MapSafeIntegrityRecordFormat
+import com.nextgis.mobile.mapsafe.blockchain.MapSafeReownWalletClient
+import com.nextgis.mobile.mapsafe.blockchain.MapSafeWalletEvent
+import com.nextgis.mobile.mapsafe.community.CommunityBlockchainReference
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
+import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
 import com.nextgis.mobile.mapsafe.service.HashUtils
 import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -59,6 +66,7 @@ class IntegrityRecordDialog : DialogFragment() {
     private var networkSummary: TextView? = null
     private var activeNetworkProfile = BlockchainNetworkPresets.defaults().activeProfile
     private var selectedVerificationFileName = NO_FILE_SELECTED
+    private var expectedVerificationRecordFileName = NO_FILE_SELECTED
     private var selectedVerificationFileUri: Uri? = null
     private var calculatedVerificationHash: String? = null
     private var transactionReferenceValue = ""
@@ -73,6 +81,17 @@ class IntegrityRecordDialog : DialogFragment() {
     private var notarisationFileDisplayName = NO_FILE_SELECTED
     private var calculatedNotarisationHash: String? = null
     private var notarisationHashJob: Job? = null
+    private var notarisationReceiptJob: Job? = null
+    private var connectedWalletAddress: String? = null
+    private var notarisationTransactionHash: String? = null
+    private var walletStatus: TextView? = null
+    private var connectWalletButton: Button? = null
+    private var notariseButton: Button? = null
+    private var notarisationProgress: ProgressBar? = null
+    private var notarisationResultCard: LinearLayout? = null
+    private var notarisationResultStatus: TextView? = null
+    private var openTransactionButton: Button? = null
+    private val walletListener = MapSafeReownWalletClient.Listener(::handleWalletEvent)
 
     private val selectVerificationFile = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -94,6 +113,10 @@ class IntegrityRecordDialog : DialogFragment() {
         selectedVerificationFileName = savedInstanceState?.getString(STATE_FILE_NAME)
             ?: requireArguments().getString(ARG_VERIFICATION_FILE_NAME)
             ?: NO_FILE_SELECTED
+        expectedVerificationRecordFileName =
+            savedInstanceState?.getString(STATE_EXPECTED_RECORD_FILE_NAME)
+                ?: requireArguments().getString(ARG_VERIFICATION_RECORD_FILE_NAME)
+                ?: selectedVerificationFileName
         selectedVerificationFileUri = (
             savedInstanceState?.getString(STATE_FILE_URI)
                 ?: requireArguments().getString(ARG_VERIFICATION_FILE_URI)
@@ -118,6 +141,7 @@ class IntegrityRecordDialog : DialogFragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(STATE_FILE_NAME, selectedVerificationFileName)
+        outState.putString(STATE_EXPECTED_RECORD_FILE_NAME, expectedVerificationRecordFileName)
         selectedVerificationFileUri?.let { outState.putString(STATE_FILE_URI, it.toString()) }
         calculatedVerificationHash?.let { outState.putString(STATE_FILE_HASH, it) }
         outState.putString(STATE_TRANSACTION_REFERENCE, transactionReferenceValue)
@@ -133,8 +157,10 @@ class IntegrityRecordDialog : DialogFragment() {
     }
 
     override fun onDestroy() {
+        MapSafeReownWalletClient.removeListener(walletListener)
         verificationHashJob?.cancel()
         notarisationHashJob?.cancel()
+        notarisationReceiptJob?.cancel()
         transactionVerificationJob?.cancel()
         comparisonRequestId++
         super.onDestroy()
@@ -155,6 +181,16 @@ class IntegrityRecordDialog : DialogFragment() {
             setBackgroundDrawable(ColorDrawable(MapSafeUi.PAGE))
             setDimAmount(0f)
         }
+        if (requireArguments().getString(ARG_PARENT) != PARENT_ACCESS) {
+            MapSafeReownWalletClient.addListener(walletListener)
+            MapSafeReownWalletClient.status(activeNetworkProfile)?.let(::handleWalletEvent)
+            updateNotarisationReadiness()
+        }
+    }
+
+    override fun onStop() {
+        MapSafeReownWalletClient.removeListener(walletListener)
+        super.onStop()
     }
 
     private fun buildVerificationScreen(): Dialog {
@@ -319,6 +355,7 @@ class IntegrityRecordDialog : DialogFragment() {
             )
         }
         selectedVerificationFileName = displayName(uri)
+        expectedVerificationRecordFileName = selectedVerificationFileName
         selectedVerificationFileUri = uri
         calculatedVerificationHash = null
         resetBlockchainComparison()
@@ -442,7 +479,12 @@ class IntegrityRecordDialog : DialogFragment() {
 
         transactionVerificationJob = lifecycleScope.launch {
             val report = withContext(Dispatchers.IO) {
-                EthereumTransactionVerifier().verify(profile, transactionHash, localHash)
+                EthereumTransactionVerifier().verify(
+                    profile,
+                    transactionHash,
+                    localHash,
+                    expectedVerificationRecordFileName
+                )
             }
             if (requestId != comparisonRequestId ||
                 !isAdded ||
@@ -461,6 +503,7 @@ class IntegrityRecordDialog : DialogFragment() {
         comparisonState = report.state
         val details = buildString {
             append(report.message)
+            report.onChainFileName?.let { append("\nOn-chain filename: $it") }
             report.onChainHash?.let { append("\nOn-chain SHA-256: $it") }
             report.recordFormat?.let { append("\nRecord format: ${recordFormatLabel(it)}") }
             report.blockNumber?.let { append("\nBlock: $it") }
@@ -476,6 +519,7 @@ class IntegrityRecordDialog : DialogFragment() {
                     EthereumTransactionVerificationState.MATCH -> MapSafeUi.GREEN_TEXT
                     EthereumTransactionVerificationState.PENDING -> MapSafeUi.MUTED
                     EthereumTransactionVerificationState.HASH_MISMATCH,
+                    EthereumTransactionVerificationState.FILE_NAME_MISMATCH,
                     EthereumTransactionVerificationState.INVALID -> TRANSACTION_ERROR_TEXT
                 }
             )
@@ -483,6 +527,8 @@ class IntegrityRecordDialog : DialogFragment() {
                 EthereumTransactionVerificationState.MATCH -> "Blockchain hash matches the selected file"
                 EthereumTransactionVerificationState.HASH_MISMATCH ->
                     "Blockchain hash does not match the selected file"
+                EthereumTransactionVerificationState.FILE_NAME_MISMATCH ->
+                    "Blockchain filename does not match the selected file"
                 EthereumTransactionVerificationState.PENDING -> "Blockchain transaction pending"
                 EthereumTransactionVerificationState.INVALID -> "Blockchain transaction verification failed"
             }
@@ -491,8 +537,8 @@ class IntegrityRecordDialog : DialogFragment() {
     }
 
     private fun recordFormatLabel(format: MapSafeIntegrityRecordFormat): String = when (format) {
-        MapSafeIntegrityRecordFormat.MAPSAFE_V1 -> "MapSafe v1"
-        MapSafeIntegrityRecordFormat.LEGACY_QGIS_FILENAME_HASH -> "Legacy QGIS"
+        MapSafeIntegrityRecordFormat.MAPSAFE_V1 -> "MapSafe v1 hash-only"
+        MapSafeIntegrityRecordFormat.FILENAME_HASH -> "Filename + SHA-256"
     }
 
     private fun resetBlockchainComparison() {
@@ -684,7 +730,7 @@ class IntegrityRecordDialog : DialogFragment() {
         page.addView(MapSafeUi.screenHeading(
             context,
             "Notarise on Blockchain",
-            "Record the SHA-256 hash of an encrypted file without exposing the protected dataset."
+            "Bind the encrypted filename to its SHA-256 without exposing the protected dataset."
         ))
         page.addView(MapSafeUi.card(
             context,
@@ -715,11 +761,66 @@ class IntegrityRecordDialog : DialogFragment() {
             }
         ))
         page.addView(blockchainNetworkCard())
-        val unavailable = MapSafeUi.primaryButton(context, "🛡  Notarisation unavailable") {}.apply {
+        val installedWalletName = MapSafeReownWalletClient.installedWalletName(context)
+        walletStatus = MapSafeUi.text(
+            context,
+            if (installedWalletName != null) {
+                "Connect $installedWalletName to approve the ${activeNetworkProfile.displayName} transaction."
+            } else {
+                "Install Trust Wallet or MetaMask to approve the transaction."
+            },
+            13f,
+            MapSafeUi.MUTED,
+            bold = false
+        )
+        connectWalletButton = MapSafeUi.outlineButton(
+            context,
+            "Connect ${installedWalletName ?: "External Wallet"}"
+        ) {
+            walletStatus?.apply {
+                text = "Opening ${installedWalletName ?: "external wallet"} for WalletConnect approval…"
+                setTextColor(MapSafeUi.MUTED)
+            }
+            MapSafeReownWalletClient.connect(context, activeNetworkProfile)
+        }
+        page.addView(MapSafeUi.card(
+            context,
+            MapSafeUi.sectionTitle(context, "External Wallet"),
+            walletStatus!!,
+            connectWalletButton!!
+        ))
+        notarisationProgress = ProgressBar(context).apply {
+            visibility = View.GONE
+            contentDescription = "Blockchain notarisation in progress"
+        }
+        notariseButton = MapSafeUi.primaryButton(
+            context,
+            "Notarise with ${installedWalletName ?: "External Wallet"}"
+        ) {
+            confirmNotarisation()
+        }.apply {
             isEnabled = false
             alpha = 0.55f
         }
-        page.addView(unavailable)
+        page.addView(notariseButton!!)
+        page.addView(notarisationProgress!!)
+        notarisationResultStatus = MapSafeUi.text(
+            context,
+            "No transaction has been submitted.",
+            13f,
+            MapSafeUi.MUTED,
+            bold = false
+        ).apply { setTextIsSelectable(true) }
+        openTransactionButton = MapSafeUi.outlineButton(context, "Open Transaction") {
+            notarisationTransactionHash?.let(::openTransaction)
+        }
+        notarisationResultCard = MapSafeUi.card(
+            context,
+            MapSafeUi.sectionTitle(context, "Blockchain Record"),
+            notarisationResultStatus!!,
+            openTransactionButton!!
+        ).apply { visibility = View.GONE }
+        page.addView(notarisationResultCard!!)
         page.addView(MapSafeUi.outlineButton(context, "Back to Safeguard Features") {
             dismiss()
             showParent()
@@ -749,17 +850,235 @@ class IntegrityRecordDialog : DialogFragment() {
                         typeface = Typeface.MONOSPACE
                         contentDescription = "Calculated notarisation SHA-256: $hash"
                     }
+                    updateNotarisationReadiness()
                 }.onFailure {
                     fileHash.apply {
                         text = "Hash calculation failed"
                         setTextColor(TRANSACTION_ERROR_TEXT)
                         contentDescription = "Notarisation SHA-256 calculation failed"
                     }
+                    updateNotarisationReadiness()
                 }
             }
         }
         return dialog
     }
+
+    private fun handleWalletEvent(event: MapSafeWalletEvent) {
+        if (!isAdded || requireArguments().getString(ARG_PARENT) == PARENT_ACCESS) return
+        when (event) {
+            is MapSafeWalletEvent.Connected -> {
+                if (event.chainId != activeNetworkProfile.chainId) {
+                    connectedWalletAddress = null
+                    walletStatus?.apply {
+                        text = "The connected wallet is on chain ${event.chainId}. Reconnect to ${activeNetworkProfile.displayName}."
+                        setTextColor(TRANSACTION_ERROR_TEXT)
+                    }
+                } else {
+                    connectedWalletAddress = event.address
+                    walletStatus?.apply {
+                        text = "Connected: ${shortAddress(event.address)}"
+                        setTextColor(MapSafeUi.GREEN_TEXT)
+                        contentDescription = "Connected wallet ${event.address}"
+                    }
+                    connectWalletButton?.text = "Reconnect Wallet"
+                }
+                updateNotarisationReadiness()
+            }
+
+            MapSafeWalletEvent.Disconnected -> {
+                connectedWalletAddress = null
+                walletStatus?.apply {
+                    text = "Wallet disconnected."
+                    setTextColor(MapSafeUi.MUTED)
+                }
+                connectWalletButton?.text = "Connect ${MapSafeReownWalletClient.installedWalletName(requireContext()) ?: "External Wallet"}"
+                updateNotarisationReadiness()
+            }
+
+            is MapSafeWalletEvent.TransactionSubmitted -> {
+                notarisationTransactionHash = event.transactionHash
+                notarisationResultCard?.visibility = View.VISIBLE
+                notarisationResultStatus?.apply {
+                    text = "Transaction submitted. Waiting for a ${activeNetworkProfile.displayName} receipt…\n${event.transactionHash}"
+                    setTextColor(MapSafeUi.MUTED)
+                }
+                notarisationProgress?.visibility = View.VISIBLE
+                notariseButton?.isEnabled = false
+                notariseButton?.alpha = 0.55f
+                trackNotarisationReceipt(event.transactionHash)
+            }
+
+            is MapSafeWalletEvent.Error -> {
+                notarisationProgress?.visibility = View.GONE
+                walletStatus?.apply {
+                    text = event.message
+                    setTextColor(TRANSACTION_ERROR_TEXT)
+                }
+                updateNotarisationReadiness()
+            }
+        }
+    }
+
+    private fun confirmNotarisation() {
+        val sha256 = calculatedNotarisationHash ?: return
+        if (connectedWalletAddress == null) return
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirm public notarisation")
+            .setMessage(
+                "Your external wallet will show a zero-value transaction on ${activeNetworkProfile.displayName}. " +
+                    "The encrypted package filename and SHA-256 will be public and permanent; the protected dataset itself will not be uploaded to the blockchain."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue in Wallet") { _, _ ->
+                notarisationProgress?.visibility = View.VISIBLE
+                notarisationResultCard?.visibility = View.VISIBLE
+                notarisationResultStatus?.apply {
+                    text = "Waiting for approval in the external wallet…"
+                    setTextColor(MapSafeUi.MUTED)
+                }
+                notariseButton?.isEnabled = false
+                notariseButton?.alpha = 0.55f
+                MapSafeReownWalletClient.requestMint(
+                    requireContext(),
+                    activeNetworkProfile,
+                    notarisationFileDisplayName,
+                    sha256
+                )
+            }
+            .show()
+    }
+
+    private fun trackNotarisationReceipt(transactionHash: String) {
+        val localHash = calculatedNotarisationHash ?: return
+        notarisationReceiptJob?.cancel()
+        notarisationReceiptJob = lifecycleScope.launch {
+            var lastReport: EthereumTransactionVerificationReport? = null
+            repeat(RECEIPT_POLL_ATTEMPTS) { attempt ->
+                val report = withContext(Dispatchers.IO) {
+                    EthereumTransactionVerifier().verify(
+                        activeNetworkProfile,
+                        transactionHash,
+                        localHash,
+                        notarisationFileDisplayName
+                    )
+                }
+                lastReport = report
+                if (report.state != EthereumTransactionVerificationState.PENDING) {
+                    renderNotarisationReport(transactionHash, report)
+                    return@launch
+                }
+                if (attempt + 1 < RECEIPT_POLL_ATTEMPTS) delay(RECEIPT_POLL_INTERVAL_MS)
+            }
+            notarisationProgress?.visibility = View.GONE
+            notarisationResultStatus?.apply {
+                text = lastReport?.message
+                    ?: "The transaction is still pending. Use Open Transaction to check it later."
+                setTextColor(MapSafeUi.MUTED)
+            }
+            updateNotarisationReadiness()
+        }
+    }
+
+    private fun renderNotarisationReport(
+        transactionHash: String,
+        report: EthereumTransactionVerificationReport
+    ) {
+        notarisationProgress?.visibility = View.GONE
+        notarisationResultCard?.visibility = View.VISIBLE
+        notarisationResultStatus?.apply {
+            text = when (report.state) {
+                EthereumTransactionVerificationState.MATCH -> buildString {
+                    append("Notarisation confirmed on ${activeNetworkProfile.displayName}.")
+                    report.blockNumber?.let { append("\nBlock: $it") }
+                    append("\nTransaction: $transactionHash")
+                }
+                else -> report.message + "\nTransaction: $transactionHash"
+            }
+            setTextColor(
+                if (report.state == EthereumTransactionVerificationState.MATCH) {
+                    MapSafeUi.GREEN_TEXT
+                } else {
+                    TRANSACTION_ERROR_TEXT
+                }
+            )
+            contentDescription = if (report.state == EthereumTransactionVerificationState.MATCH) {
+                "Blockchain notarisation confirmed"
+            } else {
+                "Blockchain notarisation failed verification"
+            }
+        }
+        if (report.state == EthereumTransactionVerificationState.MATCH) {
+            notariseButton?.apply {
+                text = "Notarisation Confirmed"
+                isEnabled = false
+                alpha = 0.7f
+            }
+            updateMatchingCommunityPackage(transactionHash)
+        } else {
+            updateNotarisationReadiness()
+        }
+    }
+
+    private fun updateMatchingCommunityPackage(transactionHash: String) {
+        val localHash = calculatedNotarisationHash ?: return
+        val selection = MapSafeSecurityPreferences.read(requireContext())
+        if (!selection.hasGroup) return
+        val reference = CommunityBlockchainReference(
+            networkName = activeNetworkProfile.displayName,
+            chainId = activeNetworkProfile.chainId,
+            contractAddress = activeNetworkProfile.contractAddress,
+            transactionHash = transactionHash,
+            explorerUrl = "${activeNetworkProfile.explorerBaseUrl.trimEnd('/')}/tx/$transactionHash"
+        )
+        lifecycleScope.launch {
+            val update = runCatching {
+                withContext(Dispatchers.IO) {
+                    NextGisCommunityPublisher(requireContext()).updateEncryptedPackageNotarisation(
+                        selection,
+                        localHash,
+                        reference
+                    )
+                }
+            }
+            update.onSuccess { result ->
+                val message = if (result.updatedRecords > 0) {
+                    "Updated ${result.updatedRecords} matching package record(s) in ${result.communityName}."
+                } else {
+                    "No matching uploaded package was found in ${result.communityName}."
+                }
+                notarisationResultStatus?.append("\n$message")
+            }.onFailure { error ->
+                val detail = error.localizedMessage?.replace(Regex("\\s+"), " ")
+                    ?.trim()?.take(180).orEmpty()
+                notarisationResultStatus?.append(
+                    "\nBlockchain confirmation succeeded, but community metadata was not updated" +
+                        if (detail.isBlank()) "." else ": $detail"
+                )
+            }
+        }
+    }
+
+    private fun updateNotarisationReadiness() {
+        val button = notariseButton ?: return
+        val ready = calculatedNotarisationHash != null &&
+            connectedWalletAddress != null &&
+            notarisationReceiptJob?.isActive != true &&
+            notarisationTransactionHash == null
+        button.isEnabled = ready
+        button.alpha = if (ready) 1f else 0.55f
+    }
+
+    private fun openTransaction(transactionHash: String) {
+        val url = "${activeNetworkProfile.explorerBaseUrl.trimEnd('/')}/tx/$transactionHash"
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            .onFailure {
+                Toast.makeText(requireContext(), "The transaction page could not be opened.", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    private fun shortAddress(address: String): String =
+        if (address.length > 14) "${address.take(8)}…${address.takeLast(6)}" else address
 
     private fun toolbar(): LinearLayout = MapSafeUi.appBar(requireContext()) {
         dismiss()
@@ -768,8 +1087,10 @@ class IntegrityRecordDialog : DialogFragment() {
 
     private fun showParent() {
         when (requireArguments().getString(ARG_PARENT)) {
-            PARENT_ACCESS -> AccessFeaturesDialog().show(parentFragmentManager, "AccessFeaturesDialog")
-            else -> SafeguardFeaturesDialog().show(parentFragmentManager, "SafeguardFeaturesDialog")
+            PARENT_ACCESS -> MapSafeMainDialog.forTab(MapSafeMainDialog.DESTINATION_ACCESS)
+                .show(parentFragmentManager, MapSafeMainDialog.TAG)
+            else -> MapSafeMainDialog.forTab(MapSafeMainDialog.DESTINATION_SAFEGUARD)
+                .show(parentFragmentManager, MapSafeMainDialog.TAG)
         }
     }
 
@@ -781,12 +1102,15 @@ class IntegrityRecordDialog : DialogFragment() {
         private const val ARG_NOTARISATION_FILE_NAME = "mapsafe_notarisation_file_name"
         private const val ARG_VERIFICATION_FILE_URI = "mapsafe_verification_file_uri"
         private const val ARG_VERIFICATION_FILE_NAME = "mapsafe_verification_file_name"
+        private const val ARG_VERIFICATION_RECORD_FILE_NAME =
+            "mapsafe_verification_record_file_name"
         private const val ARG_VERIFICATION_FILE_HASH = "mapsafe_verification_file_hash"
         private const val ARG_VERIFICATION_TRANSACTION_REFERENCE =
             "mapsafe_verification_transaction_reference"
         private const val PARENT_SAFEGUARD = "safeguard"
         private const val PARENT_ACCESS = "access"
         private const val STATE_FILE_NAME = "verification_file_name"
+        private const val STATE_EXPECTED_RECORD_FILE_NAME = "verification_expected_record_file_name"
         private const val STATE_FILE_URI = "verification_file_uri"
         private const val STATE_FILE_HASH = "verification_file_hash"
         private const val STATE_TRANSACTION_REFERENCE = "verification_transaction_reference"
@@ -796,6 +1120,8 @@ class IntegrityRecordDialog : DialogFragment() {
         private const val HASH_NOT_GENERATED = "Not generated"
         private const val HASH_CALCULATING = "Calculating…"
         private const val TRANSACTION_ERROR_TEXT = 0xffb3261e.toInt()
+        private const val RECEIPT_POLL_ATTEMPTS = 40
+        private const val RECEIPT_POLL_INTERVAL_MS = 3_000L
 
         fun forSafeguardFeatures(
             encryptedFileUri: Uri? = null,
@@ -815,6 +1141,7 @@ class IntegrityRecordDialog : DialogFragment() {
         fun forCommunityPackage(
             fileUri: Uri,
             fileName: String,
+            recordedFileName: String = fileName,
             calculatedSha256: String,
             transactionReference: String? = null
         ) = IntegrityRecordDialog().apply {
@@ -822,6 +1149,7 @@ class IntegrityRecordDialog : DialogFragment() {
                 putString(ARG_PARENT, PARENT_ACCESS)
                 putString(ARG_VERIFICATION_FILE_URI, fileUri.toString())
                 putString(ARG_VERIFICATION_FILE_NAME, fileName)
+                putString(ARG_VERIFICATION_RECORD_FILE_NAME, recordedFileName)
                 putString(ARG_VERIFICATION_FILE_HASH, calculatedSha256)
                 transactionReference?.takeIf(String::isNotBlank)?.let {
                     putString(ARG_VERIFICATION_TRANSACTION_REFERENCE, it)

@@ -73,7 +73,8 @@ class AccessDatasetsDialog : DialogFragment() {
     }
 
     private fun showParent() {
-        AccessFeaturesDialog().show(parentFragmentManager, "AccessFeaturesDialog")
+        MapSafeMainDialog.forTab(MapSafeMainDialog.DESTINATION_ACCESS)
+            .show(parentFragmentManager, MapSafeMainDialog.TAG)
     }
 
     companion object {

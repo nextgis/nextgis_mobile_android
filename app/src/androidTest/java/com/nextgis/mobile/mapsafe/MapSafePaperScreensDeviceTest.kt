@@ -47,36 +47,39 @@ class MapSafePaperScreensDeviceTest {
             openMapSafe(context)
             MapSafeDeviceTestSupport.screenshot(context, "paper-01-mapsafe-workflow-chooser")
 
-            onView(withText("Safeguard Features")).perform(click())
-            onView(withText("Select a dataset first")).check(matches(isDisplayed()))
-            onView(withText("Load sample dataset")).perform(click())
-            onView(withText("Safeguard Features")).check(matches(isDisplayed()))
+            onView(withText("Use sample dataset")).perform(scrollTo(), click())
+            onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "paper-02-safeguard-features")
 
-            onView(withText("Anonymise")).perform(click())
+            onView(withContentDescription("Open Halo Masking")).perform(click())
             MapSafeDeviceTestSupport.screenshot(context, "paper-03-anonymise-options")
-            onView(withText("Back")).perform(click())
+            onView(withContentDescription("Back")).perform(click())
 
-            onView(withText("Encrypt")).perform(click())
-            onView(withText("Encrypt & Protect")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Encrypt")).perform(scrollTo(), click())
+            onView(withText("Choose Datasets to Encrypt")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "paper-04-encrypt-source-chooser")
             onView(withText("Back")).perform(click())
 
-            onView(withText("Blockchain Notarisation")).perform(click())
-            MapSafeDeviceTestSupport.screenshot(context, "paper-05-notarisation-placeholder")
-            onView(withContentDescription("Back")).perform(click())
+            onView(withContentDescription("Open Upload to Community")).perform(scrollTo(), click())
+            onView(withText("Upload to Community")).check(matches(isDisplayed()))
+            onView(withText("Available community items")).check(matches(isDisplayed()))
+            MapSafeDeviceTestSupport.screenshot(context, "paper-04b-community-upload")
             onView(withText("Back")).perform(click())
 
-            onView(withText("Access Features")).perform(click())
-            onView(withText("Access Features")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Notarise Package")).perform(scrollTo(), click())
+            MapSafeDeviceTestSupport.screenshot(context, "paper-05-notarisation-placeholder")
+            onView(withContentDescription("Back")).perform(click())
+
+            onView(withText("Access")).perform(click())
+            onView(withText("Verify Encrypted File")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "paper-06-access-features")
 
-            onView(withText("Decrypt")).perform(click())
-            onView(withText("OpenPGP Decryption")).check(matches(isDisplayed()))
+            onView(withContentDescription("Open Community Packages")).perform(click())
+            onView(withText("Community Packages")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "paper-07-decrypt-package-chooser")
             onView(withText("Back")).perform(click())
 
-            onView(withText("Verify")).perform(click())
+            onView(withContentDescription("Open Verify Encrypted File")).perform(click())
             onView(withText("Verification")).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "paper-08-verification-placeholder")
         }
@@ -109,6 +112,6 @@ class MapSafePaperScreensDeviceTest {
     private fun openMapSafe(context: MainApplication) {
         openActionBarOverflowOrOptionsMenu(context)
         onView(withText(context.getString(R.string.mapsafe_menu_title))).perform(click())
-        onView(withText("Choose a workflow")).check(matches(isDisplayed()))
+        onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
     }
 }

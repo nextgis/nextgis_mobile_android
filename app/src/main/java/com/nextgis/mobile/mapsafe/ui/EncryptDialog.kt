@@ -47,8 +47,8 @@ class EncryptDialog : DialogFragment() {
     }
 
     private fun showParent() {
-        SafeguardFeaturesDialog()
-            .show(parentFragmentManager, "SafeguardFeaturesDialog")
+        MapSafeMainDialog.forTab(MapSafeMainDialog.DESTINATION_SAFEGUARD)
+            .show(parentFragmentManager, MapSafeMainDialog.TAG)
     }
 
     private fun openEncryption(selectedLayer: Boolean) {

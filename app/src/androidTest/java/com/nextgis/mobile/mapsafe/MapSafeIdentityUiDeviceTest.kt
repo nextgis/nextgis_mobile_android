@@ -42,9 +42,39 @@ class MapSafeIdentityUiDeviceTest {
             onView(withText("Create Encryption Identity")).check(matches(isDisplayed()))
             onView(withHint("Name")).check(matches(isDisplayed()))
             onView(withHint("Organisation / community")).check(matches(isDisplayed()))
+            onView(withContentDescription("Show passphrase")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withContentDescription("Show confirmation passphrase")).perform(scrollTo()).check(matches(isDisplayed()))
+            onView(withText("Show passphrase")).check(doesNotExist())
             onView(withText(containsString("Your keys stay on this device"))).perform(scrollTo()).check(matches(isDisplayed()))
             onView(withText("🔑  Generate Key Pair")).perform(scrollTo()).check(matches(isDisplayed()))
             MapSafeDeviceTestSupport.screenshot(context, "mapsafe-create-encryption-identity")
+        }
+    }
+
+    @Test
+    fun eachIdentityPassphraseFieldHasItsOwnVisibilityEye() {
+        ActivityScenario.launch(MapSafeIdentityActivity::class.java).use {
+            onView(withHint("Passphrase")).perform(replaceText("first comparison value"))
+            onView(withHint("Confirm passphrase")).perform(replaceText("second comparison value"))
+            closeSoftKeyboard()
+
+            onView(withContentDescription("Show passphrase")).perform(scrollTo(), click())
+            onView(withContentDescription("Show confirmation passphrase")).perform(scrollTo(), click())
+            onView(withContentDescription("Hide passphrase")).check(matches(isDisplayed()))
+            onView(withContentDescription("Hide confirmation passphrase")).check(matches(isDisplayed()))
+            onView(withHint("Passphrase")).check { view, error ->
+                if (error != null) throw error
+                assertTrue((view as android.widget.EditText).transformationMethod == null)
+            }
+            onView(withHint("Confirm passphrase")).check { view, error ->
+                if (error != null) throw error
+                assertTrue((view as android.widget.EditText).transformationMethod == null)
+            }
+
+            onView(withContentDescription("Hide passphrase")).perform(click())
+            onView(withContentDescription("Hide confirmation passphrase")).perform(click())
+            onView(withContentDescription("Show passphrase")).check(matches(isDisplayed()))
+            onView(withContentDescription("Show confirmation passphrase")).check(matches(isDisplayed()))
         }
     }
 

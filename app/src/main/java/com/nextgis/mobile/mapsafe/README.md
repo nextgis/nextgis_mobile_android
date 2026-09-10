@@ -19,9 +19,10 @@ This package mirrors the MapSafe web and QGIS plugin structure.
 ## Current integration status
 
 - **Use sample dataset** on the workflow chooser and Anonymise screen creates,
-  selects, and zooms to a compatible local vector layer containing 30 synthetic
-  Suva points in six clusters. Attributes include site ID/name, category,
-  sensitivity, and household count. Choosing it from Anonymise returns directly
+  selects, and zooms to a compatible local vector layer containing 23 North
+  Whangārei infected-tree points from the published case-study archive. Source
+  coordinates are preserved and the demonstration attributes are explicitly
+  synthetic. Choosing it from Anonymise returns directly
   with that layer selected, avoiding ambiguity when an imported layer is unsupported.
 - The main menu opens the MapSafe dialog hierarchy.
 - Safeguard and Access validate that an active map dataset is selected at the
@@ -91,11 +92,11 @@ This package mirrors the MapSafe web and QGIS plugin structure.
   encrypted with Android Keystore in app-private, no-backup storage. Production
   profiles require an explicit warning confirmation. Wallet recovery phrases and
   private keys are neither requested nor stored.
-- The Sepolia preset uses the public PublicNode RPC and the QGIS plugin's legacy
-  destination address. Historical QGIS transaction-input records can be verified,
-  but the address has no current Sepolia bytecode and is blocked by the contract
-  preflight for any future notarisation. No QGIS private key or RPC credential is
-  copied into the mobile app.
+- The Sepolia preset uses the public PublicNode RPC and the filename-bound MapSafe
+  integrity registry at `0xdF7efaA8f01B5674e41534Da2bA4D7C56f65A0F2`.
+  The QGIS plugin's former address remains available only for read-only legacy
+  transaction-input verification. No QGIS private key or RPC credential is copied
+  into the mobile app.
 - The network-settings screen includes a read-only preflight. It calls
   `eth_chainId`, blocks the contract check if the returned chain differs from the
   profile, and then calls `eth_getCode` at the configured address. For the Location
@@ -103,11 +104,12 @@ This package mirrors the MapSafe web and QGIS plugin structure.
   selectors and uses a read-only `eth_call` to query ERC-721 support through
   ERC-165. Redirects are disabled and responses are bounded. Selector detection
   is compatibility evidence, not proof of contract behaviour.
-- New records have the canonical public form
-  `mapsafe:v1:sha256:<64 lowercase hex characters>`. File names are excluded to
-  avoid public metadata leakage. The earlier QGIS `<filename>_<SHA-256>` form is
-  accepted for read-only legacy parsing but will not be emitted by mobile. The
-  full profile and limitations are documented in `BLOCKCHAIN_CONTRACT.md`.
+- New records have the public form
+  `<safe encrypted-package basename>_<64 lowercase hex characters>`. MapSafe
+  verifies both values, which binds the asserted package name to its content hash;
+  device paths and plaintext data remain excluded. The earlier hash-only
+  `mapsafe:v1:sha256:<SHA-256>` form remains readable. The full profile, public
+  filename trade-off, and evidential limits are documented in `BLOCKCHAIN_CONTRACT.md`.
 - Verify strictly validates either a raw Ethereum transaction hash or a canonical
   transaction URL for the active profile's configured explorer. Other explorer
   origins, insecure URLs, credentials, mismatched ports, queries, fragments, and
@@ -116,6 +118,11 @@ This package mirrors the MapSafe web and QGIS plugin structure.
   contract. Pending, failed, wrong-chain, wrong-contract, malformed, and unrelated
   transactions are reported without treating them as hash comparisons. A successful
   receipt proves mining status but the app does not yet assess confirmation depth.
+- Notarise connects through Reown WalletConnect to an installed Trust Wallet or
+  MetaMask. MapSafe constructs a zero-value transaction containing the package
+  basename and SHA-256, opens the external wallet for explicit approval, and verifies
+  the returned transaction receipt before reporting success. Ethereum private keys
+  and recovery phrases remain entirely outside MapSafe.
 - The older standalone AES-GCM helper is retained only as legacy/local utility
   code. Recipient sharing now uses OpenPGP's standard v2 SEIPD AES-256-GCM
   container rather than a second custom package format.

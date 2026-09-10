@@ -60,7 +60,9 @@ class MapSafeTestDocumentProvider : ContentProvider() {
 
     companion object {
         fun uri(context: Context, fileName: String): Uri {
-            val safeName = File(fileName).name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            // Uri.Builder encodes path characters safely. Keep the actual basename so a
+            // URI created for a saved file containing spaces resolves to that same file.
+            val safeName = File(fileName).name
             return Uri.Builder()
                 .scheme("content")
                 .authority("${context.packageName}.mapsafe.test.documents")

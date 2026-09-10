@@ -7,22 +7,27 @@ import org.junit.Test
 class EthereumTransactionVerifierTest {
     private val transactionHash = "0x" + "12".repeat(32)
     private val localHash = "ab".repeat(32)
+    private val fileName = "collected_sites.pgp"
     private val sender = "0x" + "34".repeat(20)
     private val contract = "0x8dD5Ca941A9F839062b6589A2E3f701458B011A9"
 
     @Test
-    fun confirmsCanonicalHashMatch() {
-        val gateway = FakeGateway(recordValue = MapSafeIntegrityRecordCodec.encodeSha256(localHash))
+    fun confirmsFilenameAndHashMatch() {
+        val gateway = FakeGateway(
+            recordValue = MapSafeIntegrityRecordCodec.encodeFileHash(fileName, localHash)
+        )
 
         val report = EthereumTransactionVerifier(gateway).verify(
             completeProfile(),
             transactionHash,
-            localHash
+            localHash,
+            fileName
         )
 
         assertEquals(EthereumTransactionVerificationState.MATCH, report.state)
         assertEquals(localHash, report.onChainHash)
-        assertEquals(MapSafeIntegrityRecordFormat.MAPSAFE_V1, report.recordFormat)
+        assertEquals(fileName, report.onChainFileName)
+        assertEquals(MapSafeIntegrityRecordFormat.FILENAME_HASH, report.recordFormat)
         assertEquals(sender, report.sender)
         assertEquals(101L, report.blockNumber)
     }
@@ -30,12 +35,15 @@ class EthereumTransactionVerifierTest {
     @Test
     fun reportsHashMismatchWithoutTreatingTransactionAsInvalid() {
         val otherHash = "cd".repeat(32)
-        val gateway = FakeGateway(recordValue = MapSafeIntegrityRecordCodec.encodeSha256(otherHash))
+        val gateway = FakeGateway(
+            recordValue = MapSafeIntegrityRecordCodec.encodeFileHash(fileName, otherHash)
+        )
 
         val report = EthereumTransactionVerifier(gateway).verify(
             completeProfile(),
             transactionHash,
-            localHash
+            localHash,
+            fileName
         )
 
         assertEquals(EthereumTransactionVerificationState.HASH_MISMATCH, report.state)
@@ -43,30 +51,65 @@ class EthereumTransactionVerifierTest {
     }
 
     @Test
-    fun acceptsLegacyQgisRecordForReadOnlyVerification() {
+    fun acceptsFilenameHashRecordForVerification() {
         val gateway = FakeGateway(recordValue = "collected_sites.zip_$localHash")
 
         val report = EthereumTransactionVerifier(gateway).verify(
             completeProfile(),
             transactionHash,
-            localHash
+            localHash,
+            "collected_sites.zip"
         )
 
         assertEquals(EthereumTransactionVerificationState.MATCH, report.state)
-        assertEquals(MapSafeIntegrityRecordFormat.LEGACY_QGIS_FILENAME_HASH, report.recordFormat)
+        assertEquals(MapSafeIntegrityRecordFormat.FILENAME_HASH, report.recordFormat)
+    }
+
+    @Test
+    fun reportsFilenameMismatchSeparatelyFromContentMismatch() {
+        val gateway = FakeGateway(
+            recordValue = MapSafeIntegrityRecordCodec.encodeFileHash(fileName, localHash)
+        )
+
+        val report = EthereumTransactionVerifier(gateway).verify(
+            completeProfile(),
+            transactionHash,
+            localHash,
+            "renamed-package.pgp"
+        )
+
+        assertEquals(EthereumTransactionVerificationState.FILE_NAME_MISMATCH, report.state)
+        assertEquals(fileName, report.onChainFileName)
+    }
+
+    @Test
+    fun acceptsEarlierHashOnlyRecordButReportsItsLimitedBinding() {
+        val gateway = FakeGateway(recordValue = MapSafeIntegrityRecordCodec.encodeSha256(localHash))
+
+        val report = EthereumTransactionVerifier(gateway).verify(
+            completeProfile(),
+            transactionHash,
+            localHash,
+            fileName
+        )
+
+        assertEquals(EthereumTransactionVerificationState.MATCH, report.state)
+        assertEquals(MapSafeIntegrityRecordFormat.MAPSAFE_V1, report.recordFormat)
+        assertTrue(report.message.contains("does not bind a filename"))
     }
 
     @Test
     fun wrongChainStopsBeforeTransactionLookup() {
         val gateway = FakeGateway(
             chainId = 1L,
-            recordValue = MapSafeIntegrityRecordCodec.encodeSha256(localHash)
+            recordValue = MapSafeIntegrityRecordCodec.encodeFileHash(fileName, localHash)
         )
 
         val report = EthereumTransactionVerifier(gateway).verify(
             completeProfile(),
             transactionHash,
-            localHash
+            localHash,
+            fileName
         )
 
         assertEquals(EthereumTransactionVerificationState.INVALID, report.state)
@@ -77,14 +120,15 @@ class EthereumTransactionVerifierTest {
     @Test
     fun reportsPendingTransactionSeparately() {
         val gateway = FakeGateway(
-            recordValue = MapSafeIntegrityRecordCodec.encodeSha256(localHash),
+            recordValue = MapSafeIntegrityRecordCodec.encodeFileHash(fileName, localHash),
             receipt = null
         )
 
         val report = EthereumTransactionVerifier(gateway).verify(
             completeProfile(),
             transactionHash,
-            localHash
+            localHash,
+            fileName
         )
 
         assertEquals(EthereumTransactionVerificationState.PENDING, report.state)
@@ -92,20 +136,20 @@ class EthereumTransactionVerifierTest {
 
     @Test
     fun rejectsFailedWrongContractAndUnrelatedCalls() {
-        val record = MapSafeIntegrityRecordCodec.encodeSha256(localHash)
+        val record = MapSafeIntegrityRecordCodec.encodeFileHash(fileName, localHash)
         val failed = EthereumTransactionVerifier(
             FakeGateway(recordValue = record, receiptStatus = 0L)
-        ).verify(completeProfile(), transactionHash, localHash)
+        ).verify(completeProfile(), transactionHash, localHash, fileName)
         val wrongContract = EthereumTransactionVerifier(
             FakeGateway(recordValue = record, transactionTo = "0x" + "56".repeat(20))
-        ).verify(completeProfile(), transactionHash, localHash)
+        ).verify(completeProfile(), transactionHash, localHash, fileName)
         val gateway = FakeGateway(recordValue = record)
         gateway.inputOverride = "0xdeadbeef"
         val unrelated = EthereumTransactionVerifier(gateway)
-            .verify(completeProfile(), transactionHash, localHash)
+            .verify(completeProfile(), transactionHash, localHash, fileName)
         val transferredValue = EthereumTransactionVerifier(
             FakeGateway(recordValue = record, transactionValue = "0x1")
-        ).verify(completeProfile(), transactionHash, localHash)
+        ).verify(completeProfile(), transactionHash, localHash, fileName)
 
         assertEquals(EthereumTransactionVerificationState.INVALID, failed.state)
         assertEquals(EthereumTransactionVerificationState.INVALID, wrongContract.state)

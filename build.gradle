@@ -70,7 +70,7 @@ def nextGisOauthClientId = providers.gradleProperty('nextgis.oauth.clientId')
 
 project(':maplibui') {
     afterEvaluate {
-        android.defaultConfig.buildConfigField(
+        extensions.getByName('android').defaultConfig.buildConfigField(
                 'String',
                 'CLIENT_ID',
                 "\"${nextGisOauthClientId}\"")

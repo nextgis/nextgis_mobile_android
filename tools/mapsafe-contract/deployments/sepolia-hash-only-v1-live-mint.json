@@ -1,0 +1,10 @@
+{
+  "schema": "mapsafe-live-mint-v1",
+  "network": "Ethereum Sepolia",
+  "chainId": 11155111,
+  "contractAddress": "0xC6978Dd187449ee913047136e19b455Ddf931041",
+  "transactionHash": "0x806d60808050411cf846e090c2be2b52a664118203949e2c636ba950d918ec93",
+  "blockNumber": 11657733,
+  "record": "mapsafe:v1:sha256:ff92ff05b3b7544c688a806b0dfa5ab9eea5bbf8453ed7ab44ab2949a245a41e",
+  "completedAtUtc": "2026-09-08T00:45:02.794Z"
+}

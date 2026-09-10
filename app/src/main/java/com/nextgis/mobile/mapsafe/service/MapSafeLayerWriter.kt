@@ -1,14 +1,11 @@
 package com.nextgis.mobile.mapsafe.service
 
-import android.content.ContentResolver
-import android.content.ContentValues
-import android.net.Uri
+import android.util.Log
+import com.nextgis.maplib.datasource.Feature
 import com.nextgis.maplib.datasource.GeoGeometry
 import com.nextgis.maplib.map.VectorLayer
 import com.nextgis.maplib.util.Constants
 import com.nextgis.maplib.util.GeoConstants
-import com.nextgis.maplib.api.IGISApplication
-import java.io.IOException
 
 /**
  * Writes generated MapSafe features into a NextGIS Mobile VectorLayer.
@@ -29,50 +26,36 @@ object MapSafeLayerWriter {
         val attributes: Map<String, Any?> = emptyMap()
     )
 
-    fun buildLayerUri(app: IGISApplication, layer: VectorLayer): Uri {
-        return Uri.parse("content://${app.authority}/${layer.path.name}")
-    }
-
     fun insertFeatures(
-        resolver: ContentResolver,
-        layerUri: Uri,
+        layer: VectorLayer,
         features: List<FeatureToInsert>
     ): InsertResult {
-        var inserted = 0
-        var failed = 0
-
-        for (feature in features) {
-            val values = ContentValues()
-
-            try {
-                values.put(Constants.FIELD_GEOM, feature.geometry.toBlob())
-            } catch (e: IOException) {
-                failed++
-                continue
+        val layerFields = layer.fields
+        val prepared = ArrayList<Feature>(features.size)
+        features.forEachIndexed { featureIndex, source ->
+            val feature = Feature(Constants.NOT_FOUND.toLong(), layerFields).apply {
+                geometry = source.geometry
             }
-
-            for ((key, value) in feature.attributes) {
-                when (value) {
-                    null -> values.putNull(key)
-                    is String -> values.put(key, value)
-                    is Int -> values.put(key, value)
-                    is Long -> values.put(key, value)
-                    is Float -> values.put(key, value)
-                    is Double -> values.put(key, value)
-                    is Boolean -> values.put(key, if (value) 1 else 0)
-                    else -> values.put(key, value.toString())
+            source.attributes.forEach { (key, value) ->
+                val storedValue = when (value) {
+                    is Boolean -> if (value) 1 else 0
+                    null, is String, is Int, is Long, is Float, is Double -> value
+                    else -> value.toString()
+                }
+                if (!feature.setFieldValue(key, storedValue)) {
+                    Log.w(TAG, "Generated feature ${featureIndex + 1} has no output field '$key'.")
                 }
             }
-
-            val result = try {
-                resolver.insert(layerUri, values)
-            } catch (_: RuntimeException) {
-                null
-            }
-            if (result != null) inserted++ else failed++
+            prepared.add(feature)
         }
 
-        resolver.notifyChange(layerUri, null)
+        val inserted = try {
+            layer.createFeaturesBatch(prepared)
+        } catch (error: RuntimeException) {
+            Log.e(TAG, "Could not commit the generated feature batch.", error)
+            0
+        }
+        val failed = features.size - inserted
         return InsertResult(
             attempted = features.size,
             inserted = inserted,
@@ -86,4 +69,6 @@ object MapSafeLayerWriter {
         }
         return geometry
     }
+
+    private const val TAG = "MapSafeLayerWriter"
 }

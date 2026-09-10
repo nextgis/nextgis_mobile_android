@@ -37,6 +37,19 @@ if (localSigningPropertiesFile.exists()) {
     localSigningPropertiesFile.withInputStream { localSigningProperties.load(it) }
 }
 
+def mapSafeProperties = new Properties()
+def mapSafePropertiesFile = rootProject.file('mapsafe.properties')
+if (mapSafePropertiesFile.exists()) {
+    mapSafePropertiesFile.withInputStream { mapSafeProperties.load(it) }
+}
+def mapSafeReownProjectId = project.findProperty('MAPSAFE_REOWN_PROJECT_ID') ?:
+        System.getenv('MAPSAFE_REOWN_PROJECT_ID') ?:
+        mapSafeProperties.getProperty('MAPSAFE_REOWN_PROJECT_ID', '')
+def mapSafeScreenshotAbi = project.findProperty('MAPSAFE_SCREENSHOT_ABI')?.toString()?.trim()
+if (mapSafeReownProjectId && !(mapSafeReownProjectId ==~ /[0-9a-fA-F]{32}/)) {
+    throw new GradleException('MAPSAFE_REOWN_PROJECT_ID must contain exactly 32 hexadecimal characters.')
+}
+
 def generatedH3JniLibs = layout.buildDirectory.dir('generated/h3JniLibs')
 def extractH3AndroidNatives = tasks.register('extractH3AndroidNatives', Sync) {
     from({ configurations.h3AndroidNatives.collect { zipTree(it) } }) {
@@ -104,8 +117,17 @@ android {
         versionName '3.2.1'
         //archivesBaseName = "ngmobile-$versionName"
         buildConfigField "String", "SENTRY_DSN", "\"${sentryDsn}\""
+        buildConfigField "String", "MAPSAFE_REOWN_PROJECT_ID", "\"${mapSafeReownProjectId}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments disableAnalytics: 'true'
+
+        // Screenshot instrumentation can request the connected device ABI to avoid
+        // installing a large four-ABI debug APK on a storage-constrained emulator.
+        if (mapSafeScreenshotAbi) {
+            ndk {
+                abiFilters mapSafeScreenshotAbi
+            }
+        }
 
         def props = new Properties()
         file("../local.properties").withInputStream { props.load(it) }
@@ -227,6 +249,11 @@ dependencies {
     implementation 'org.bouncycastle:bcprov-jdk18on:1.84'
     implementation 'org.bouncycastle:bcpg-jdk18on:1.84'
     implementation 'org.bouncycastle:bcutil-jdk18on:1.84'
+
+    // External-wallet connection and transaction approval. Private keys never enter MapSafe.
+    implementation platform('com.reown:android-bom:1.6.13')
+    implementation 'com.reown:android-core'
+    implementation 'com.reown:appkit'
 
     testImplementation 'junit:junit:4.13.2'
 

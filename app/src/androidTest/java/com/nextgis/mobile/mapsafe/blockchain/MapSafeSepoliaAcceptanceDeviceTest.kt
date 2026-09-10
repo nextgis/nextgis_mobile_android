@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Opt-in live acceptance check against a public QGIS MapSafe Sepolia transaction.
+ * Opt-in live acceptance check against the public filename-bound MapSafe Sepolia registry.
  *
  * Enable with:
  * -Pandroid.testInstrumentationRunnerArguments.mapsafeLiveRpc=true
@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 @LargeTest
 class MapSafeSepoliaAcceptanceDeviceTest {
     @Test
-    fun verifiesKnownLegacyQgisTransactionThroughLiveRpc() {
+    fun verifiesKnownFilenameBoundTransactionThroughLiveRpc() {
         val arguments = InstrumentationRegistry.getArguments()
         assumeTrue(arguments.getString("mapsafeLiveRpc") == "true")
         val profile = BlockchainNetworkPresets.defaults().activeProfile
@@ -27,15 +27,17 @@ class MapSafeSepoliaAcceptanceDeviceTest {
         val report = EthereumTransactionVerifier().verify(
             profile = profile,
             transactionHash = KNOWN_TRANSACTION,
-            localSha256 = KNOWN_RECORDED_SHA256
+            localSha256 = KNOWN_RECORDED_SHA256,
+            expectedFileName = KNOWN_RECORDED_FILE_NAME
         )
 
         assertEquals(EthereumTransactionVerificationState.MATCH, report.state)
         assertEquals(KNOWN_RECORDED_SHA256, report.onChainHash)
         assertEquals(
-            MapSafeIntegrityRecordFormat.LEGACY_QGIS_FILENAME_HASH,
+            MapSafeIntegrityRecordFormat.FILENAME_HASH,
             report.recordFormat
         )
+        assertEquals(KNOWN_RECORDED_FILE_NAME, report.onChainFileName)
         assertTrue(
             report.sender.equals(
                 BlockchainNetworkPresets.QGIS_LEGACY_SENDER_ADDRESS,
@@ -46,8 +48,9 @@ class MapSafeSepoliaAcceptanceDeviceTest {
 
     private companion object {
         const val KNOWN_TRANSACTION =
-            "0x78d57005d2bcfdc639ed41bd8c12d13691b12289fee5182f686310c46b94386f"
+            "0xbf22807cf1b7345d6df9a3a48179b3dd1f9d54c62e89164c640da57bc729a60e"
         const val KNOWN_RECORDED_SHA256 =
-            "120794b31743a23a2da97d1fd89068486b7c7fdd52623ae7ae699a3393a99a30"
+            "ea87365faf7e885463329aae555eef03c9f7d3d3041e53a0e0e2d842b95b5625"
+        const val KNOWN_RECORDED_FILE_NAME = "mapsafe-live-test.pgp"
     }
 }

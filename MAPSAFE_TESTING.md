@@ -50,10 +50,10 @@ do not require a device.
 Tier 1 is deterministic and does not require service credentials. It runs four
 instrumentation workflows:
 
-- Real MainActivity controls: MapSafe > Safeguard Features > Anonymise >
-  Use sample dataset > Donut Masking and Hexabinning. The test checks
-  that both top-level workflows show the early dataset-selection prompt when needed,
-  and that loading the sample continues to the originally requested workflow. It checks
+- Real MainActivity controls: MapSafe > Safeguard tab > Use sample dataset >
+  Halo Masking and Hexagonal Binning. The test checks the combined Safeguard/Access
+  tabs, direct feature launchers, multi-dataset encryption selection, community-upload
+  selection, and the early dataset-selection prompt when masking or binning needs it. It checks
   that the bundled sample is created and selected as a compatible vector layer, then checks the resulting vector
   layers, the visible inverted Spruill result, and a second remasking attempt that
   is explicitly anchored to the original precise layer rather than the first output.
@@ -73,9 +73,10 @@ instrumentation workflows:
   secret-key reload, recipient selection, signed AES-256-GCM encryption, file
   decryption, integrity/signature confirmation, and exact recovered-byte comparison.
   The fixed MapSafe output folder is represented by a controlled debug provider.
-- Selected-map-layer round trip: the UI loads and selects the bundled 30-point layer,
-  exports it through `Encrypt selected map layer`, encrypts and decrypts it through the
-  production OpenPGP activity, imports all 30 recovered features, and returns to the map
+- Selected-map-layer round trip: the UI loads and selects the bundled 23-point North
+  Whangārei layer,
+  selects it through the multi-dataset Encrypt screen, encrypts and decrypts it through the
+  production OpenPGP activity, imports all 23 recovered features, and returns to the map
   with the decrypted layer selected. Its automatic output folder is controlled.
 - Shared storage: a production-path device check writes and reads a real file through
   Android shared storage and verifies its relative location is `Download/MapSafe/`.
@@ -101,10 +102,10 @@ Scenario output uses explicit labels:
 - `PASS` means production MapSafe core code was exercised successfully.
 - `SIMULATED` means the stage uses a test-only dependency.
 
-Blockchain notarisation and verification are currently represented by an in-memory
-test ledger because the production blockchain client is not implemented. The scenario
-still exercises the production SHA-256 calculation and detects modified artifacts, but
-it does not claim that a real blockchain transaction occurred.
+Tier 1 blockchain scenarios use an in-memory ledger so they remain deterministic and
+offline. The production build separately implements external-wallet submission and
+read-only EVM verification; those network paths are covered by opt-in acceptance tests,
+not by the default Tier 1 suite.
 
 NextGIS public-key discovery in Tier 1 uses a controlled directory observation, then
 exercises the production fingerprint, trust-state, explicit-acceptance, and recipient
@@ -115,6 +116,25 @@ Tier 2 integration tests.
 The JVM `VIEW HANDOFF` stage stops at a restored GeoJSON artifact. The Tier 1 device
 suite continues through actual layer creation, selection, MainActivity rendering, and
 the zoom handoff.
+
+## Premium multi-account acceptance
+
+The Premium-only acceptance test is compiled with the normal Android tests but skips
+unless four Android account names and a community name are supplied. It verifies
+community-readable public keys and anonymised layers, publisher-and-recipient-only
+encrypted packages, authorised download and decryption, and denied access for an
+anonymised-only member and an authenticated outsider.
+
+Prepare before activating a trial:
+
+```powershell
+.\scripts\test-mapsafe-premium-readiness.ps1
+```
+
+After adding the four existing NextGIS accounts to the test device, follow the
+[Premium trial runbook](paper/mapsafe-results/premium-trial/README.md). Account-name
+arguments identify credentials already held by Android AccountManager; passwords are
+never passed to or stored by the test script.
 
 ## Reports
 
@@ -128,4 +148,37 @@ Connected-device report:
 
 ```text
 app\build\reports\androidTests\connected\debug\index.html
+```
+
+## Automated performance evaluation
+
+The separate reusable benchmark runner generates 50, 250, 500, and 1,000-point
+GeoJSON fixtures with typical and rich 18-field attribute profiles, then measures
+production halo masking, Spruill assessment, OpenPGP encryption, and decryption
+without manual UI repetition:
+
+```powershell
+# Preliminary emulator run
+.\scripts\run-mapsafe-performance-benchmark.ps1 -Protocol Quick -AllowEmulator
+
+# Publication protocol on a physical phone
+.\scripts\run-mapsafe-performance-benchmark.ps1 -Protocol Paper
+```
+
+See `MAPSAFE_BENCHMARKING.md` for the complete protocol and output definitions.
+
+Normal production UI operations also append to
+`Downloads/MapSafe/mapsafe-performance-log.csv`. Targeted device tests verify:
+
+- the header is written once while later records append;
+- the real Android MediaStore file remains in `Download/MapSafe/`;
+- one production halo action records masking-only and masking-plus-Spruill rows;
+- signed production OpenPGP encryption and verified decryption both record rows;
+- encryption carries the selected layer's feature count; and
+- the decrypted bytes still match the original exactly.
+
+Retrieve a physical phone's cumulative log and generate summary statistics with:
+
+```powershell
+.\scripts\pull-mapsafe-phone-performance-log.ps1
 ```

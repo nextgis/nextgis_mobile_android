@@ -78,7 +78,7 @@ class MapSafeSelectedLayerCryptoUiDeviceTest {
                 val sourceLayerName = waitForNewLayer(
                     context,
                     layersBeforeSample,
-                    "MapSafe sample points - Suva"
+                    "North Whangārei infected trees"
                 )
                 val encryptedUri = MapSafeTestDocumentProvider.uri(context, "mapsafe-save-folder")
                     .buildUpon()
@@ -95,9 +95,10 @@ class MapSafeSelectedLayerCryptoUiDeviceTest {
                 encryptedFile.delete()
                 decryptedFile.delete()
                 assertEquals(sourceLayerName, selectedLayerName(scenario))
-                onView(withText("Back")).perform(click())
-                onView(withText("Encrypt")).perform(click())
-                onView(withText("Encrypt selected map layer")).perform(click())
+                onView(withContentDescription("Open Encrypt")).perform(scrollTo(), click())
+                onView(withText(containsString("Original  ·  $sourceLayerName")))
+                    .check(matches(isDisplayed()))
+                onView(withText("Continue to Encryption")).perform(scrollTo(), click())
 
                 waitForText("Encrypt & Protect")
                 onView(withText("Original Dataset")).check(matches(isDisplayed()))
@@ -138,14 +139,15 @@ class MapSafeSelectedLayerCryptoUiDeviceTest {
                 )
 
                 onView(withContentDescription("Back")).perform(click())
-                onView(withText("Safeguard Features")).check(matches(isDisplayed()))
-                onView(withText("Back")).perform(click())
-                onView(withText("Access Features")).perform(scrollTo(), click())
-                onView(withText("Decrypt")).perform(click())
-                onView(withText("Open")).perform(click())
-                waitForText("Decrypt & Access")
+                onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
+                onView(withText("Access")).perform(click())
                 intending(hasAction(Intent.ACTION_OPEN_DOCUMENT)).respondWith(resultFor(encryptedUri))
-                onView(withText("Choose Package & Decrypt")).perform(scrollTo(), click())
+                onView(withContentDescription("Open Verify Encrypted File")).perform(click())
+                onView(withText("Select encrypted file")).perform(click())
+                waitForText("Next: Decrypt")
+                onView(withText("Next: Decrypt")).perform(scrollTo(), click())
+                waitForText("Decrypt & Access")
+                onView(withText("Decrypt Verified File")).perform(scrollTo(), click())
                 onView(withHint("Recovery passphrase")).perform(replaceText(passphrase))
                 closeSoftKeyboard()
                 onView(withText("Continue")).perform(click())
@@ -178,7 +180,7 @@ class MapSafeSelectedLayerCryptoUiDeviceTest {
                 )
                 val recovered = JSONObject(decryptedFile.readText())
                 assertEquals(sourceLayerName, recovered.getString("name"))
-                assertEquals(30, recovered.getJSONArray("features").length())
+                assertEquals(23, recovered.getJSONArray("features").length())
                 assertNotNull(context.map.getLayerByName(importedLayerName))
 
                 onView(withText("Next: Access")).perform(scrollTo(), click())
@@ -202,7 +204,7 @@ class MapSafeSelectedLayerCryptoUiDeviceTest {
     private fun openMapSafe(context: MainApplication) {
         openActionBarOverflowOrOptionsMenu(context)
         onView(withText(context.getString(R.string.mapsafe_menu_title))).perform(click())
-        onView(withText("MapSafe")).check(matches(isDisplayed()))
+        onView(withContentDescription("MapSafe full logo")).check(matches(isDisplayed()))
     }
 
     private fun waitForMapFragment(scenario: ActivityScenario<MainActivity>) {
