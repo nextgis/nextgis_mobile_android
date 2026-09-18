@@ -169,6 +169,13 @@ public class SettingsFragment
                 final Preference restore =
                         findPreference(SettingsConstantsUI.KEY_PREF_RESTORE_LAYERS);
                 initializeRestore(getActivity(), restore);
+
+
+                final ListPreference renderType = (ListPreference) findPreference(
+                        SettingsConstantsUI.KEY_PREF_GPU_TYPE);
+                initializeRenderType(renderType);
+
+
                 break;
             case SettingsConstantsUI.ACTION_PREFS_LOCATION:
                 //addPreferencesFromResource(R.xml.preferences_location);
@@ -425,6 +432,25 @@ public class SettingsFragment
 
 
     public static void initializeShowStatusPanel(final ListPreference listPreference)
+    {
+        listPreference.setSummary(listPreference.getEntry());
+
+        listPreference.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener()
+        {
+            @Override
+            public boolean onPreferenceChange(
+                    Preference preference,
+                    Object newValue)
+            {
+                preference.setSummary(listPreference.getEntries()[listPreference.findIndexOfValue(
+                        (String) newValue)]);
+
+                return true;
+            }
+        });
+    }
+
+    public static void initializeRenderType(final ListPreference listPreference)
     {
         listPreference.setSummary(listPreference.getEntry());
 

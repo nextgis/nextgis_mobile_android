@@ -37,6 +37,7 @@
     <string name="keep_screen_on_summary">Держать экран включенным</string>
     <string name="show_scale_ruler">Шкала масштаба</string>
     <string name="show_ruler_measuring">Линейка измерений</string>
+    <string name="use_opengl">Тип рендера</string>
     <string name="show_zoom_controls">Кнопки масштаба</string>
     <string name="show_zoom_controls_summary">Показывать кнопки +/- на карте для увеличения/уменьшения</string>
     <string name="show_compass">Показывать мини компас</string>

@@ -148,4 +148,21 @@
     1) tile size
     2) drawing canvas size in percent   -->
 
+    <ListPreference
+        app:iconSpaceReserved="false"
+        android:defaultValue="0"
+        android:entries="@array/gpu_render_type"
+        android:entryValues="@array/gpu_render_type_val"
+        android:key="use_opengl_key"
+        android:singleLineTitle="false"
+        android:title="@string/use_opengl"/>
+
+
+<!--    <CheckBoxPreference-->
+<!--        app:iconSpaceReserved="false"-->
+<!--        android:defaultValue="false"-->
+<!--        android:key="use_opengl"-->
+<!--        android:singleLineTitle="false"-->
+<!--        android:title="@string/use_opengl"/>-->
+
 </PreferenceScreen>
