@@ -1475,6 +1475,7 @@ public class MapFragment
         val edit = mPreferences!!.edit()
         if (null != mMapRef.get() ) {
             if (mMapRef.get()!!.map!!.maplibreMap != null &&
+                mMapRef.get()!!.map!!.maplibreMap.get() != null &&
                 mMapRef.get()!!.map!!.maplibreMap.get()!!.cameraPosition != null &&
                 mMapRef.get()!!.map!!.maplibreMap.get()!!.cameraPosition!!.zoom != null) {
                 edit.putFloat(SettingsConstantsUI.KEY_PREF_ZOOM_LEVEL,

@@ -412,38 +412,45 @@ public class AttributesFragment
 
                 Field field = mLayer.getFieldByName(column);
                 int fieldType = field != null ? field.getType() : Constants.NOT_FOUND;
-                switch (fieldType) {
-                    case GeoConstants.FTInteger:
-                        text = attributes.getInt(i) + "";
-                        break;
-                    case GeoConstants.FTLong:
-                        text = attributes.getLong(i) + "";
-                        break;
-                    case GeoConstants.FTReal:
-                        NumberFormat nf = NumberFormat.getInstance();
-                        nf.setMaximumFractionDigits(4);
-                        nf.setGroupingUsed(false);
-                        Double value = attributes.getDouble(i);
-                        if (value.isNaN())
-                            continue;
-                        text = nf.format(value);
-                        break;
-                    case GeoConstants.FTDate:
-                    case GeoConstants.FTTime:
-                    case GeoConstants.FTDateTime:
-                        text = formatDateTime(attributes.getLong(i), fieldType);
-                        break;
-                    default:
-                        text = toString(attributes.getString(i));
-                        Pattern pattern = Pattern.compile(URL_PATTERN);
-                        Matcher match = pattern.matcher(text);
-                        while (match.matches()) {
-                            String url = text.substring(match.start(), match.end());
-                            text = text.replaceFirst(URL_PATTERN, "<a href = '" + url + "'>" + url + "</a>");
-                            match = pattern.matcher(text.substring(match.start() + url.length() * 2 + 17));
-                        }
-                        break;
-                }
+
+                boolean isNull = false;
+                if (attributes.isNull(i)){
+                    isNull = true;
+                    text = "NULL";
+                } else
+                    switch (fieldType) {
+
+                        case GeoConstants.FTInteger:
+                            text = attributes.getInt(i) + "";
+                            break;
+                        case GeoConstants.FTLong:
+                            text = attributes.getLong(i) + "";
+                            break;
+                        case GeoConstants.FTReal:
+                            NumberFormat nf = NumberFormat.getInstance();
+                            nf.setMaximumFractionDigits(4);
+                            nf.setGroupingUsed(false);
+                            Double value = attributes.getDouble(i);
+                            if (value.isNaN())
+                                continue;
+                            text = nf.format(value);
+                            break;
+                        case GeoConstants.FTDate:
+                        case GeoConstants.FTTime:
+                        case GeoConstants.FTDateTime:
+                            text = formatDateTime(attributes.getLong(i), fieldType);
+                            break;
+                        default:
+                            text = toString(attributes.getString(i));
+                            Pattern pattern = Pattern.compile(URL_PATTERN);
+                            Matcher match = pattern.matcher(text);
+                            while (match.matches()) {
+                                String url = text.substring(match.start(), match.end());
+                                text = text.replaceFirst(URL_PATTERN, "<a href = '" + url + "'>" + url + "</a>");
+                                match = pattern.matcher(text.substring(match.start() + url.length() * 2 + 17));
+                            }
+                            break;
+                    }
 
                 if (field != null)
                     alias = field.getAlias();
@@ -452,7 +459,7 @@ public class AttributesFragment
                 else
                     alias = "";
 
-                dataBuilder.append(getRow(alias, text));
+                dataBuilder.append(getRow(alias, text, isNull));
             }
             data = dataBuilder.toString();
         }
@@ -466,6 +473,16 @@ public class AttributesFragment
         column = column == null ? "" : toString(column);
         text = text == null ? "" : text;
         return String.format("<tr><td>%s</td><td>%s</td></tr><tr>", column, text);
+    }
+
+    protected String getRow(String column, String text, boolean isNull) {
+        column = column == null ? "" : toString(column);
+        text = text == null ? "" : text;
+
+        if (isNull)
+            return String.format("<tr><td>%s</td><td style=\"color:#999999;\">%s</td></tr><tr>", column, text);
+        else
+            return String.format("<tr><td>%s</td><td>%s</td></tr><tr>", column, text);
     }
 
 
