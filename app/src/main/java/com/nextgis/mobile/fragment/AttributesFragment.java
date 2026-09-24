@@ -27,6 +27,7 @@ import android.accounts.AccountManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.content.SharedPreferences;
 import android.content.res.TypedArray;
 import android.database.Cursor;
@@ -294,7 +295,11 @@ public class AttributesFragment
                 webView.setBackgroundColor(Color.TRANSPARENT);
             }
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                try {
+                    view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(view.getContext(), "No app found to open this link", Toast.LENGTH_SHORT).show();
+                }
                 return true;
             }
         });
