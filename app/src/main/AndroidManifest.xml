@@ -159,7 +159,7 @@
             android:name="com.nextgis.maplibui.account.NGWAuthenticatorService"
             android:enabled="true"
             android:exported="true"
-            android:permission="com.nextgis.mobile.service.ACCESS"
+            android:permission="com.nextgis.mobile.mapsafe.service.ACCESS"
             android:foregroundServiceType="dataSync"
             >
             <intent-filter>
@@ -173,7 +173,7 @@
         <service
             android:name=".datasource.SyncService"
             android:exported="true"
-            android:permission="com.nextgis.mobile.service.ACCESS"
+            android:permission="com.nextgis.mobile.mapsafe.service.ACCESS"
             android:foregroundServiceType="dataSync"
             >
             <intent-filter>

@@ -354,7 +354,7 @@ General NextGIS Mobile documentation is available in the [official user guide](h
 - an Android device or emulator running API 26 or later
 - a local `sentry.properties` file containing a non-empty development Sentry DSN; this file is ignored and must not be committed
 
-The current application version is `3.2.1` (`versionCode 199`). Debug builds use application ID `com.nextgis.mobile.debug` and display as **DEV NextGIS Mobile**.
+The current application version is `3.2.1` (`versionCode 199`). Release builds use the separate MapSafe application ID `com.nextgis.mobile.mapsafe`; debug builds use `com.nextgis.mobile.mapsafe.debug` and display as **DEV MapSafe Mobile**.
 
 Clone and initialise the upstream library submodules:
 

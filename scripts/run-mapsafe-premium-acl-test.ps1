@@ -62,7 +62,7 @@ $instrumentationArgs = @(
     '-e', 'mapsafe.premium.anonymised_account', $AnonymisedRecipientAccount,
     '-e', 'mapsafe.premium.outsider_account', $OutsiderAccount,
     '-e', 'mapsafe.premium.community_name', $CommunityName,
-    'com.nextgis.mobile.debug.test/androidx.test.runner.AndroidJUnitRunner'
+    'com.nextgis.mobile.mapsafe.debug.test/androidx.test.runner.AndroidJUnitRunner'
 )
 Write-Host "Running Premium ACL acceptance on $DeviceSerial..."
 & $adb @instrumentationArgs

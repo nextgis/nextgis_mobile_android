@@ -109,7 +109,10 @@ android {
 
 
     defaultConfig {
-        applicationId 'com.nextgis.mobile'
+        // The MapSafe research build is a separate Play application.  Keeping a
+        // distinct application ID prevents a release from targeting the official
+        // NextGIS Mobile listing.
+        applicationId 'com.nextgis.mobile.mapsafe'
         minSdkVersion 26
         compileSdk 36
         targetSdkVersion 36
@@ -170,13 +173,13 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            resValue 'string', 'APP_NAME', 'NextGIS Mobile'
+            resValue 'string', 'APP_NAME', 'MapSafe Mobile'
             resValue 'string', 'SENTRY_DSN', sentryDsn
-            resValue 'string', 'provider_auth', 'com.nextgis.mobile.provider'
-            resValue 'string', 'nextgis_mobile_accounts_auth', 'com.nextgis.mobile.account'
-            resValue 'string', 'nextgis_accounts_auth_type', 'com.nextgis.account'
-            buildConfigField "String", "providerAuth", '"com.nextgis.mobile.provider"'
-            buildConfigField "String", "nextgismobile_accounts_auth", '"com.nextgis.account"'
+            resValue 'string', 'provider_auth', 'com.nextgis.mobile.mapsafe.provider'
+            resValue 'string', 'nextgis_mobile_accounts_auth', 'com.nextgis.mobile.mapsafe.account'
+            resValue 'string', 'nextgis_accounts_auth_type', 'com.nextgis.account.mapsafe'
+            buildConfigField "String", "providerAuth", '"com.nextgis.mobile.mapsafe.provider"'
+            buildConfigField "String", "nextgismobile_accounts_auth", '"com.nextgis.account.mapsafe"'
             if (hasCustomSigning) {
                 signingConfig signingConfigs.release
             }
@@ -187,13 +190,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             applicationIdSuffix '.debug'
             versionNameSuffix '-DEBUG'
-            resValue 'string', 'APP_NAME', 'DEV NextGIS Mobile'
+            resValue 'string', 'APP_NAME', 'DEV MapSafe Mobile'
             resValue 'string', 'SENTRY_DSN', sentryDsn
-            resValue 'string', 'provider_auth', 'com.nextgis.mobile.provider.debug'
-            resValue 'string', 'nextgis_mobile_accounts_auth', 'com.nextgis.mobile.account.debug'
-            resValue 'string', 'nextgis_accounts_auth_type', 'com.nextgis.account.debug'
-            buildConfigField "String", "providerAuth", '"com.nextgis.mobile.provider.debug"'
-            buildConfigField "String", "nextgismobile_accounts_auth", '"com.nextgis.account.debug"'
+            resValue 'string', 'provider_auth', 'com.nextgis.mobile.mapsafe.provider.debug'
+            resValue 'string', 'nextgis_mobile_accounts_auth', 'com.nextgis.mobile.mapsafe.account.debug'
+            resValue 'string', 'nextgis_accounts_auth_type', 'com.nextgis.account.mapsafe.debug'
+            buildConfigField "String", "providerAuth", '"com.nextgis.mobile.mapsafe.provider.debug"'
+            buildConfigField "String", "nextgismobile_accounts_auth", '"com.nextgis.account.mapsafe.debug"'
             if (hasCustomSigning) {
                 signingConfig signingConfigs.debug
             }

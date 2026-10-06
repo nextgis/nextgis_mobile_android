@@ -184,13 +184,13 @@ function Start-MapSafeDevice {
 
     $serial = Wait-ForAndroidBoot -AdbPath $adbPath
     Write-Host "Device ready: $serial" -ForegroundColor Green
-    $installedPackage = & $adbPath -s $serial shell pm path com.nextgis.mobile.debug
+    $installedPackage = & $adbPath -s $serial shell pm path com.nextgis.mobile.mapsafe.debug
     if ($ResetAppData -and $installedPackage -match '^package:') {
         Write-Host 'Resetting MapSafe app data, including local test identities.' -ForegroundColor Yellow
         $previousPreference = $ErrorActionPreference
         try {
             $ErrorActionPreference = 'Continue'
-            & $adbPath -s $serial shell pm clear com.nextgis.mobile.debug 2>&1 | Out-Null
+            & $adbPath -s $serial shell pm clear com.nextgis.mobile.mapsafe.debug 2>&1 | Out-Null
         }
         finally {
             $ErrorActionPreference = $previousPreference

@@ -100,11 +100,11 @@ foreach ($setting in $animationSettings) {
 try {
     foreach ($method in $testMethods) {
         Write-Host "Capturing $method ..." -ForegroundColor Cyan
-        & $adb -s $DeviceSerial shell am force-stop com.nextgis.mobile.debug | Out-Null
+        & $adb -s $DeviceSerial shell am force-stop com.nextgis.mobile.mapsafe.debug | Out-Null
         & $adb -s $DeviceSerial shell input keyevent KEYCODE_HOME | Out-Null
         $instrumentOutput = @(& $adb -s $DeviceSerial shell am instrument -w -r `
             -e class "$testClass#$method" `
-            com.nextgis.mobile.debug.test/androidx.test.runner.AndroidJUnitRunner 2>&1)
+            com.nextgis.mobile.mapsafe.debug.test/androidx.test.runner.AndroidJUnitRunner 2>&1)
         $instrumentOutput | ForEach-Object { Write-Host $_ }
         $failed = $LASTEXITCODE -ne 0 -or
             ($instrumentOutput -join "`n") -match 'FAILURES!!!|INSTRUMENTATION_FAILED|Process crashed|shortMsg=Process crashed'

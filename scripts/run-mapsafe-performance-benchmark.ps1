@@ -19,8 +19,8 @@ $ErrorActionPreference = 'Stop'
 $workspaceRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $gradleWrapper = Join-Path $workspaceRoot 'gradlew.bat'
 $benchmarkClass = 'com.nextgis.mobile.mapsafe.MapSafePerformanceBenchmarkTest'
-$targetPackage = 'com.nextgis.mobile.debug'
-$testPackage = 'com.nextgis.mobile.debug.test'
+$targetPackage = 'com.nextgis.mobile.mapsafe.debug'
+$testPackage = 'com.nextgis.mobile.mapsafe.debug.test'
 $runner = 'androidx.test.runner.AndroidJUnitRunner'
 
 function Get-AndroidSdkDirectory {
