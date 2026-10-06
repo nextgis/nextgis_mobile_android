@@ -202,9 +202,10 @@ class AccessFeaturesDialog : DialogFragment() {
         } else {
             "$total community item${if (total == 1) "" else "s"} available."
         }
+        val currentMemberNames = contents.publicKeys.memberNames
         showPublicKeys(visibleKeys)
-        showLayers(contents.layers)
-        showPackages(contents.packages)
+        showLayers(contents.layers, currentMemberNames)
+        showPackages(contents.packages, currentMemberNames)
     }
 
     private fun showPublicKeys(records: List<CachedPublicKeyRecord>) {
@@ -230,7 +231,10 @@ class AccessFeaturesDialog : DialogFragment() {
         }
     }
 
-    private fun showLayers(records: List<CommunityLayerRecord>) {
+    private fun showLayers(
+        records: List<CommunityLayerRecord>,
+        currentMemberNames: Map<Long, String>
+    ) {
         val context = requireContext()
         if (records.isEmpty()) {
             anonymisedDatasets.addView(emptyText("No anonymised datasets published."))
@@ -242,7 +246,11 @@ class AccessFeaturesDialog : DialogFragment() {
                     context,
                     MapSafeUi.text(context, record.fileName, 15f, MapSafeUi.TEXT, bold = true),
                     MapSafeUi.valueRow(context, "Type", record.artifactType.displayName),
-                    MapSafeUi.valueRow(context, "Shared by", record.publisherName),
+                    MapSafeUi.valueRow(
+                        context,
+                        "Shared by",
+                        currentMemberNames[record.publisherId] ?: record.publisherName
+                    ),
                     MapSafeUi.valueRow(context, "Added", formatTimestamp(record.createdAt)),
                     MapSafeUi.compactOutlineButton(context, "Download") { downloadLayer(record) }
                 ),
@@ -251,7 +259,10 @@ class AccessFeaturesDialog : DialogFragment() {
         }
     }
 
-    private fun showPackages(records: List<CommunityPackageRecord>) {
+    private fun showPackages(
+        records: List<CommunityPackageRecord>,
+        currentMemberNames: Map<Long, String>
+    ) {
         val context = requireContext()
         if (records.isEmpty()) {
             encryptedPackages.addView(emptyText("No encrypted packages published."))
@@ -263,7 +274,11 @@ class AccessFeaturesDialog : DialogFragment() {
                 MapSafeUi.card(
                     context,
                     MapSafeUi.text(context, record.fileName, 15f, MapSafeUi.TEXT, bold = true),
-                    MapSafeUi.valueRow(context, "Shared by", record.publisherName),
+                    MapSafeUi.valueRow(
+                        context,
+                        "Shared by",
+                        currentMemberNames[record.publisherId] ?: record.publisherName
+                    ),
                     MapSafeUi.valueRow(context, "Added", formatTimestamp(record.createdAt)),
                     MapSafeUi.valueRow(context, "Status", state, strongValue = true),
                     MapSafeUi.compactOutlineButton(context, "Download & verify") {

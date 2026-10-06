@@ -14,6 +14,7 @@ import com.nextgis.mobile.mapsafe.community.CommunityAudienceMember
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityLayerClient
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPackageClient
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublicKeyClient
+import com.nextgis.mobile.mapsafe.community.CommunityPublishResult
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpEngine
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
@@ -65,12 +66,25 @@ class MapSafePremiumAclDeviceTest {
         assumeTrue("Community name was not supplied.", communityName.isNotBlank())
 
         val context = ApplicationProvider.getApplicationContext<MainApplication>()
+        val keyRepository = com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository(context)
         val directory = NextGisPublicKeyDirectoryClient(
             context,
-            com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository(context),
+            keyRepository,
             PublicKeyExchangeRepository(context)
         )
         val guardian = selectionFor(directory, guardianAccount, communityName)
+        val publisher = NextGisCommunityPublisher(context)
+        val guardianIdentity = identity("Steven (field data custodian)")
+        // The community administrator provisions or repairs the ACL-protected hierarchy first.
+        // Ordinary members can then discover it without access to auth administration APIs.
+        val guardianKeyPublished = publishPublicKey(
+            context,
+            publisher,
+            guardian,
+            guardianIdentity,
+            "steven"
+        )
+
         val precise = selectionFor(directory, preciseAccount, communityName)
         val anonymisedOnly = selectionFor(directory, anonymisedAccount, communityName)
         assertEquals(guardian.groupId, precise.groupId)
@@ -81,13 +95,22 @@ class MapSafePremiumAclDeviceTest {
             directory.membershipGroups(outsiderAccount).none { it.id == guardian.groupId }
         )
 
-        val guardianIdentity = identity("Steven (field data custodian)")
-        val preciseIdentity = identity("Amber (authorised researcher)")
-        val anonymisedIdentity = identity("BMA representative (anonymised-data recipient)")
-        val publisher = NextGisCommunityPublisher(context)
-        publishPublicKey(context, publisher, guardian, guardianIdentity, "steven")
-        publishPublicKey(context, publisher, precise, preciseIdentity, "amber")
-        publishPublicKey(context, publisher, anonymisedOnly, anonymisedIdentity, "bma-representative")
+        val preciseIdentity = identity("BMA representative (sovereign original recipient)")
+        val anonymisedIdentity = identity("Amber (anonymised-data researcher)")
+        val preciseKeyPublished = publishPublicKey(
+            context,
+            publisher,
+            precise,
+            preciseIdentity,
+            "bma-representative"
+        )
+        val anonymisedKeyPublished = publishPublicKey(
+            context,
+            publisher,
+            anonymisedOnly,
+            anonymisedIdentity,
+            "amber"
+        )
 
         val publicKeys = NextGisCommunityPublicKeyClient(context).listPublicKeys(guardian)
         assertTrue(publicKeys.any { it.fingerprint == guardianIdentity.info.fingerprint })
@@ -95,7 +118,9 @@ class MapSafePremiumAclDeviceTest {
         assertTrue(publicKeys.any { it.fingerprint == anonymisedIdentity.info.fingerprint })
 
         val runId = Instant.now().toString().replace(Regex("[^0-9]"), "").take(14)
-        val root = File(context.cacheDir, "mapsafe-premium-acl/$runId").apply { mkdirs() }
+        // Keep live-test evidence in filesDir while network/ACL calls run. Android may
+        // evict cacheDir at any point when the emulator or handset is low on storage.
+        val root = File(context.filesDir, "mapsafe-premium-acl/$runId").apply { mkdirs() }
         val originalText = context.assets.open("mapsafe/north_whangarei_infected_trees.geojson")
             .bufferedReader()
             .use { it.readText() }
@@ -139,7 +164,7 @@ class MapSafePremiumAclDeviceTest {
             audience = CommunityArtifactAudience.selectedRecipients(
                 listOf(
                     guardian.member(guardianIdentity, "Steven (field data custodian)"),
-                    precise.member(preciseIdentity, "Amber (authorised researcher)")
+                    precise.member(preciseIdentity, "BMA representative (sovereign original recipient)")
                 )
             )
         )
@@ -166,6 +191,12 @@ class MapSafePremiumAclDeviceTest {
         assertFalse(canReadResource(context, outsiderAccount, haloPublished.resourceId))
         assertFalse(canReadResource(context, outsiderAccount, hexbinPublished.resourceId))
 
+        val guardianDownloaded = packageClient.downloadPackage(guardian, guardianPackage)
+        val guardianDownloadedBytes = requireNotNull(
+            context.contentResolver.openInputStream(guardianDownloaded.uri)
+        ).use { it.readBytes() }
+        assertArrayEquals(encryptedBytes, guardianDownloadedBytes)
+
         val downloaded = packageClient.downloadPackage(precise, precisePackage)
         val downloadedBytes = requireNotNull(context.contentResolver.openInputStream(downloaded.uri))
             .use { it.readBytes() }
@@ -180,6 +211,72 @@ class MapSafePremiumAclDeviceTest {
         )
         assertEquals(OpenPgpSignatureStatus.VALID, decryptResult.signatureStatus)
         assertArrayEquals(originalBytes, decrypted.toByteArray())
+
+        val wrongKeyOutput = ByteArrayOutputStream()
+        val wrongKey = runCatching {
+            OpenPgpEngine.decrypt(
+                input = ByteArrayInputStream(downloadedBytes),
+                output = wrongKeyOutput,
+                secretKeyRings = listOf(anonymisedIdentity.secretKeyRing),
+                passphrase = PASSPHRASE.copyOf(),
+                verificationKeyRings = listOf(guardianIdentity.publicKeyRing)
+            )
+        }
+        assertTrue("A non-recipient key must not decrypt the package.", wrongKey.isFailure)
+        assertEquals(0, wrongKeyOutput.size())
+
+        val wrongPassphraseOutput = ByteArrayOutputStream()
+        val wrongPassphrase = runCatching {
+            OpenPgpEngine.decrypt(
+                input = ByteArrayInputStream(downloadedBytes),
+                output = wrongPassphraseOutput,
+                secretKeyRings = listOf(preciseIdentity.secretKeyRing),
+                passphrase = "Incorrect MapSafe passphrase".toCharArray(),
+                verificationKeyRings = listOf(guardianIdentity.publicKeyRing)
+            )
+        }
+        assertTrue("An incorrect passphrase must not decrypt the package.", wrongPassphrase.isFailure)
+        assertEquals(0, wrongPassphraseOutput.size())
+
+        // Retain the tested BMA identity and Steven's verification key for the
+        // recipient-side manuscript screenshot run that follows this acceptance test.
+        keyRepository.saveLocalIdentity(preciseIdentity)
+        keyRepository.importPublicKeys(
+            ByteArrayInputStream(OpenPgpKeyCodec.encodePublicKeyRing(guardianIdentity.publicKeyRing))
+        )
+
+        println(
+            "MAPSAFE_PREMIUM_ACCEPTANCE " + JSONObject()
+                .put("run_id", runId)
+                .put("community_group_id", guardian.groupId)
+                .put("steven_user_id", guardian.currentUserId)
+                .put("amber_user_id", anonymisedOnly.currentUserId)
+                .put("bma_user_id", precise.currentUserId)
+                .put("steven_fingerprint", guardianIdentity.info.fingerprint)
+                .put("amber_fingerprint", anonymisedIdentity.info.fingerprint)
+                .put("bma_fingerprint", preciseIdentity.info.fingerprint)
+                .put("steven_key_registry_id", guardianKeyPublished.resourceId)
+                .put("amber_key_registry_id", anonymisedKeyPublished.resourceId)
+                .put("bma_key_registry_id", preciseKeyPublished.resourceId)
+                .put("halo_resource_id", haloPublished.resourceId)
+                .put("halo_sha256", haloPublished.sha256)
+                .put("halo_bytes", halo.length())
+                .put("hexbin_resource_id", hexbinPublished.resourceId)
+                .put("hexbin_sha256", hexbinPublished.sha256)
+                .put("hexbin_bytes", hexbin.length())
+                .put("package_resource_id", packagePublished.resourceId)
+                .put("package_feature_id", packagePublished.featureId)
+                .put("package_sha256", packagePublished.sha256)
+                .put("package_bytes", encryptedBytes.size)
+                .put("guardian_download_exact", true)
+                .put("bma_download_exact", true)
+                .put("decrypted_original_exact", true)
+                .put("signature_status", decryptResult.signatureStatus.name)
+                .put("wrong_key_rejected", true)
+                .put("wrong_passphrase_rejected", true)
+                .put("amber_package_denied", true)
+                .put("outsider_community_denied", true)
+        )
     }
 
     private fun selectionFor(
@@ -220,9 +317,9 @@ class MapSafePremiumAclDeviceTest {
         selection: MapSafeSecurityPreferences.Selection,
         identity: OpenPgpKeyMaterial,
         role: String
-    ) {
-        val file = File.createTempFile("mapsafe-$role-public-", ".asc", context.cacheDir)
-        try {
+    ): CommunityPublishResult {
+        val file = File.createTempFile("mapsafe-$role-public-", ".asc", context.filesDir)
+        return try {
             file.writeBytes(OpenPgpKeyCodec.encodePublicKeyRing(identity.publicKeyRing))
             publisher.publishAttachedFile(
                 selection = selection,
@@ -329,6 +426,6 @@ class MapSafePremiumAclDeviceTest {
         private const val ARG_ANONYMISED_ACCOUNT = "mapsafe.premium.anonymised_account"
         private const val ARG_OUTSIDER_ACCOUNT = "mapsafe.premium.outsider_account"
         private const val ARG_COMMUNITY_NAME = "mapsafe.premium.community_name"
-        private val PASSPHRASE = "MapSafe Premium ACL acceptance 2026!".toCharArray()
+        private val PASSPHRASE = "MapSafe manuscript recovery 2026!".toCharArray()
     }
 }

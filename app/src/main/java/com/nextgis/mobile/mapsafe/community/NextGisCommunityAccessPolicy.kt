@@ -63,13 +63,23 @@ internal object NextGisCommunityAccessPolicy {
     )
 
     fun communityFolder(groupId: Long): List<NextGisPermissionRule> = listOf(
-        rule(groupId, "resource", "read"),
-        rule(groupId, "resource", "create")
+        rule(groupId, "resource", "read")
     )
 
     fun artifactFolder(groupId: Long): List<NextGisPermissionRule> = listOf(
+        rule(groupId, "resource", "read")
+    )
+
+    fun publisherFolder(groupId: Long, publisherUserId: Long): List<NextGisPermissionRule> = listOf(
         rule(groupId, "resource", "read"),
-        rule(groupId, "resource", "create")
+        // NextGIS requires full control on the destination group itself and these
+        // propagated permissions for resources a non-administrator creates inside it.
+        rule(publisherUserId, "", ""),
+        rule(publisherUserId, "resource", "read", propagate = true),
+        rule(publisherUserId, "resource", "create", propagate = true),
+        rule(publisherUserId, "resource", "update", propagate = true),
+        rule(publisherUserId, "resource", "change_permissions", propagate = true),
+        rule(publisherUserId, "data", "", propagate = true)
     )
 
     fun communityReadableArtifact(groupId: Long): List<NextGisPermissionRule> = listOf(
@@ -99,9 +109,10 @@ internal object NextGisCommunityAccessPolicy {
     private fun rule(
         principalId: Long,
         scope: String,
-        permission: String
+        permission: String,
+        propagate: Boolean = false
     ): NextGisPermissionRule {
         require(principalId > 0L) { "A NextGIS permission principal must be a real user or group." }
-        return NextGisPermissionRule(principalId, scope, permission, propagate = false)
+        return NextGisPermissionRule(principalId, scope, permission, propagate)
     }
 }

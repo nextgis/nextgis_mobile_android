@@ -55,7 +55,12 @@ class NextGisCommunityPublicKeyClient(context: Context) {
             )
         }
 
-        return childResources(resolved.account, keys.id)
+        return publisherResources(
+            resolved.account,
+            keys.id,
+            resolved.groupId,
+            CommunityArtifactStorage.PUBLIC_KEYS
+        )
             .asSequence()
             .filter { resource ->
                 resource.cls == VECTOR_LAYER_CLASS &&
@@ -70,6 +75,19 @@ class NextGisCommunityPublicKeyClient(context: Context) {
                     .thenByDescending { it.featureId }
             )
             .toList()
+    }
+
+    private fun publisherResources(
+        account: AccountUtil.AccountData,
+        directoryId: Long,
+        groupId: Long,
+        storage: CommunityArtifactStorage
+    ): List<NextGisResource> {
+        val direct = childResources(account, directoryId)
+        val memberPrefix = NextGisCommunityNames.memberFolderPrefix(groupId, storage)
+        return direct + direct
+            .filter { it.cls == RESOURCE_GROUP_CLASS && it.keyname?.startsWith(memberPrefix) == true }
+            .flatMap { childResources(account, it.id) }
     }
 
     fun downloadPublicKey(
@@ -235,23 +253,8 @@ class NextGisCommunityPublicKeyClient(context: Context) {
     }
 
     private fun resolve(selection: MapSafeSecurityPreferences.Selection): ResolvedCommunity {
-        if (!selection.hasGroup) {
-            throw NextGisCommunityPublishException(
-                "Choose a connected NextGIS account and community in Security & Sharing first."
-            )
-        }
-        val account = account(requireNotNull(selection.accountName))
-        val groupId = requireNotNull(selection.groupId)
-        val currentUser = getObject(account, "${server(account)}/api/component/auth/current_user")
-        val group = getObject(account, "${server(account)}/api/component/auth/group/$groupId")
-        val memberIds = group.optJSONArray("members") ?: JSONArray()
-        val currentUserId = currentUser.optLong("id", -1L)
-        if ((0 until memberIds.length()).none { memberIds.optLong(it, -1L) == currentUserId }) {
-            throw NextGisCommunityPublishException(
-                "The signed-in NextGIS user is no longer a member of the selected community."
-            )
-        }
-        return ResolvedCommunity(account, groupId)
+        val membership = NextGisCommunityMembershipResolver(context).resolve(selection)
+        return ResolvedCommunity(membership.account, membership.groupId)
     }
 
     private fun account(name: String): AccountUtil.AccountData = try {

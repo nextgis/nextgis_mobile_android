@@ -141,13 +141,13 @@ class HexabinningDialog : DialogFragment() {
         }
 
         private val RESOLUTION_LABELS = arrayOf(
-            "Resolution 6  ·  ~3.2 km",
-            "Resolution 7  ·  ~1.2 km",
-            "Resolution 8  ·  ~460 m",
-            "Resolution 9  ·  ~174 m",
-            "Resolution 10 ·  ~66 m",
-            "Resolution 11 ·  ~25 m",
-            "Resolution 12 ·  ~9 m"
+            "Resolution 6  ·  ~3.72 km",
+            "Resolution 7  ·  ~1.41 km",
+            "Resolution 8  ·  ~531 m",
+            "Resolution 9  ·  ~201 m",
+            "Resolution 10 ·  ~75.9 m",
+            "Resolution 11 ·  ~28.7 m",
+            "Resolution 12 ·  ~10.8 m"
         )
     }
 }

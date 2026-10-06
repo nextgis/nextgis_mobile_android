@@ -12,6 +12,7 @@ import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpException
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityNames
+import com.nextgis.mobile.mapsafe.community.NextGisCommunityMembershipResolver
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublicKeyClient
 import com.nextgis.mobile.mapsafe.community.NextGisCommunityPublisher
 import org.json.JSONArray
@@ -56,14 +57,38 @@ class NextGisPublicKeyDirectoryClient(
     fun membershipGroups(accountName: String): List<NextGisGroupSummary> {
         val account = account(accountName)
         val currentUser = currentUser(account)
-        val user = getObject(account, "${server(account)}/api/component/auth/user/${currentUser.id}")
-        val memberships = user.optJSONArray("member_of") ?: JSONArray()
-        return buildList {
-            for (index in 0 until memberships.length()) {
-                val group = authGroup(account, memberships.getLong(index))
-                add(groupSummary(account, group, currentUser.id))
+        return runCatching {
+            val user = getObject(account, "${server(account)}/api/component/auth/user/${currentUser.id}")
+            val memberships = user.optJSONArray("member_of") ?: JSONArray()
+            buildList {
+                for (index in 0 until memberships.length()) {
+                    val group = authGroup(account, memberships.getLong(index))
+                    add(groupSummary(account, group, currentUser.id))
+                }
+            }.sortedBy { it.displayName.lowercase() }
+        }.getOrElse {
+            try {
+                NextGisCommunityMembershipResolver(context)
+                    .visibleCommunities(accountName)
+                    .map { community ->
+                        NextGisGroupSummary(
+                            id = community.groupId,
+                            displayName = community.displayName,
+                            keyname = community.keyname,
+                            memberIds = setOf(community.currentUserId),
+                            memberNames = mapOf(
+                                community.currentUserId to community.currentUserDisplayName
+                            ),
+                            currentUserId = community.currentUserId
+                        )
+                    }
+            } catch (error: Exception) {
+                throw OpenPgpException(
+                    error.message ?: "Could not discover the signed-in user's MapSafe communities.",
+                    error
+                )
             }
-        }.sortedBy { it.displayName.lowercase() }
+        }
     }
 
     /** Creates a real NextGIS authentication group with the current user as its first member. */
@@ -107,12 +132,32 @@ class NextGisPublicKeyDirectoryClient(
             throw OpenPgpException("The public-key export failed its local fingerprint check.")
         }
 
-        val account = account(accountName)
-        val currentUser = currentUser(account)
-        val authGroup = authGroup(account, groupId)
-        if (currentUser.id !in authGroup.memberIds) {
-            throw OpenPgpException("The signed-in NextGIS user is not a member of group $groupId.")
+        val resolved = try {
+            NextGisCommunityMembershipResolver(context).resolve(
+                MapSafeSecurityPreferences.Selection(
+                    accountName = accountName,
+                    serverUrl = account(accountName).url,
+                    groupId = groupId,
+                    groupName = null,
+                    currentUserId = null,
+                    groupMemberCount = 0
+                )
+            )
+        } catch (error: Exception) {
+            throw OpenPgpException(error.message ?: "Could not validate the selected community.", error)
         }
+        val account = resolved.account
+        val currentUser = NextGisUser(
+            resolved.currentUserId,
+            resolved.currentUserDisplayName,
+            resolved.currentUserDisplayName
+        )
+        val authGroup = NextGisAuthGroup(
+            id = groupId,
+            displayName = resolved.groupName,
+            keyname = NextGisCommunityNames.communityKey(groupId),
+            memberIds = resolved.authoritativeMemberIds ?: setOf(currentUser.id)
+        )
 
         val directory = findOrCreateDirectory(account, authGroup)
         val selection = MapSafeSecurityPreferences.Selection(
@@ -167,22 +212,52 @@ class NextGisPublicKeyDirectoryClient(
 
     fun sync(accountName: String, groupId: Long): PublicKeySyncReport {
         require(groupId > 0) { "NextGIS group ID must be greater than zero." }
-        val account = account(accountName)
-        val group = authGroup(account, groupId)
-        val signedInUser = currentUser(account)
-        val memberNames = memberNames(account, group.memberIds)
+        val initialSelection = MapSafeSecurityPreferences.Selection(
+            accountName = accountName,
+            serverUrl = account(accountName).url,
+            groupId = groupId,
+            groupName = null,
+            currentUserId = null,
+            groupMemberCount = 0
+        )
+        val resolved = try {
+            NextGisCommunityMembershipResolver(context).resolve(initialSelection)
+        } catch (error: Exception) {
+            throw OpenPgpException(error.message ?: "Could not validate the selected community.", error)
+        }
+        val account = resolved.account
+        val signedInUser = NextGisUser(
+            resolved.currentUserId,
+            resolved.currentUserDisplayName,
+            resolved.currentUserDisplayName
+        )
         val syncedAt = System.currentTimeMillis()
         val selection = MapSafeSecurityPreferences.Selection(
             accountName = accountName,
             serverUrl = normalizeServer(account.url),
             groupId = groupId,
-            groupName = group.displayName,
+            groupName = resolved.groupName,
             currentUserId = signedInUser.id,
-            groupMemberCount = group.memberIds.size
+            groupMemberCount = resolved.authoritativeMemberIds?.size ?: 0
         )
         val publicKeyClient = NextGisCommunityPublicKeyClient(context)
-        val newestByUser = publicKeyClient.listPublicKeys(selection)
-            .filter { it.publisherId in group.memberIds }
+        val visiblePublicKeys = publicKeyClient.listPublicKeys(selection)
+        val groupMemberIds = resolved.authoritativeMemberIds
+            ?: (visiblePublicKeys.mapTo(linkedSetOf()) { it.publisherId } + signedInUser.id)
+        val publishedNames = visiblePublicKeys.associate {
+            it.publisherId to it.publisherName
+        }
+        val memberNames = if (resolved.authoritativeMemberIds != null) {
+            // The authentication API can retain a former full name after a
+            // NextGIS ID profile change. A publisher-owned key registry is the
+            // community-facing identity label and is refreshed when the member
+            // republishes or an administrator corrects that registry title.
+            memberNames(account, groupMemberIds) + publishedNames
+        } else {
+            mapOf(signedInUser.id to signedInUser.displayName) + publishedNames
+        }
+        val newestByUser = visiblePublicKeys
+            .filter { it.publisherId in groupMemberIds }
             .groupBy { it.publisherId }
             .mapNotNull { (_, records) ->
                 records.maxWithOrNull(compareBy({ it.keyVersion }, { it.createdAt }, { it.featureId }))
@@ -207,7 +282,11 @@ class NextGisPublicKeyDirectoryClient(
                             groupId = groupId,
                             userId = remote.publisherId
                         ),
-                        displayName = remote.publisherName,
+                        // Resource titles preserve the name used when a key was first
+                        // published. Prefer the current NextGIS profile name whenever
+                        // the authentication directory is available so role changes are
+                        // reflected without republishing or rotating the key.
+                        displayName = memberNames[remote.publisherId] ?: remote.publisherName,
                         fingerprint = remote.fingerprint,
                         keyVersion = remote.keyVersion,
                         bucketId = remote.registryResourceId,
@@ -225,14 +304,14 @@ class NextGisPublicKeyDirectoryClient(
         exchangeRepository.markDirectoryPresence(
             account.url,
             groupId,
-            group.memberIds,
+            groupMemberIds,
             observedUsers,
             syncedAt
         )
         return PublicKeySyncReport(
             groupId = groupId,
             records = exchangeRepository.records(account.url, groupId),
-            missingMemberIds = group.memberIds - observedUsers,
+            missingMemberIds = groupMemberIds - observedUsers,
             invalidEntries = invalid,
             syncedAt = syncedAt,
             memberNames = memberNames

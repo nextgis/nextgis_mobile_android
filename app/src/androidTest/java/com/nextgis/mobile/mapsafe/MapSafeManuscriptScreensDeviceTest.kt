@@ -26,19 +26,26 @@ import com.nextgis.mobile.activity.MainActivity
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyCodec
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyGenerator
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpKeyRepository
+import com.nextgis.mobile.mapsafe.keys.MapSafeSecurityPreferences
+import com.nextgis.mobile.mapsafe.keys.NextGisGroupSummary
+import com.nextgis.mobile.mapsafe.keys.NextGisPublicKeyDirectoryClient
+import com.nextgis.mobile.mapsafe.keys.PublicKeyExchangeRepository
 import com.nextgis.mobile.mapsafe.service.HashUtils
 import com.nextgis.mobile.mapsafe.service.MapSafeGeoJsonWorkflow
 import com.nextgis.mobile.mapsafe.service.MapSafeSaveFolderRepository
 import com.nextgis.mobile.mapsafe.test.MapSafeTestDocumentProvider
 import com.nextgis.mobile.mapsafe.ui.DonutMaskingDialog
 import com.nextgis.mobile.mapsafe.ui.DonutMaskingResultDialog
+import com.nextgis.mobile.mapsafe.ui.AccessFeaturesDialog
 import com.nextgis.mobile.mapsafe.ui.HexabinningDialog
 import com.nextgis.mobile.mapsafe.ui.HexabinningResultDialog
 import com.nextgis.mobile.mapsafe.ui.IntegrityRecordDialog
 import com.nextgis.mobile.mapsafe.ui.MapSafeIdentityActivity
 import com.nextgis.mobile.mapsafe.ui.MapSafeMainDialog
 import com.nextgis.mobile.mapsafe.ui.MapSafeOpenPgpActivity
+import com.nextgis.mobile.mapsafe.ui.MapSafeSecurityActivity
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayInputStream
@@ -61,7 +68,8 @@ class MapSafeManuscriptScreensDeviceTest {
     fun captureOriginalAndHaloMaskedDatasetsUnobstructed() {
         val context = ApplicationProvider.getApplicationContext<MainApplication>()
         MapSafeDeviceTestSupport.prepareMainActivity(context)
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
             allowScreenshots(scenario)
             waitForMap(scenario)
             val sourceLayerName = loadNorthWhangareiSample(scenario, context)
@@ -104,6 +112,91 @@ class MapSafeManuscriptScreensDeviceTest {
             }
             SystemClock.sleep(4_000L)
             capture(context, "ms2026-29-original-and-halo-masked-unobstructed")
+        } finally {
+            runCatching { scenario.close() }
+        }
+    }
+
+    /**
+     * Captures the paper's hexagonal-binning figure from a clean map state.
+     *
+     * The broader safeguard capture deliberately demonstrates both anonymisation
+     * tools in one run. That leaves its halo-masked point layer on the map and can
+     * make the later hexagons look like another point representation. This focused
+     * scenario keeps only the precise source before binning, then explicitly shows
+     * the source-plus-cells comparison and the final cells on their own.
+     */
+    @Test
+    fun captureCleanHexagonalBinningFigure() {
+        val context = ApplicationProvider.getApplicationContext<MainApplication>()
+        MapSafeDeviceTestSupport.prepareMainActivity(context)
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            allowScreenshots(scenario)
+            waitForMap(scenario)
+            val sourceLayerName = loadNorthWhangareiSample(scenario, context)
+            scenario.onActivity { activity ->
+                showOnlyDataLayer(activity, context, sourceLayerName)
+            }
+
+            openMapSafe(scenario)
+            waitText("Safeguard")
+            tapDescription("Open Hexagonal Binning")
+            waitText("Hexagonal Binning")
+            scenario.onActivity { activity ->
+                showOnlyDataLayer(activity, context, sourceLayerName)
+                (activity.supportFragmentManager.findFragmentByTag(HexabinningDialog.TAG) as? DialogFragment)
+                    ?.dismissAllowingStateLoss()
+                activity.supportFragmentManager.executePendingTransactions()
+                HexabinningDialog.forRebin(sourceLayerName, 6)
+                    .show(activity.supportFragmentManager, HexabinningDialog.TAG)
+                activity.supportFragmentManager.executePendingTransactions()
+            }
+            waitTextContains("Resolution 6")
+            SystemClock.sleep(2_000L)
+            captureHexbin(context, "01-configuration-source-only")
+
+            val layersBeforeBinning = layerNames(context)
+            scenario.onActivity { activity ->
+                (activity.supportFragmentManager.findFragmentByTag(HexabinningDialog.TAG) as? DialogFragment)
+                    ?.dismissAllowingStateLoss()
+                activity.supportFragmentManager.executePendingTransactions()
+                activity.mapFragment?.runMapSafeHexabinning(
+                    resolution = 6,
+                    sourceLayerName = sourceLayerName
+                )
+            }
+            waitText("Hexagonal Binning Applied", 60_000L)
+
+            var hexbinLayerName: String? = null
+            MapSafeDeviceTestSupport.waitUntil("clean North Whangārei hexagonal layer", 30_000L) {
+                hexbinLayerName = (layerNames(context) - layersBeforeBinning)
+                    .firstOrNull { it.contains("hexbin", ignoreCase = true) }
+                val layer = hexbinLayerName?.let { context.map.getLayerByName(it) as? VectorLayer }
+                layer != null && layer.query(null).isNotEmpty()
+            }
+
+            scenario.onActivity { activity ->
+                showDataLayers(
+                    activity,
+                    context,
+                    setOf(sourceLayerName, requireNotNull(hexbinLayerName))
+                )
+                refreshResultOverlay(activity)
+            }
+            SystemClock.sleep(3_000L)
+            captureHexbin(context, "02-applied-source-and-cells")
+
+            tapDescription("Collapse Hexagonal Binning Applied results")
+            SystemClock.sleep(1_200L)
+            scenario.onActivity { activity ->
+                showOnlyDataLayer(activity, context, requireNotNull(hexbinLayerName))
+                refreshResultOverlay(activity)
+            }
+            SystemClock.sleep(3_000L)
+            captureHexbin(context, "03-collapsed-cells-only")
+        } finally {
+            runCatching { scenario.close() }
         }
     }
 
@@ -155,6 +248,11 @@ class MapSafeManuscriptScreensDeviceTest {
     fun captureCommunityUploadAndPackages() {
         val context = ApplicationProvider.getApplicationContext<MainApplication>()
         MapSafeDeviceTestSupport.prepareMainActivity(context)
+        val premium = premiumAccount(ARG_GUARDIAN_ACCOUNT)?.let { accountName ->
+            selectPremiumCommunity(context, accountName)
+            ensurePremiumScreenshotIdentity(context)
+            true
+        } ?: false
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             allowScreenshots(scenario)
             waitForMap(scenario)
@@ -175,13 +273,37 @@ class MapSafeManuscriptScreensDeviceTest {
                     ?.dismiss()
             }
             SystemClock.sleep(500L)
+
+            if (premium) {
+                scenario.onActivity { activity ->
+                    activity.mapFragment?.runMapSafeHexabinning(
+                        resolution = 8,
+                        sourceLayerName = sourceLayerName
+                    )
+                }
+                waitText("Hexagonal Binning Applied", 60_000L)
+                scenario.onActivity { activity ->
+                    activity.supportFragmentManager.fragments
+                        .filterIsInstance<HexabinningResultDialog>()
+                        .lastOrNull()
+                        ?.dismiss()
+                }
+                SystemClock.sleep(500L)
+            }
             openMapSafe(scenario)
             waitText("Safeguard")
 
             scrollDownUntil("Upload to Community")
             tapDescription("Open Upload to Community")
             waitText("Upload to Community")
-            capture(context, "ms2026-30-community-upload-selection")
+            if (premium) {
+                tapContains("My public key")
+                tapContains("Halo masked")
+                tapContains("Hexagonal bin")
+                capturePremium(context, "01-steven-upload-community")
+            } else {
+                capture(context, "ms2026-30-community-upload-selection")
+            }
 
             device.pressBack()
             waitText("Safeguard")
@@ -189,8 +311,149 @@ class MapSafeManuscriptScreensDeviceTest {
             waitText("Community Packages")
             tapDescription("Open Community Packages")
             waitText("Community Packages")
+            if (premium) {
+                waitTextContains("community item", 60_000L)
+                capturePremium(context, "02-steven-community-public-keys")
+                scrollDownUntilTextContains("halo masked")
+                capturePremium(context, "03-steven-community-datasets")
+            } else {
+                SystemClock.sleep(2_000L)
+                capture(context, "ms2026-31-community-packages")
+            }
+        }
+    }
+
+    @Test
+    fun capturePremiumSecurityAndKeys() {
+        val context = ApplicationProvider.getApplicationContext<MainApplication>()
+        MapSafeDeviceTestSupport.prepareMainActivity(context)
+        val accountName = requirePremiumAccount(ARG_GUARDIAN_ACCOUNT)
+        val selection = selectPremiumCommunity(context, accountName)
+        ensurePremiumScreenshotIdentity(context)
+        val directory = NextGisPublicKeyDirectoryClient(
+            context,
+            OpenPgpKeyRepository(context),
+            PublicKeyExchangeRepository(context)
+        )
+        val report = directory.sync(accountName, requireNotNull(selection.groupId))
+        assertTrue("Expected three current community public keys.", report.records.size >= 3)
+
+        ActivityScenario.launch(MapSafeSecurityActivity::class.java).use {
+            waitText("Security & Sharing", 30_000L)
+            scrollDownUntil("4. Group public keys")
+            capturePremium(context, "00-steven-security-community-keys")
+        }
+    }
+
+    @Test
+    fun capturePremiumBmaCommunityPackages() {
+        capturePremiumCommunityRole(
+            argumentName = ARG_PRECISE_ACCOUNT,
+            screenshotName = "04-bma-authorised-community-packages",
+            targetText = "protected original"
+        )
+    }
+
+    @Test
+    fun capturePremiumAmberCommunityDatasets() {
+        capturePremiumCommunityRole(
+            argumentName = ARG_ANONYMISED_ACCOUNT,
+            screenshotName = "05-amber-anonymised-community-access",
+            targetText = "No encrypted packages published"
+        )
+    }
+
+    @Test
+    fun capturePremiumBmaVerificationDecryptionAndMap() {
+        val context = ApplicationProvider.getApplicationContext<MainApplication>()
+        MapSafeDeviceTestSupport.prepareMainActivity(context)
+        selectPremiumCommunity(context, requirePremiumAccount(ARG_PRECISE_ACCOUNT))
+
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            allowScreenshots(scenario)
+            waitForMap(scenario)
+            scenario.onActivity { activity ->
+                AccessFeaturesDialog().show(activity.supportFragmentManager, "PremiumBmaAccess")
+            }
+            waitText("Community Packages")
+            waitTextContains("community item", 60_000L)
+            scrollDownUntilTextContains("protected original")
+            // The package title can become visible while its action remains below
+            // the fold on tall community lists, so scroll to the action itself.
+            scrollDownUntil("Download & verify")
+            capturePremium(context, "07-bma-community-package-selection")
+
+            tap("Download & verify", 60_000L)
+            waitText("Verification", 60_000L)
+            waitText("Local SHA-256", 60_000L)
             SystemClock.sleep(2_000L)
-            capture(context, "ms2026-31-community-packages")
+            capturePremium(context, "08-bma-package-verification")
+
+            tap("Next: Decrypt", 60_000L)
+            waitText("Decrypt & Access", 60_000L)
+            waitTextContains("BMA representative", 60_000L)
+            capturePremium(context, "09-bma-private-key-decryption")
+
+            scrollDownUntilTextContains("Decrypt Verified File")
+            tap("Decrypt Verified File", 60_000L)
+            waitText("Unlock private key", 60_000L)
+            enterOnlyTextField(PASSPHRASE)
+            tapIgnoreCase("Continue")
+            waitText("Import decrypted layer?", 90_000L)
+            tapIgnoreCase("Import and continue")
+            waitTextContains("Dataset ready to access", 60_000L)
+            capturePremium(context, "10-bma-decryption-success")
+
+            scrollDownUntilTextContains("Next: Access")
+            tap("Next: Access")
+            SystemClock.sleep(8_000L)
+            capturePremium(context, "11-bma-decrypted-original-map")
+        } finally {
+            // The access workflow intentionally finishes MainActivity when it opens
+            // the recovered layer. ActivityScenario can therefore have no terminal
+            // state to close; that expected transition must not fail the capture run.
+            runCatching { scenario.close() }
+        }
+    }
+
+    @Test
+    fun capturePremiumOutsiderDenied() {
+        val context = ApplicationProvider.getApplicationContext<MainApplication>()
+        MapSafeDeviceTestSupport.prepareMainActivity(context)
+        val accountName = requirePremiumAccount(ARG_OUTSIDER_ACCOUNT)
+        val groupId = InstrumentationRegistry.getArguments()
+            .getString(ARG_COMMUNITY_GROUP_ID)
+            ?.toLongOrNull()
+            ?: error("$ARG_COMMUNITY_GROUP_ID was not supplied.")
+        val communityName = requirePremiumAccount(ARG_COMMUNITY_NAME)
+        val directory = NextGisPublicKeyDirectoryClient(
+            context,
+            OpenPgpKeyRepository(context),
+            PublicKeyExchangeRepository(context)
+        )
+        val account = directory.accountSummaries().single { it.accountName == accountName }
+        MapSafeSecurityPreferences.selectGroup(
+            context,
+            account,
+            NextGisGroupSummary(
+                id = groupId,
+                displayName = communityName,
+                keyname = "",
+                memberIds = emptySet(),
+                memberNames = emptyMap(),
+                currentUserId = -1L
+            )
+        )
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            allowScreenshots(scenario)
+            waitForMap(scenario)
+            scenario.onActivity { activity ->
+                AccessFeaturesDialog().show(activity.supportFragmentManager, "PremiumOutsiderAccess")
+            }
+            waitText("Community refresh failed", 60_000L)
+            capturePremium(context, "06-external-user-community-denied")
         }
     }
 
@@ -674,6 +937,62 @@ class MapSafeManuscriptScreensDeviceTest {
         waitText("Safeguard")
     }
 
+    private fun capturePremiumCommunityRole(
+        argumentName: String,
+        screenshotName: String,
+        targetText: String
+    ) {
+        val context = ApplicationProvider.getApplicationContext<MainApplication>()
+        MapSafeDeviceTestSupport.prepareMainActivity(context)
+        selectPremiumCommunity(context, requirePremiumAccount(argumentName))
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            allowScreenshots(scenario)
+            waitForMap(scenario)
+            scenario.onActivity { activity ->
+                AccessFeaturesDialog().show(activity.supportFragmentManager, "PremiumCommunityAccess")
+            }
+            waitText("Community Packages")
+            waitTextContains("community item", 60_000L)
+            scrollDownUntilTextContains(targetText)
+            capturePremium(context, screenshotName)
+        }
+    }
+
+    private fun selectPremiumCommunity(
+        context: MainApplication,
+        accountName: String
+    ): MapSafeSecurityPreferences.Selection {
+        val communityName = requirePremiumAccount(ARG_COMMUNITY_NAME)
+        val directory = NextGisPublicKeyDirectoryClient(
+            context,
+            OpenPgpKeyRepository(context),
+            PublicKeyExchangeRepository(context)
+        )
+        val account = directory.accountSummaries().single { it.accountName == accountName }
+        val group = directory.membershipGroups(accountName)
+            .single { it.displayName == communityName }
+        MapSafeSecurityPreferences.selectGroup(context, account, group)
+        return MapSafeSecurityPreferences.read(context)
+    }
+
+    private fun ensurePremiumScreenshotIdentity(context: MainApplication) {
+        val repository = OpenPgpKeyRepository(context)
+        if (repository.hasLocalIdentity()) return
+        repository.saveLocalIdentity(
+            OpenPgpKeyGenerator.generate(
+                "Steven (field data custodian) <steven@mapsafe.example.invalid>",
+                PASSPHRASE.toCharArray(),
+                rsaBits = 2048
+            )
+        )
+    }
+
+    private fun premiumAccount(argumentName: String): String? =
+        InstrumentationRegistry.getArguments().getString(argumentName)?.trim()?.takeIf { it.isNotEmpty() }
+
+    private fun requirePremiumAccount(argumentName: String): String =
+        premiumAccount(argumentName) ?: error("$argumentName was not supplied.")
+
     private fun capture(context: Context, name: String) {
         device.findObject(By.text("Wait"))?.let { waitButton ->
             if (device.hasObject(By.textContains("isn't responding"))) {
@@ -685,6 +1004,16 @@ class MapSafeManuscriptScreensDeviceTest {
         device.waitForIdle()
         val refreshedName = name.replaceFirst("ms2026-", SCREENSHOT_PREFIX)
         MapSafeDeviceTestSupport.screenshot(context, refreshedName)
+    }
+
+    private fun capturePremium(context: Context, suffix: String) {
+        device.waitForIdle()
+        MapSafeDeviceTestSupport.screenshot(context, "$PREMIUM_SCREENSHOT_PREFIX$suffix")
+    }
+
+    private fun captureHexbin(context: Context, suffix: String) {
+        device.waitForIdle()
+        MapSafeDeviceTestSupport.screenshot(context, "$HEXBIN_SCREENSHOT_PREFIX$suffix")
     }
 
     private fun tap(text: String, timeout: Long = 30_000L) {
@@ -741,7 +1070,7 @@ class MapSafeManuscriptScreensDeviceTest {
     }
 
     private fun scrollDownUntilTextContains(text: String) {
-        repeat(6) {
+        repeat(14) {
             if (device.hasObject(By.textContains(text))) return
             swipeDownPage()
         }
@@ -780,6 +1109,14 @@ class MapSafeManuscriptScreensDeviceTest {
 
     companion object {
         private const val SCREENSHOT_PREFIX = "ms2026-north-whangarei-20260909-"
+        private const val PREMIUM_SCREENSHOT_PREFIX = "ms2026-premium-community-20261006-"
+        private const val HEXBIN_SCREENSHOT_PREFIX = "ms2026-north-whangarei-hexbin-20261006-"
+        private const val ARG_GUARDIAN_ACCOUNT = "mapsafe.premium.guardian_account"
+        private const val ARG_PRECISE_ACCOUNT = "mapsafe.premium.precise_account"
+        private const val ARG_ANONYMISED_ACCOUNT = "mapsafe.premium.anonymised_account"
+        private const val ARG_OUTSIDER_ACCOUNT = "mapsafe.premium.outsider_account"
+        private const val ARG_COMMUNITY_NAME = "mapsafe.premium.community_name"
+        private const val ARG_COMMUNITY_GROUP_ID = "mapsafe.premium.community_group_id"
         private const val PASSPHRASE = "MapSafe manuscript recovery 2026!"
     }
 }

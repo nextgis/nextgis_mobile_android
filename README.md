@@ -14,7 +14,7 @@ The app is designed for a two-representation model:
 
 It does not create a nested three-level encrypted volume or automatically assign data access from labels such as “trusted”, “semi-trusted”, and “untrusted”. The data owner chooses the suitable representation and recipients for each release.
 
-> **Research status:** the on-device anonymisation, OpenPGP, local file, hash, and recovered-layer workflows are implemented and covered by automated tests. The NextGIS Web clients and screens are implemented but still require full live validation with multiple hosted accounts, plans, and ACL configurations. Blockchain notarisation is implemented through external-wallet approval, and both submission and Android verification have been exercised against the public Sepolia research deployment.
+> **Research status:** the on-device anonymisation, OpenPGP, local file, hash, and recovered-layer workflows are implemented and covered by automated tests. The NextGIS Web exchange has passed a live four-account Premium acceptance run covering member discovery, public-key publication, anonymised-layer sharing, recipient-restricted package download, exact decryption, and outsider denial. Blockchain notarisation is implemented through external-wallet approval, and both submission and Android verification have been exercised against the public Sepolia research deployment.
 
 This repository is the MapSafe research fork. The official NextGIS Mobile packages in Google Play and at my.nextgis.com do not contain these research features.
 
@@ -49,8 +49,8 @@ This repository is the MapSafe research fork. The official NextGIS Mobile packag
 | Multi-representation encryption | Implemented. Original, halo-masked, and hexagonal-binned datasets can be selected together but are encrypted sequentially into separate packages. |
 | Multi-recipient encryption | Implemented with one encrypted payload and one wrapped session key per selected public key in each package. |
 | Decryption and map import | Implemented for GeoJSON, including integrity/signature reporting and map zoom handoff. |
-| NextGIS key exchange | Production UI and client implemented; controlled tests pass, while live multi-account validation remains. |
-| NextGIS layer/package publishing | Production UI and client implemented; hosted-server storage and ACL combinations still need live validation. |
+| NextGIS key exchange | Implemented and live-tested with three Community A identities plus one external control account on NextGIS Premium. |
+| NextGIS layer/package publishing | Implemented and live-tested for community-readable anonymised layers and a Steven/Amber-only encrypted package, including direct-access denial. |
 | Community browsing | Implemented public-key sync/review, anonymised GeoJSON download, encrypted-package download, digest check, local save, and verification handoff. |
 | SHA-256 integrity checking | Implemented for local and downloaded encrypted packages. |
 | EVM network profiles | Implemented for Sepolia, Mainnet, and custom EVM networks, including read-only preflight. |
@@ -203,14 +203,15 @@ The NextGIS ID team, the Web GIS authentication group, and the Web GIS resources
 MapSafe
 └── <selected authentication group>
     ├── Public Keys
-    │   └── MapSafe public key — <member>
-    │       ├── public-key.asc
-    │       └── key-metadata.json
+    │   └── <member publishing folder>
+    │       └── public-key registry and `.asc` attachment
     ├── Anonymised Datasets
-    │   ├── halo-masked vector resources
-    │   └── hexagonal-binned vector resources
+    │   └── <member publishing folder>
+    │       ├── halo-masked vector resources
+    │       └── hexagonal-binned vector resources
     └── Encrypted Packages
-        └── one recipient-restricted registry per encrypted package
+        └── <member publishing folder>
+            └── one recipient-restricted registry per encrypted package
 ```
 
 - Public keys are stored as public-only OpenPGP material with a manifest and fingerprint under **Public Keys**. Private keys and passphrases are rejected.
@@ -220,7 +221,7 @@ MapSafe
 - After a wallet-approved transaction is mined and its record matches the local package hash, MapSafe updates matching package records owned by the current publisher with the network, contract, transaction hash, and explorer URL.
 - The community attachment keeps the safe encrypted-package basename so the downloaded package can be compared with the filename bound into a notarisation record.
 - Before upload, MapSafe resolves every encrypted recipient to an accepted key belonging to a current community member, displays the resulting audience for confirmation, and fails closed if any fingerprint cannot be mapped.
-- When a hierarchy created by the earlier Free-plan prototype is first used on Premium, MapSafe replaces that group's legacy propagated permissions with narrower non-propagating rules while preserving unrelated administrator rules.
+- When a hierarchy created by the earlier Free-plan prototype is first used on Premium, the administrator removes the legacy public root-read inheritance, repairs the MapSafe descriptions, and provisions an isolated publishing folder for each current community member. Members can manage only their own folder descendants; shared directories remain read-only and package ACLs remain recipient-specific.
 
 ### Public-key trust
 
@@ -496,10 +497,9 @@ Secret-entry screens are protected from normal capture. Manuscript tests use dis
 The principal release and research tasks still open are:
 
 - validate H3 on a physical ARM/ARM64 Android phone;
-- validate one `.pgp` package with two independent Android installations and confirm a non-recipient cannot decrypt it;
+- repeat the validated multi-account `.pgp` exchange on independent physical Android installations rather than role-switching one emulator;
 - validate new RFC 9580 packages with external GnuPG/OpenKeychain versions that support the profile;
-- validate hosted NextGIS login, group creation, key publication, fingerprint changes, ACL denial, uploads, downloads, and visibility using owner, member, and outsider accounts;
-- confirm the intended NextGIS hosting plan supports the attachment and storage volumes used by the community design;
+- validate fingerprint rotation and member removal against the live Premium hierarchy;
 - add background/scheduled public-key synchronisation;
 - add a key-revocation-certificate workflow and an organisational certification policy;
 - independently audit the deployed MapSafe integrity contract and pin approved runtime-code hashes before production use;

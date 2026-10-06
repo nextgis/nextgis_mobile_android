@@ -15,9 +15,43 @@ class NextGisCommunityAccessPolicyTest {
 
         assertTrue(rules.all { !it.propagate })
         assertEquals(
-            setOf("resource:read", "resource:create"),
+            setOf("resource:read"),
             rules.mapTo(mutableSetOf()) { "${it.scope}:${it.permission}" }
         )
+    }
+
+    @Test
+    fun artifactFoldersAreReadOnlyForTheCommunity() {
+        val rules = NextGisCommunityAccessPolicy.artifactFolder(7)
+
+        assertTrue(rules.all { !it.propagate })
+        assertEquals(
+            setOf("resource:read"),
+            rules.mapTo(mutableSetOf()) { "${it.scope}:${it.permission}" }
+        )
+    }
+
+    @Test
+    fun publisherFolderGivesControlOnlyToItsPublisher() {
+        val rules = NextGisCommunityAccessPolicy.publisherFolder(7, 8)
+
+        assertEquals(setOf(7L, 8L), rules.mapTo(mutableSetOf()) { it.principalId })
+        assertTrue(rules.any { it.principalId == 7L && it.scope == "resource" && it.permission == "read" })
+        assertTrue(rules.any {
+            it.principalId == 8L && it.scope.isEmpty() && it.permission.isEmpty() && !it.propagate
+        })
+        assertEquals(
+            setOf(
+                "resource:read",
+                "resource:create",
+                "resource:update",
+                "resource:change_permissions",
+                "data:"
+            ),
+            rules.filter { it.principalId == 8L && it.propagate }
+                .mapTo(mutableSetOf()) { "${it.scope}:${it.permission}" }
+        )
+        assertTrue(rules.filter { it.principalId == 7L }.all { !it.propagate })
     }
 
     @Test

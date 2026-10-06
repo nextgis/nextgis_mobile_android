@@ -11,9 +11,20 @@ class NextGisCommunityNamesTest {
     fun hierarchyKeysAreStableAndScopedToAuthenticationGroup() {
         assertEquals("mapsafe_root", NextGisCommunityNames.rootKey)
         assertEquals("mapsafe_community_g42", NextGisCommunityNames.communityKey(42))
+        assertEquals(42L, NextGisCommunityNames.communityGroupId("mapsafe_community_g42"))
+        assertEquals(null, NextGisCommunityNames.communityGroupId("mapsafe_community_g0"))
+        assertEquals(null, NextGisCommunityNames.communityGroupId("not_mapsafe_g42"))
         assertEquals("mapsafe_public_keys_g42", NextGisCommunityNames.publicKeysKey(42))
         assertEquals("mapsafe_layers_g42", NextGisCommunityNames.layersKey(42))
         assertEquals("mapsafe_packages_g42", NextGisCommunityNames.packagesKey(42))
+        assertEquals(
+            "mapsafe_member_keys_g42_u7",
+            NextGisCommunityNames.memberFolderKey(42, 7, CommunityArtifactStorage.PUBLIC_KEYS)
+        )
+        assertEquals(
+            "mapsafe_member_layers_g42_",
+            NextGisCommunityNames.memberFolderPrefix(42, CommunityArtifactStorage.NATIVE_LAYER)
+        )
         assertEquals("mapsafe_packages_g42_u7", NextGisCommunityNames.packageRegistryPrefix(42, 7))
         assertEquals(
             "mapsafe_packages_g42_u7_r1111111122223333",

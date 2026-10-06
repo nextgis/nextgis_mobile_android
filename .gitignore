@@ -41,3 +41,10 @@ paper/mapsafe-results/output/pdf/*.vtc
 
 # Raw on-device screenshot export is duplicated by the curated manuscript images.
 paper/mapsafe-results/screenshots/*/device-export/
+
+# Premium trial account mapping is local and may contain account identifiers.
+paper/mapsafe-results/premium-trial/roles.local.json
+
+# Premium trial run evidence is retained locally and backed up separately. Only
+# redacted manifests selected for publication should be committed.
+paper/mapsafe-results/premium-trial/runs/

@@ -29,11 +29,12 @@ if (-not $DeviceSerial) {
     $DeviceSerial = $connected[0]
 }
 if ($DeviceSerial -notin $connected) { throw "Android device $DeviceSerial is not connected and authorised." }
+$deviceAbi = (& $adb -s $DeviceSerial shell getprop ro.product.cpu.abi).Trim()
 
 if (-not $SkipBuild) {
     Push-Location $workspaceRoot
     try {
-        & '.\gradlew.bat' --no-daemon ':app:assembleDebug' ':app:assembleDebugAndroidTest'
+        & '.\gradlew.bat' --no-daemon ':app:assembleDebug' ':app:assembleDebugAndroidTest' "-PMAPSAFE_SCREENSHOT_ABI=$deviceAbi"
         if ($LASTEXITCODE -ne 0) { throw 'The debug app and test APK build failed.' }
     }
     finally {

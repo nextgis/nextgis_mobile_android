@@ -59,19 +59,55 @@ class NextGisCommunityLayerClient(context: Context) {
             )
         }
 
-        return childResources(resolved.account, directory.id)
+        val publisherNames = runCatching {
+            NextGisCommunityPublicKeyClient(context)
+                .listPublicKeys(selection)
+                .groupBy { it.publisherId }
+                .mapValues { (_, records) ->
+                    records.maxWithOrNull(compareBy({ it.keyVersion }, { it.createdAt }, { it.featureId }))
+                        ?.publisherName
+                        .orEmpty()
+                }
+        }.getOrDefault(emptyMap())
+
+        return publisherResources(
+            resolved.account,
+            directory.id,
+            resolved.groupId,
+            CommunityArtifactStorage.NATIVE_LAYER
+        )
             .asSequence()
             .filter { resource ->
                 resource.cls == VECTOR_LAYER_CLASS &&
                     resource.keyname?.startsWith("mapsafe_artifact_g${resolved.groupId}_u") == true
             }
-            .mapNotNull { resource -> parseLayer(resolved.account, resource, resolved.groupId) }
+            .mapNotNull { resource ->
+                parseLayer(
+                    resolved.account,
+                    resource,
+                    resolved.groupId,
+                    publisherNames
+                )
+            }
             .sortedWith(
                 compareByDescending<CommunityLayerRecord> {
                     runCatching { Instant.parse(it.createdAt) }.getOrNull()
                 }.thenByDescending { it.resourceId }
             )
             .toList()
+    }
+
+    private fun publisherResources(
+        account: AccountUtil.AccountData,
+        directoryId: Long,
+        groupId: Long,
+        storage: CommunityArtifactStorage
+    ): List<NextGisLayerResource> {
+        val direct = childResources(account, directoryId)
+        val memberPrefix = NextGisCommunityNames.memberFolderPrefix(groupId, storage)
+        return direct + direct
+            .filter { it.cls == RESOURCE_GROUP_CLASS && it.keyname?.startsWith(memberPrefix) == true }
+            .flatMap { childResources(account, it.id) }
     }
 
     fun downloadLayer(
@@ -87,7 +123,8 @@ class NextGisCommunityLayerClient(context: Context) {
         val current = parseLayer(
             resolved.account,
             getResource(resolved.account, selected.resourceId),
-            resolved.groupId
+            resolved.groupId,
+            mapOf(selected.publisherId to selected.publisherName)
         ) ?: throw NextGisCommunityPublishException(
             "The selected anonymised dataset is no longer available or its metadata is invalid."
         )
@@ -120,7 +157,8 @@ class NextGisCommunityLayerClient(context: Context) {
     private fun parseLayer(
         account: AccountUtil.AccountData,
         summary: NextGisLayerResource,
-        expectedGroupId: Long
+        expectedGroupId: Long,
+        knownPublisherNames: Map<Long, String> = emptyMap()
     ): CommunityLayerRecord? {
         val container = getObject(account, resourceApiUrl(account, summary.id))
         val resource = resourceFromJson(container)
@@ -150,7 +188,9 @@ class NextGisCommunityLayerClient(context: Context) {
             artifactType = artifactType,
             communityId = communityId,
             publisherId = publisherId,
-            publisherName = resource.ownerDisplayName.ifBlank { "Member $publisherId" },
+            publisherName = knownPublisherNames[publisherId]
+                ?.takeIf(String::isNotBlank)
+                ?: resource.ownerDisplayName.ifBlank { "Member $publisherId" },
             createdAt = createdAt,
             status = metadata.optString(META_STATUS).ifBlank { "published" },
             fileName = fileName,
@@ -202,23 +242,8 @@ class NextGisCommunityLayerClient(context: Context) {
     }
 
     private fun resolve(selection: MapSafeSecurityPreferences.Selection): ResolvedCommunity {
-        if (!selection.hasGroup) {
-            throw NextGisCommunityPublishException(
-                "Choose a connected NextGIS account and community in Security & Sharing first."
-            )
-        }
-        val account = account(requireNotNull(selection.accountName))
-        val groupId = requireNotNull(selection.groupId)
-        val currentUser = getObject(account, "${server(account)}/api/component/auth/current_user")
-        val group = getObject(account, "${server(account)}/api/component/auth/group/$groupId")
-        val members = group.optJSONArray("members") ?: JSONArray()
-        val currentUserId = currentUser.optLong("id", -1L)
-        if ((0 until members.length()).none { members.optLong(it, -1L) == currentUserId }) {
-            throw NextGisCommunityPublishException(
-                "The signed-in NextGIS user is no longer a member of ${selection.groupName ?: "the selected community"}."
-            )
-        }
-        return ResolvedCommunity(account, groupId)
+        val membership = NextGisCommunityMembershipResolver(context).resolve(selection)
+        return ResolvedCommunity(membership.account, membership.groupId)
     }
 
     private fun account(name: String): AccountUtil.AccountData = try {

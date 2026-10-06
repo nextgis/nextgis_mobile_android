@@ -91,7 +91,12 @@ class NextGisCommunityPublisher(context: Context) {
         }
         val resolved = resolve(selection)
         val hierarchy = ensureHierarchy(resolved)
-        requireCreatePermission(resolved.account, hierarchy.layers.id, "publish an anonymised layer")
+        val publisherFolder = publisherFolder(
+            resolved,
+            hierarchy.layers,
+            CommunityArtifactStorage.NATIVE_LAYER
+        )
+        requireCreatePermission(resolved.account, publisherFolder.id, "publish an anonymised layer")
 
         val safeName = safeFileName(fileName, "mapsafe-layer.geojson")
         val sha256 = HashUtils.sha256(source)
@@ -108,16 +113,10 @@ class NextGisCommunityPublisher(context: Context) {
                 "resource",
                 JSONObject()
                     .put("cls", VECTOR_LAYER_CLASS)
-                    .put("parent", JSONObject().put("id", hierarchy.layers.id))
+                    .put("parent", JSONObject().put("id", publisherFolder.id))
                     .put("display_name", displayNameWithoutExtension(safeName))
                     .put("keyname", NextGisCommunityNames.artifactKey(resolved.group.id, resolved.user.id, recordId))
                     .put("description", "${artifactType.displayName} published by MapSafe.")
-                    .put(
-                        "permissions",
-                        permissionsJson(
-                            NextGisCommunityAccessPolicy.communityReadableArtifact(resolved.group.id)
-                        )
-                    )
             )
             .put(
                 "vector_layer",
@@ -144,6 +143,11 @@ class NextGisCommunityPublisher(context: Context) {
                 )
             )
         val id = createResource(resolved.account, payload, "publish $safeName")
+        repairSelectedPrincipalsPermissions(
+            resolved.account,
+            id,
+            permissionsJson(NextGisCommunityAccessPolicy.communityReadableArtifact(resolved.group.id))
+        )
         return CommunityPublishResult(
             artifactType = artifactType,
             communityName = resolved.group.displayName,
@@ -181,11 +185,12 @@ class NextGisCommunityPublisher(context: Context) {
         requireReadableFile(source)
         val resolved = resolve(selection)
         val hierarchy = ensureHierarchy(resolved)
-        val parent = when (artifactType.storage) {
+        val artifactParent = when (artifactType.storage) {
             CommunityArtifactStorage.PUBLIC_KEYS -> hierarchy.publicKeys
             CommunityArtifactStorage.PACKAGES -> hierarchy.packages
             CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers use publishGeoJson().")
         }
+        val parent = publisherFolder(resolved, artifactParent, artifactType.storage)
         val safeName = if (artifactType == CommunityArtifactType.ENCRYPTED_PACKAGE) {
             runCatching { MapSafeIntegrityRecordCodec.normalizeFileName(fileName) }
                 .getOrDefault("mapsafe-package.pgp")
@@ -358,43 +363,33 @@ class NextGisCommunityPublisher(context: Context) {
     }
 
     private fun resolve(selection: MapSafeSecurityPreferences.Selection): ResolvedCommunity {
-        if (!selection.hasGroup) {
-            throw NextGisCommunityPublishException(
-                "Choose a connected NextGIS account and community in Security & Sharing first."
-            )
-        }
-        val accountName = requireNotNull(selection.accountName)
-        val groupId = requireNotNull(selection.groupId)
-        val account = account(accountName)
-        val userJson = getObject(account, "${server(account)}/api/component/auth/current_user")
+        val membership = NextGisCommunityMembershipResolver(context).resolve(selection)
         val user = NextGisUser(
-            id = userJson.getLong("id"),
-            displayName = userJson.optString("display_name")
-                .ifBlank { userJson.optString("keyname").ifBlank { "NextGIS user" } }
+            id = membership.currentUserId,
+            displayName = membership.currentUserDisplayName
         )
-        val groupJson = getObject(account, "${server(account)}/api/component/auth/group/$groupId")
-        val memberIds = groupJson.optJSONArray("members") ?: JSONArray()
-        if ((0 until memberIds.length()).none { memberIds.getLong(it) == user.id }) {
-            throw NextGisCommunityPublishException(
-                "The signed-in NextGIS user is no longer a member of ${selection.groupName ?: "the selected community"}."
-            )
-        }
         val group = NextGisGroup(
-            id = groupId,
-            displayName = groupJson.optString("display_name")
-                .ifBlank { selection.groupName ?: "Community $groupId" }
+            id = membership.groupId,
+            displayName = membership.groupName
         )
-        return ResolvedCommunity(account, user, group)
+        return ResolvedCommunity(
+            membership.account,
+            user,
+            group,
+            membership.authoritativeMemberIds
+        )
     }
 
     private fun ensureHierarchy(resolved: ResolvedCommunity): CommunityHierarchy {
+        ensurePrivateRootTraversal(resolved)
         val root = ensureResourceGroup(
             resolved.account,
             parentId = ROOT_RESOURCE_ID,
             displayName = "MapSafe",
             keyname = NextGisCommunityNames.rootKey,
             description = "MapSafe community resources. Private keys and passphrases are never stored here.",
-            permissions = permissionsJson(NextGisCommunityAccessPolicy.rootPath(resolved.group.id))
+            permissions = permissionsJson(NextGisCommunityAccessPolicy.rootPath(resolved.group.id)),
+            repairDescriptor = resolved.authoritativeMemberIds != null
         )
         val community = ensureResourceGroup(
             resolved.account,
@@ -404,7 +399,8 @@ class NextGisCommunityPublisher(context: Context) {
             description = "MapSafe resources for NextGIS authentication group ${resolved.group.id}.",
             permissions = permissionsJson(
                 NextGisCommunityAccessPolicy.communityFolder(resolved.group.id)
-            )
+            ),
+            repairDescriptor = resolved.authoritativeMemberIds != null
         )
         val publicKeys = ensureResourceGroup(
             resolved.account,
@@ -412,7 +408,8 @@ class NextGisCommunityPublisher(context: Context) {
             "Public Keys",
             NextGisCommunityNames.publicKeysKey(resolved.group.id),
             "Public OpenPGP keys only. No private key material.",
-            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id))
+            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id)),
+            repairDescriptor = resolved.authoritativeMemberIds != null
         )
         val layers = ensureResourceGroup(
             resolved.account,
@@ -420,7 +417,8 @@ class NextGisCommunityPublisher(context: Context) {
             "Anonymised Datasets",
             NextGisCommunityNames.layersKey(resolved.group.id),
             "Halo-masked and hexagonal-binned MapSafe datasets.",
-            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id))
+            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id)),
+            repairDescriptor = resolved.authoritativeMemberIds != null
         )
         val packages = ensureResourceGroup(
             resolved.account,
@@ -428,9 +426,139 @@ class NextGisCommunityPublisher(context: Context) {
             "Encrypted Packages",
             NextGisCommunityNames.packagesKey(resolved.group.id),
             "OpenPGP packages and their integrity/notarisation metadata.",
-            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id))
+            permissionsJson(NextGisCommunityAccessPolicy.artifactFolder(resolved.group.id)),
+            repairDescriptor = resolved.authoritativeMemberIds != null
         )
-        return CommunityHierarchy(root, community, publicKeys, layers, packages)
+        val hierarchy = CommunityHierarchy(root, community, publicKeys, layers, packages)
+        resolved.authoritativeMemberIds?.forEach { memberId ->
+            ensureMemberFolder(resolved, publicKeys, CommunityArtifactStorage.PUBLIC_KEYS, memberId)
+            ensureMemberFolder(resolved, layers, CommunityArtifactStorage.NATIVE_LAYER, memberId)
+            ensureMemberFolder(resolved, packages, CommunityArtifactStorage.PACKAGES, memberId)
+        }
+        return hierarchy
+    }
+
+    private fun publisherFolder(
+        resolved: ResolvedCommunity,
+        parent: NextGisResource,
+        storage: CommunityArtifactStorage
+    ): NextGisResource {
+        val keyname = NextGisCommunityNames.memberFolderKey(
+            resolved.group.id,
+            resolved.user.id,
+            storage
+        )
+        findResourceByKey(resolved.account, keyname)?.let { existing ->
+            validateResource(existing, RESOURCE_GROUP_CLASS, parent.id, keyname)
+            return existing
+        }
+        if (resolved.authoritativeMemberIds?.contains(resolved.user.id) == true) {
+            return ensureMemberFolder(resolved, parent, storage, resolved.user.id)
+        }
+        throw NextGisCommunityPublishException(
+            "Your private publishing folder has not been provisioned. Ask the community administrator to open Security & Sharing and prepare the selected community."
+        )
+    }
+
+    private fun ensureMemberFolder(
+        resolved: ResolvedCommunity,
+        parent: NextGisResource,
+        storage: CommunityArtifactStorage,
+        memberId: Long
+    ): NextGisResource {
+        val kind = when (storage) {
+            CommunityArtifactStorage.PUBLIC_KEYS -> "public keys"
+            CommunityArtifactStorage.PACKAGES -> "encrypted packages"
+            CommunityArtifactStorage.NATIVE_LAYER -> "anonymised datasets"
+        }
+        return ensureResourceGroup(
+            account = resolved.account,
+            parentId = parent.id,
+            displayName = "Member $memberId — $kind",
+            keyname = NextGisCommunityNames.memberFolderKey(
+                resolved.group.id,
+                memberId,
+                storage
+            ),
+            description = "MapSafe publishing area for NextGIS user $memberId.",
+            permissions = permissionsJson(
+                NextGisCommunityAccessPolicy.publisherFolder(resolved.group.id, memberId)
+            ),
+            repairDescriptor = true
+        )
+    }
+
+    /**
+     * Free-plan Web GIS instances can retain an `Everyone` read rule that propagates from
+     * resource 0 after Premium is activated. If left in place, that inherited permission makes
+     * every descendant visible regardless of the narrower MapSafe ACLs. The community
+     * administrator therefore removes only that legacy propagated root-read rule and adds a
+     * non-propagating traversal rule for the selected community group. Other administrator,
+     * user, group, and service permissions are preserved.
+     */
+    private fun ensurePrivateRootTraversal(resolved: ResolvedCommunity) {
+        val rootContainer = getObject(resolved.account, resourceApiUrl(resolved.account, ROOT_RESOURCE_ID))
+        val rootResource = rootContainer.optJSONObject("resource") ?: rootContainer
+        val current = rootResource.optJSONArray("permissions") ?: JSONArray()
+        val everyoneIds = everyonePrincipalIds(resolved.account)
+        val merged = JSONArray()
+        for (index in 0 until current.length()) {
+            val rule = current.optJSONObject(index) ?: continue
+            val principalId = rule.optJSONObject("principal")?.optLong("id", -1L) ?: -1L
+            val isLegacyPublicRead = principalId in everyoneIds &&
+                rule.optString("action") == "allow" &&
+                rule.optString("scope") == "resource" &&
+                rule.optString("permission") == "read" &&
+                rule.optBoolean("propagate", false)
+            val isSelectedGroupTraversal = principalId == resolved.group.id &&
+                rule.optString("scope") == "resource" &&
+                rule.optString("permission") == "read"
+            if (!isLegacyPublicRead && !isSelectedGroupTraversal) {
+                merged.put(JSONObject(rule.toString()))
+            }
+        }
+        merged.put(
+            JSONObject()
+                .put("action", "allow")
+                .put("principal", JSONObject().put("id", resolved.group.id))
+                .put("identity", "")
+                .put("scope", "resource")
+                .put("permission", "read")
+                .put("propagate", false)
+        )
+        if (normalisedPermissionSet(current) == normalisedPermissionSet(merged)) return
+        val response = NetworkUtil.put(
+            resourceApiUrl(resolved.account, ROOT_RESOURCE_ID),
+            JSONObject().put("resource", JSONObject().put("permissions", merged)).toString(),
+            resolved.account.login,
+            resolved.account.password,
+            true
+        )
+        if (!response.isOk) {
+            throw httpError(
+                "Could not make the MapSafe community path private at the Web GIS root",
+                response
+            )
+        }
+    }
+
+    private fun everyonePrincipalIds(account: AccountUtil.AccountData): Set<Long> {
+        val explain = getObject(account, "${resourceApiUrl(account, ROOT_RESOURCE_ID)}/permission/explain")
+        val entries = explain.optJSONObject("resource")
+            ?.optJSONObject("read")
+            ?.optJSONArray("explain")
+            ?: JSONArray()
+        return buildSet {
+            for (index in 0 until entries.length()) {
+                val principal = entries.optJSONObject(index)
+                    ?.optJSONObject("acl_rule")
+                    ?.optJSONObject("principal")
+                    ?: continue
+                if (principal.optString("keyname").equals("everyone", ignoreCase = true)) {
+                    principal.optLong("id", -1L).takeIf { it > 0L }?.let(::add)
+                }
+            }
+        }
     }
 
     private fun ensureResourceGroup(
@@ -439,18 +567,29 @@ class NextGisCommunityPublisher(context: Context) {
         displayName: String,
         keyname: String,
         description: String,
-        permissions: JSONArray? = null
+        permissions: JSONArray? = null,
+        repairDescriptor: Boolean = false
     ): NextGisResource {
         findResourceByKey(account, keyname)?.let { existing ->
             validateResource(existing, RESOURCE_GROUP_CLASS, parentId, keyname)
+            val repaired = if (repairDescriptor) {
+                repairResourceDescriptor(account, existing, displayName, keyname, description)
+            } else {
+                existing
+            }
             permissions?.let { repairSelectedPrincipalsPermissions(account, existing.id, it) }
-            return existing
+            return repaired
         }
         childResources(account, parentId)
             .singleOrNull { it.cls == RESOURCE_GROUP_CLASS && it.displayName == displayName }
             ?.let { existing ->
+                val repaired = if (repairDescriptor) {
+                    repairResourceDescriptor(account, existing, displayName, keyname, description)
+                } else {
+                    existing
+                }
                 permissions?.let { repairSelectedPrincipalsPermissions(account, existing.id, it) }
-                return existing
+                return repaired
             }
         val resource = JSONObject()
             .put("cls", RESOURCE_GROUP_CLASS)
@@ -472,6 +611,41 @@ class NextGisCommunityPublisher(context: Context) {
             throw httpError("Could not create the $displayName Web GIS resource group", response)
         }
         return getResource(account, responseObject(response, "NextGIS did not return a resource ID.").getLong("id"))
+    }
+
+    private fun repairResourceDescriptor(
+        account: AccountUtil.AccountData,
+        resource: NextGisResource,
+        displayName: String,
+        keyname: String,
+        description: String
+    ): NextGisResource {
+        if (
+            resource.displayName == displayName &&
+            resource.keyname == keyname &&
+            resource.description == description
+        ) {
+            return resource
+        }
+        val response = NetworkUtil.put(
+            resourceApiUrl(account, resource.id),
+            JSONObject()
+                .put(
+                    "resource",
+                    JSONObject()
+                        .put("display_name", displayName)
+                        .put("keyname", keyname)
+                        .put("description", description)
+                )
+                .toString(),
+            account.login,
+            account.password,
+            true
+        )
+        if (!response.isOk) {
+            throw httpError("Could not refresh the MapSafe community description", response)
+        }
+        return getResource(account, resource.id)
     }
 
     private fun ensurePublisherRegistry(
@@ -496,7 +670,15 @@ class NextGisCommunityPublisher(context: Context) {
             CommunityArtifactStorage.NATIVE_LAYER -> error("Native layers do not use a registry.")
         }
         findResourceByKey(resolved.account, keyname)?.let { existing ->
-            validateResource(existing, VECTOR_LAYER_CLASS, parent.id, keyname)
+            // Premium migration: registries created before member publishing folders were
+            // introduced remain direct children of the shared artifact folder. Reuse those
+            // resources after the same owner and ACL checks instead of orphaning their records.
+            val expectedParents = setOf(parent.id, parent.parentId)
+            if (existing.cls != VECTOR_LAYER_CLASS || existing.parentId !in expectedParents) {
+                throw NextGisCommunityPublishException(
+                    "The reserved NextGIS resource $keyname has an unexpected type or parent."
+                )
+            }
             if (existing.ownerUserId != resolved.user.id) {
                 throw NextGisCommunityPublishException(
                     "The reserved MapSafe publisher resource is owned by a different NextGIS user."
@@ -562,7 +744,6 @@ class NextGisCommunityPublisher(context: Context) {
                     .put("display_name", "$label — ${resolved.user.displayName}")
                     .put("keyname", keyname)
                     .put("description", "MapSafe attachment registry owned by NextGIS user ${resolved.user.id}.")
-                    .put("permissions", permissionsJson(accessRules))
             )
             .put(
                 "vector_layer",
@@ -582,6 +763,11 @@ class NextGisCommunityPublisher(context: Context) {
                 )
             )
         val id = createResource(resolved.account, payload, "create the $label registry")
+        repairSelectedPrincipalsPermissions(
+            resolved.account,
+            id,
+            permissionsJson(accessRules)
+        )
         return getResource(resolved.account, id)
     }
 
@@ -782,7 +968,8 @@ class NextGisCommunityPublisher(context: Context) {
             parentId = resource.optJSONObject("parent")?.optLong("id", -1L) ?: -1L,
             ownerUserId = resource.optJSONObject("owner_user")?.optLong("id", -1L) ?: -1L,
             keyname = resource.optString("keyname").takeIf { !resource.isNull("keyname") },
-            displayName = resource.optString("display_name")
+            displayName = resource.optString("display_name"),
+            description = resource.optString("description").takeIf { !resource.isNull("description") }
         )
     }
 
@@ -871,7 +1058,8 @@ class NextGisCommunityPublisher(context: Context) {
     private data class ResolvedCommunity(
         val account: AccountUtil.AccountData,
         val user: NextGisUser,
-        val group: NextGisGroup
+        val group: NextGisGroup,
+        val authoritativeMemberIds: Set<Long>?
     )
 
     private data class NextGisUser(val id: Long, val displayName: String)
@@ -882,7 +1070,8 @@ class NextGisCommunityPublisher(context: Context) {
         val parentId: Long,
         val ownerUserId: Long,
         val keyname: String?,
-        val displayName: String
+        val displayName: String,
+        val description: String?
     )
 
     private data class CommunityHierarchy(
@@ -954,10 +1143,31 @@ internal object NextGisCommunityRecordSchema {
 object NextGisCommunityNames {
     const val rootKey = "mapsafe_root"
 
+    private val communityKeyPattern = Regex("^mapsafe_community_g([1-9][0-9]*)$")
+
     fun communityKey(groupId: Long): String = "mapsafe_community_g$groupId"
+    fun communityGroupId(keyname: String?): Long? = keyname
+        ?.let(communityKeyPattern::matchEntire)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toLongOrNull()
     fun publicKeysKey(groupId: Long): String = "mapsafe_public_keys_g$groupId"
     fun layersKey(groupId: Long): String = "mapsafe_layers_g$groupId"
     fun packagesKey(groupId: Long): String = "mapsafe_packages_g$groupId"
+    internal fun memberFolderKey(
+        groupId: Long,
+        userId: Long,
+        storage: CommunityArtifactStorage
+    ): String = "${memberFolderPrefix(groupId, storage)}u$userId"
+
+    internal fun memberFolderPrefix(groupId: Long, storage: CommunityArtifactStorage): String {
+        val kind = when (storage) {
+            CommunityArtifactStorage.PUBLIC_KEYS -> "keys"
+            CommunityArtifactStorage.PACKAGES -> "packages"
+            CommunityArtifactStorage.NATIVE_LAYER -> "layers"
+        }
+        return "mapsafe_member_${kind}_g${groupId}_"
+    }
     fun publicKeyRegistryKey(groupId: Long, userId: Long): String = "mapsafe_keys_g${groupId}_u$userId"
     fun packageRegistryPrefix(groupId: Long, userId: Long): String =
         "mapsafe_packages_g${groupId}_u$userId"
