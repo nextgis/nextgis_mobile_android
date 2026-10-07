@@ -1,0 +1,32 @@
+[
+  {
+    "file_name": "ms2026-premium-community-20261006-05-amber-anonymised-community-access.png",
+    "bytes": 471961,
+    "sha256": "1747828bb09bcde2abf74ce3000c3a7cdf3d81e2af5c2688a343365a080e9d0c"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261006-07-bma-community-package-selection.png",
+    "bytes": 279356,
+    "sha256": "544f55f2a5a64d20bcf5cf0925a27dbba94a7f20dd1e2a09356563077e584ee9"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261006-08-bma-package-verification.png",
+    "bytes": 241223,
+    "sha256": "1c0428667282830a72f7ba569e0cf6dc30c187007f207a466ca49ca42ea9fcc6"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261006-09-bma-private-key-decryption.png",
+    "bytes": 144336,
+    "sha256": "f6f90f2edef7b1ae974f33846158d8579bfc6dc09df8d5e3214d21c7c208280e"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261006-10-bma-decryption-success.png",
+    "bytes": 225901,
+    "sha256": "c47c522807c408a0082c2da694e2fddb6ecd88f0d37548d3befca33e5d773dfc"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261006-11-bma-decrypted-original-map.png",
+    "bytes": 1911331,
+    "sha256": "30e21794714ffb4d768a4a399af9e722cd73b0f72c88a48af96ba0185cb5f1ef"
+  }
+]

@@ -1,5 +1,14 @@
 # MapSafe Premium trial runbook
 
+The detailed day-by-day execution, evidence, acceptance, and close-out plan is in
+[`TRIAL_EXECUTION_PLAN.md`](TRIAL_EXECUTION_PLAN.md). Read it before activating the
+one-month trial.
+
+Use [`PRE_ACTIVATION_CHECKLIST.md`](PRE_ACTIVATION_CHECKLIST.md) for the Day-0
+go/no-go review. Create each local, ignored evidence workspace with
+`scripts/new-mapsafe-premium-run.ps1`; its manifest follows
+[`EVIDENCE_MANIFEST_TEMPLATE.md`](EVIDENCE_MANIFEST_TEMPLATE.md).
+
 This directory contains the material needed to complete the multi-account NextGIS
 Premium evaluation without spending the trial period on fixture design or test-code
 development. Nothing in this directory activates a subscription or contains a
@@ -52,18 +61,36 @@ audience-mapping unit tests, and compiles the opt-in Android acceptance and scre
 tests. A successful result means the remaining dependency is the hosted Premium ACL,
 not unfinished local code.
 
-## Prepared offline status (10 September 2026)
+The automated four-account acceptance test creates three temporary test OpenPGP
+identities during the run. For the manual workflow and video, use three isolated app
+installations or Android profiles because one MapSafe installation intentionally holds
+one persistent private identity. The recommended allocation is the physical Samsung
+handset for Steven, one emulator/AVD for Amber, and a second emulator/AVD for the BMA
+representative. The external control account needs no OpenPGP identity.
+
+## Live Premium status (4 October 2026)
 
 - The reviewed 23-point North Whangārei source and synthetic mobile attributes are
   reproducible from the checked-in preparation script and manifest.
 - Per-package recipient ACL generation, fail-closed fingerprint-to-user mapping, and
   migration from the earlier propagated group permissions have unit-test coverage.
-- The opt-in four-account Premium acceptance test compiles and is ready to exercise
-  both authorised and denied access once Premium is active.
+- The opt-in four-account Premium acceptance test passed against
+  `mapsafe.nextgis.com` with Steven, Amber, the BMA representative, and an external
+  non-member. It verified both authorised operations and direct/listing denials.
 - All nine isolated Android manuscript scenarios passed on the emulator and produced
   31 checksum-recorded images using the established Steven/Amber identities in
   `../screenshots/manuscript-north-whangarei-20260910-final`.
-- No Premium subscription was activated and no hosted NextGIS resource was changed.
+- Premium is active. The legacy Free-plan public root-read inheritance was removed,
+  private member publishing folders were provisioned, and live North Whangārei
+  public-key, halo, hexbin, and encrypted-package resources were created.
+- The final post-migration test recovered the exact original under Amber's key,
+  validated Steven's signature, rejected a non-recipient key and wrong passphrase,
+  and passed all assertions in 152.503 seconds. The redacted evidence is under
+  `runs/2026-10-03-220129-premium-day1-baseline/`.
+- Seven role-specific Premium Android screenshots were generated from the live
+  Community A resources. They cover key discovery, multi-item upload selection,
+  Steven and Amber access, BMA anonymised-only access, and external-user denial;
+  see `../screenshots/premium-community-2026-10-04/`.
 
 ## First Premium session
 

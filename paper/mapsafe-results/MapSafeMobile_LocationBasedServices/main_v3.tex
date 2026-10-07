@@ -33,12 +33,17 @@
 
 \articletype{Research Article}
 
-\title{MapSafe Mobile: Embedding Geospatial Data Sovereignty into Mobile Field Data Collection and Controlled Inter-Organisational Sharing}
+\title{MapSafe Mobile: Embedding Geospatial Data Sovereignty into Mobile Field Data Collection and Secure Community Sharing}
 
-\author{
-\name{Pankajeshwara Sharma\textsuperscript{a}\thanks{CONTACT Pankajeshwara Sharma. Email: p.sharma@ucol.ac.nz; ORCID: https://orcid.org/0000-0001-9159-8332}}
-\affil{\textsuperscript{a}Universal College of Learning, Palmerston North, New Zealand}
-}
+%\author{
+%\name{Pankajeshwara Sharma\textsuperscript{a}\thanks{CONTACT Pankajeshwara Sharma. Email: p.sharma@ucol.ac.nz; ORCID: https://orcid.org/0000-0001-9159-8332}}
+%\affil{\textsuperscript{a}Universal College of Learning, Palmerston North, New Zealand}
+%}
+
+%% 1. COMMENTED INTRO SECTION 2ND LAST PARAGRAPH
+%% 2. LOOK FOR mentions of OSF and replace the paragraph.
+% Raw measurements, phase timings, dataset hashes, device metadata, and both the complete and verification runs are archived with the OSF package (https://osf.io/cyfu7). CHECK COMMENTED TEXT HERE
+%% 3. also look for this paragraph "For practical use and reproducibility,"
 
 \maketitle
 
@@ -50,7 +55,9 @@
 %\end{center}
 
 \begin{abstract}
-Mobile GIS makes it possible to record precise environmental observations at the point of collection, but decisions about spatial disclosure, authorised recipients, and integrity evidence are often postponed until after synchronisation. Sensitive coordinates may therefore cross an external trust boundary before the data custodian can protect them. This paper asks how geoprivacy and controlled sharing can be incorporated into an established mobile field-data workflow. We present MapSafe Mobile, an extension of the open-source NextGIS Mobile application that preserves the authoritative observation, creates halo-masked or H3-aggregated alternatives, encrypts a selected dataset once for chosen OpenPGP recipients, exchanges public keys and protected resources through a NextGIS Web community, and optionally records a filename-bound digest in an externally signed EVM transaction. The approach is demonstrated with the North Whangārei biodiversity case and evaluated through a live four-account community acceptance test, physical-device measurements over ten performance datasets, and first-author functional validation of 24 prepared task trials. On a Samsung Galaxy A14, the 1,000-point rich dataset required median times of 5.96~s for complete masking, 4.24~s for signed encryption, and 3.52~s for verified decryption; corresponding 2,000-point stress-case times were 11.52, 6.14, and 4.69~s. The results show that capture-time protection is computationally practical on a modest handset and that spatial representation, recipient access, community permissions, and integrity evidence can be kept as separate decisions. MapSafe Mobile extends earlier browser and desktop MapSafe workflows, but it remains a technical foundation rather than a substitute for community governance or independent participant evaluation.
+Mobile GIS makes it possible to record precise environmental observations at the point of collection, but decisions about spatial disclosure, authorised recipients, and integrity evidence are often postponed until after synchronisation. Sensitive coordinates may therefore cross an external trust boundary before the data custodian can protect them. This paper asks how geoprivacy and controlled sharing can be incorporated into an established mobile field-data workflow. We present MapSafe Mobile, an extension of the open-source NextGIS Mobile application that preserves the authoritative observation, creates halo-masked or H3-aggregated alternatives, encrypts a selected dataset once for chosen OpenPGP recipients, exchanges public keys and protected resources through a NextGIS Web community, and optionally records a filename-bound digest in an externally signed EVM transaction. The approach is demonstrated with the North Whangārei biodiversity case and evaluated through a live four-account community acceptance test, physical-device measurements over ten performance datasets, and first-author functional validation of 24 prepared task trials. On a Samsung Galaxy A14, the 1,000-point rich dataset required median times of 5.96~s for complete masking, 4.24~s for signed encryption, and 3.52~s for verified decryption; corresponding 2,000-point stress-case times were 11.52, 6.14, and 4.69~s. The results show that capture-time protection is computationally practical on a modest handset and that spatial representation, recipient access, community permissions, and integrity evidence can be kept as separate decisions. MapSafe Mobile extends earlier browser and desktop MapSafe workflows by
+providing a practical, open-source foundation for capture-time geoprivacy and
+community-governed sharing in mobile GIS.
 \end{abstract}
 
 \begin{keywords}
@@ -85,7 +92,7 @@ To address this question, we developed \textit{MapSafe Mobile} as an extension o
 
 The paper makes four contributions. First, it defines capture-time sovereignty as a practical design goal for mobile geoprivacy. Second, it implements an end-to-end safeguard and access workflow within a mobile GIS. Third, it separates two decisions that are often conflated: which spatial representation may be shared and which recipients may access an encrypted file. Fourth, it evaluates the approach through a North Whang\={a}rei biodiversity-monitoring case study, a live four-account community acceptance test, physical-device performance measurements, and a usability-informed effectiveness assessment.
 
-The implementation and supporting material are available for inspection through the \href{https://sharmapn.github.io/mapsafemobile/}{MapSafe Mobile guide}, its \href{https://sharmapn.github.io/mapsafemobile/downloads/MapSafeMobile-3.2.1.apk}{direct signed APK download}, and the \href{https://github.com/sharmapn/nextgis_mobile_mapsafe_geoprivacy}{MapSafe Mobile source repository}. The downloadable release is version 3.2.1 with package identifier \texttt{com.nextgis.mobile.mapsafe}; its SHA-256 checksum is published alongside the download. The planned \href{https://play.google.com/store/apps/details?id=com.nextgis.mobile.mapsafe}{MapSafe Mobile Google Play listing} uses a separate application identity from the official NextGIS Mobile app and will resolve after publication.
+%The implementation and supporting material are available for inspection through the \href{https://sharmapn.github.io/mapsafemobile/}{MapSafe Mobile guide}, its \href{https://sharmapn.github.io/mapsafemobile/downloads/MapSafeMobile-3.2.1.apk}{direct signed APK download}, and the \href{https://github.com/sharmapn/nextgis_mobile_mapsafe_geoprivacy}{MapSafe Mobile source repository}. The downloadable release is version 3.2.1 with package identifier \texttt{com.nextgis.mobile.mapsafe}; its SHA-256 checksum is published alongside the download. The planned \href{https://play.google.com/store/apps/details?id=com.nextgis.mobile.mapsafe}{MapSafe Mobile Google Play listing} uses a separate application identity from the official NextGIS Mobile app and will resolve after publication.
 
 The remainder of the paper is organised as follows. Section~\ref{sec:case-study} reviews Indigenous geospatial data sovereignty in community-based and mobile environmental monitoring and introduces the case context. Section~\ref{sec:mapsafeplugin} presents the case actors, disclosure decisions, system design, implementation, workflows, and technical evaluation. Section~\ref{sec:usability-design} describes the usability-informed design and effectiveness assessment. Section~\ref{sec:discussion} discusses the implications, limitations, and relationship to earlier MapSafe implementations, and Section~\ref{sec:conclusion} concludes the paper.
 
@@ -125,6 +132,31 @@ The architecture in Fig.~\ref{fig:mapsafe-architecture} separates three boundari
 
 The mobile interface presents \emph{Safeguard} and \emph{Access} as two tabs in one MapSafe panel (Fig.~\ref{fig:mapsafe-entry}). Safeguard provides direct entry to halo masking, hexagonal binning, encryption, community upload, notarisation, and security settings. Access begins with community packages or a locally selected encrypted file and then supports verification, decryption, and display of the recovered dataset. Opening an option launches its focused activity, while the tabs return to the same vertical position and preserve a compact, consistent workflow overview. The stages shown within those activities are orientation cues rather than a compulsory wizard: \emph{Stop} lets Steven or an authorised recipient end after a useful output, whereas \emph{Next} continues to the following safeguard or access stage. A compatible point-vector layer is required before a spatial anonymisation operation, while Access does not require a preselected map layer because its first step obtains an encrypted package.
 
+%For practical use and reproducibility, a step-by-step help guide is available at
+%\url{https://sharmapn.github.io/mapsafemobile/}. The guide explains the
+%Safeguard, Access, community-sharing, verification, and decryption workflows.
+%It also provides the MapSafe Mobile APK for controlled research and field testing
+%outside Google Play at
+%\url{https://sharmapn.github.io/mapsafemobile/downloads/MapSafeMobile-3.2.1.apk}. 
+%The open-source MapSafe Mobile code is available at
+%\url{https://github.com/sharmapn/nextgis_mobile_android}.
+
+%For practical use and reproducibility, a step-by-step help guide is available at
+%\url{https://sharmapn.github.io/mapsafemobile/}. The guide explains the
+%Safeguard, Access, community-sharing, verification, and decryption workflows.
+%It also provides the MapSafe Mobile APK for controlled research and field testing
+%outside Google Play at
+%\url{https://sharmapn.github.io/mapsafemobile/downloads/MapSafeMobile-3.2.1.apk}. 
+%%, together with a downloadable SHA-256 checksum at
+%%\url{https://sharmapn.github.io/mapsafemobile/downloads/SHA256SUMS.txt}.
+%The open-source MapSafe Mobile code is available at
+%\url{https://github.com/sharmapn/nextgis_mobile_android}.
+
+For practical use and reproducibility, the anonymised OSF archive at
+\url{https://osf.io/cyfu7} contains the MapSafe Mobile help guide, APK, and
+application source code. These materials are bundled together in the archive
+for controlled review and replication.
+
 \begin{figure*}[ht]
   \centering
   \begin{subfigure}[t]{0.31\textwidth}
@@ -139,6 +171,8 @@ The mobile interface presents \emph{Safeguard} and \emph{Access} as two tabs in 
   \label{fig:mapsafe-entry}
 \end{figure*}
 \FloatBarrier
+
+
 
 
 \subsection{Users, disclosure decisions, and community preparation}
@@ -202,7 +236,7 @@ Discovery is not proof of identity. The client checks current group membership, 
 \begin{figure*}[h!]
   \centering
   \begin{subfigure}[t]{0.31\textwidth}
-    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-18-identity-creation.png}
+    \includegraphics[width=\linewidth]{\mapsafefigdir/ms2026-north-whangarei-20260909-18-identity-creation-filled.png}
     \caption{Identity and passphrase.}
   \end{subfigure}\hfill
   \begin{subfigure}[t]{0.31\textwidth}
@@ -398,18 +432,30 @@ Within this two-level model, the original and anonymised representations remain 
     \label{fig:encryption-success}
   \end{subfigure}
 
-  \caption{MapSafe Mobile multi-recipient encryption workflow. One selected dataset is encrypted once with an AES-256 session key, which is independently wrapped for every selected OpenPGP public key. If several datasets are selected, each becomes a separate protected package.}
+  \caption{MapSafe Mobile multi-recipient encryption workflow. Each selected dataset is
+  	encrypted once, which is independently wrapped for
+  	every selected OpenPGP public key. The same accepted recipients define the
+  	default NextGIS access permissions for the uploaded encrypted package, while
+  	OpenPGP controls decryption. If several datasets are selected, each becomes a
+  separate protected package.}
   \label{fig:mapsafe-encryption-flow}
 \end{figure*}
 
 \textit{Steven} next chooses exactly who should be able to recover the package. If his persistent local identity is available, \textit{MapSafe} selects \textit{Steven's} public key as a self-recipient by default so that he can decrypt the package later. For the tested release, Steven retains that selection and adds the independently verified public key of the BMA representative (Figure~\ref{fig:mapsafe-encryption-flow}b); Amber is deliberately not selected for the encrypted original. The same mechanism can address other authorised recipients in a different release, but recipient selection remains explicit for every package. If \textit{Steven} must create an encryption identity at this point, MapSafe returns to recipient selection afterwards rather than beginning encryption automatically.
 
-After the recipients have been confirmed, \textit{MapSafe} uses standard \textit{OpenPGP} hybrid encryption to create one \texttt{.pgp} package. The application compresses the selected dataset, generates a fresh random AES-256 content-encryption key, and encrypts the dataset once using the RFC~9580 version-2 Symmetrically Encrypted Integrity Protected Data profile and AES-256-GCM \citep{wouters2024openpgp}. It then encrypts that same content key separately with each selected recipient's RSA encryption subkey. These public-key encrypted session-key envelopes and the encrypted payload are stored together inside the single package. Adding another recipient therefore adds a small key envelope rather than another encrypted copy of the dataset.
+After the recipients have been confirmed, \textit{MapSafe} uses standard \textit{OpenPGP} hybrid encryption to create one \texttt{.pgp} package. The application compresses the selected dataset, generates a fresh random AES-256 content-encryption key, and encrypts the dataset once using the RFC~9580 version-2 Symmetrically Encrypted Integrity Protected Data profile and AES-256-GCM \citep{wouters2024openpgp}. It then encrypts that same content key separately with each selected recipient's RSA encryption subkey. These public-key encrypted session-key envelopes and the encrypted payload are stored together inside the single package. Adding another recipient therefore adds a small key envelope rather than another encrypted copy of the dataset. The same accepted community members are assigned the package's NextGIS ACL,
+which controls discovery and download, while OpenPGP controls decryption.
 
 This design removes the need to distribute a shared symmetric key or a common dataset passphrase. Each recipient uses their own private key to recover their copy of the session key, while their personal passphrase is used only to unlock that private key locally. Neither the private key nor its passphrase is added to the package or uploaded to NextGIS. If signing is enabled, the owner's passphrase temporarily unlocks the local signing key and MapSafe embeds a SHA-256 OpenPGP signature, allowing recipients to distinguish confidentiality from evidence about the sender. New packages use the AES-256-GCM profile, while decryption remains compatible with the earlier AES-256/OpenPGP-MDC MapSafe profile.
 
 
-
+%During encryption, Steven selects his own and the authorised community
+%recipients. This selection has two linked effects for the encrypted package:
+%each selected public key receives an OpenPGP-wrapped session key, and the same
+%accepted community members are granted permission to discover and download the
+%uploaded package. The two controls therefore use one user decision while
+%retaining their distinct technical roles: OpenPGP determines who can decrypt,
+%whereas NextGIS permissions determine who can access the package resource.
 
 
 
@@ -470,7 +516,7 @@ Only one encryption and one decryption column are required because \textit{MapSa
 
 Signed encryption and verified decryption showed a fixed cryptographic and stream-processing cost for small inputs and then increased with GeoJSON byte size. The 50-point typical dataset required median times of 2.34~s for encryption and 2.32~s for decryption. At 1,000 points, the typical dataset required 2.68~s and 2.52~s respectively, whereas the larger rich dataset required 4.24~s and 3.52~s. The 2,000-point rich stress file (6.38~MiB) required 6.14~s for encryption and 4.69~s for decryption, corresponding to median throughputs of 1.04 and 1.36~MiB/s. The 1,000-point rich dataset reached 0.75~MiB/s for encryption and 0.91~MiB/s for decryption. Compression made every \texttt{.pgp} package smaller than its GeoJSON input. The archived quartiles show generally modest variability, but they are omitted from the compact table in favour of one median per cell. Repeating the initially contended 1,000-point typical masking cell produced a complete-workflow median of 5.71~s, which is the masking value reported in Table~\ref{tab:performance-results}.
 
-These \textit{Android} values should not be compared directly with the throughput reported for the earlier browser and QGIS implementations. The mobile experiment includes the production NextGIS read/write path and signed OpenPGP processing, uses different input formats and hardware, and tests field-scale rather than national datasets. The 1,000-point rich dataset provides a useful upper reference for the intended field workflow: its median complete-masking, encryption, and decryption times were 5.96, 4.24, and 3.52~s respectively. The longest measured median was 11.52~s for complete masking of the 2,000-point rich stress dataset. Raw measurements, phase timings, dataset hashes, device metadata, and both the complete and verification runs are archived with the source repository at commit \texttt{6edcbb27a03ba76eea78915f097a877969d733d4}.\footnote{\url{https://github.com/sharmapn/nextgis_mobile_mapsafe_geoprivacy/}}
+These \textit{Android} values should not be compared directly with the throughput reported for the earlier browser and QGIS implementations. The mobile experiment includes the production NextGIS read/write path and signed OpenPGP processing, uses different input formats and hardware, and tests field-scale rather than national datasets. The 1,000-point rich dataset provides a useful upper reference for the intended field workflow: its median complete-masking, encryption, and decryption times were 5.96, 4.24, and 3.52~s respectively. The longest measured median was 11.52~s for complete masking of the 2,000-point rich stress dataset. Raw measurements, phase timings, dataset hashes, device metadata, and both the complete and verification runs are archived with the OSF package (https://osf.io/cyfu7). %source repository at commit \texttt{6edcbb27a03ba76eea78915f097a877969d733d4}.\footnote{\url{https://github.com/sharmapn/nextgis_mobile_mapsafe_geoprivacy/}}
 
 The completed package is written automatically to \texttt{Downloads/MapSafe}, and the result card confirms the saved filename (Figure~\ref{fig:mapsafe-encryption-flow}c). The owner may stop at this point, continue to notarisation, upload the package to the selected NextGIS community, or reselect recipients and create a new package. The package payload remains opaque to \textit{NextGIS} because the service does not possess an addressed private key; the package filename and descriptive registry metadata remain visible to authorised community members and should therefore avoid sensitive wording. Encryption and decryption performance for the intended 50--1,000-point mobile datasets is reported in Table~\ref{tab:performance-results}; unlike the earlier nested scheme, the measured processing time increases principally with dataset size.
 
@@ -487,7 +533,7 @@ Steven opens \emph{Upload to Community} from the Safeguard tab and may select a 
   \captionsetup{width=0.96\textwidth}
   \begin{subfigure}[t]{0.30\linewidth}
     \captionsetup{width=\linewidth,justification=centering}
-    \includegraphics[width=\linewidth]{\mapsafepremiumfigdir/ms2026-premium-community-20261004-01-steven-upload-community.png}
+    \includegraphics[width=\linewidth]{\mapsafepremiumfigdir/ms2026-premium-community-20261004-01-steven-upload-community-four-selected.png}
     \caption{Steven selects items to publish.}
   \end{subfigure}\hfill
   \begin{subfigure}[t]{0.30\linewidth}
@@ -504,9 +550,9 @@ Steven opens \emph{Upload to Community} from the Safeguard tab and may select a 
   \label{fig:mapsafe-community-exchange}
 \end{figure*}
 
-% The earlier single-account Suva Web GIS screenshots are retained below for provenance
-% but are intentionally excluded because the live Premium multi-account evidence above
-% now supplies the manuscript's community-exchange figure.
+% Earlier single-account Web GIS transport screenshots are excluded because the
+% live Premium multi-account evidence above supplies the manuscript's
+% community-exchange figure.
 \iffalse
 \begin{figure*}[t]
   \ContinuedFloat
@@ -522,14 +568,14 @@ Steven opens \emph{Upload to Community} from the Safeguard tab and may select a 
   \par\medskip
   \begin{subfigure}[t]{0.70\textwidth}
     \includegraphics[width=\linewidth,trim=0 180 300 0,clip]{\mapsafewebfigdir/nextgis-community-anonymised-datasets.png}
-    \caption{Suva halo-masked and hexagonally aggregated resources.}
+    \caption{Halo-masked and hexagonally aggregated resources.}
   \end{subfigure}
-  \caption{Archived single-account Web GIS transport evidence. This preliminary test used the earlier Suva fixture and does not provide evidence for the North Whangārei case or multi-account ACL isolation.}
+  \caption{Archived single-account Web GIS transport evidence.}
   \label{fig:mapsafe-nextgis-live-community}
 \end{figure*}
 \fi
 
-A four-account Premium acceptance test was executed against the live North Whang\={a}rei community. It published \textit{Steven's}, \textit{Amber's}, and the \textit{BMA representative's} public-key records, two anonymised layers, and one original dataset encrypted and signed for Steven and the BMA representative. As shown in Figure~\ref{fig:nextgis-community}, these resources are organised within separate \textit{Public Keys}, \textit{Anonymised Datasets}, and \textit{Encrypted Packages} groups under MapSafe Community~A. Steven and the BMA representative downloaded byte-identical copies of the protected package; the BMA representative recovered a byte-identical copy of the original and verified Steven's signature. Amber could list and download the two anonymised layers but could neither list nor directly read the protected package, while the external test user could not discover or directly read any Community~A resource. Wrong-key and wrong-passphrase attempts produced no plaintext. The preliminary single-account Suva transport evidence remains archived but is not used to support these multi-account results.
+ A four-account Premium acceptance test was executed against the live North Whang\={a}rei community. It published \textit{Steven's}, \textit{Amber's}, and the \textit{BMA representative's} public-key records, two anonymised layers, and one original dataset encrypted and signed for Steven and the BMA representative. As shown in Figure~\ref{fig:nextgis-community}, these resources are organised within separate \textit{Public Keys}, \textit{Anonymised Datasets}, and \textit{Encrypted Packages} groups under MapSafe Community~A. Steven and the BMA representative downloaded byte-identical copies of the protected package; the BMA representative recovered a byte-identical copy of the original and verified Steven's signature. Amber could list and download the two anonymised layers but could neither list nor directly read the protected package, while the external test user could not discover or directly read any Community~A resource. Wrong-key and wrong-passphrase attempts produced no plaintext.
 
 When an encrypted community package is selected, \textit{MapSafe} downloads it, recalculates its SHA-256 digest, and compares the result with the digest recorded in the NextGIS registry before passing the package to the integrity screen; a mismatch is rejected. Access to the resource hierarchy shown in Figure~\ref{fig:nextgis-community} remains subject to the Web GIS ACLs configured by the administrator. Group membership identifies the relevant community, but MapSafe does not infer that every authenticated NextGIS user may read every resource; access is determined separately for public keys, anonymised datasets, and recipient-restricted encrypted packages.
 
@@ -666,23 +712,15 @@ AEAD/MDC integrity and signature authenticity are evaluated separately. Modified
 \section{Usability-Informed Design and Evaluation}
 \label{sec:usability-design}
 
-The principal usability objective of \textit{MapSafe Mobile} is to make safeguarding and access decisions understandable at the point of field collection. The interface separates \emph{Safeguard} and \emph{Access} using a two-state tab control, presents the current stage through compact progress indicators, and provides consistent \emph{Back}, \emph{Stop}, and \emph{Next} actions. Halo-masking and hexagonal-binning result cards can be collapsed so that the map remains visible while the data custodian examines the transformed layer. The application also recognises an existing encryption identity, supports explicit dataset and recipient selection, saves outputs in the fixed \texttt{Downloads/MapSafe} folder, lists available community resources, and displays the recovered layer directly after decryption. These design decisions reduce repeated file selection and unnecessary navigation while keeping the consequences of each operation visible.
+The principal usability objective of \textit{MapSafe Mobile} is to make safeguarding and access decisions understandable during field collection. The interface separates \emph{Safeguard} and \emph{Access}, shows progress and consistent \emph{Back}, \emph{Stop}, and \emph{Next} actions, keeps masking and binning results visible through collapsible cards, recognises existing identities and community keys, and displays the recovered layer directly after decryption. These choices reduce repeated navigation while keeping the consequences of each operation visible.
 
-The usability approach was adapted from the earlier evaluation of the \textit{MapSafe QGIS plugin} \citep{sharma2025mapsafe}. That evaluation was organised around the effectiveness, efficiency, and satisfaction dimensions of ISO~9241-11:2018 \citep{ISO2018ergonomics}. The same dimensions inform the present design, although the evidence differs: effectiveness was evaluated directly through the mobile workflow, efficiency was examined using physical-device processing measurements, and the earlier interface findings were used as formative design evidence. Satisfaction with the mobile application was not measured.
+The evaluation approach was adapted from the earlier \textit{MapSafe QGIS plugin} study \citep{sharma2025mapsafe} and follows the effectiveness, efficiency, and satisfaction dimensions of ISO~9241-11:2018 \citep{ISO2018ergonomics}. The evidence is deliberately distinguished: effectiveness was tested through the mobile workflow, efficiency was assessed using physical-device measurements, and the earlier interface findings were used as formative design evidence. Mobile-user satisfaction was not measured.
 
-\textit{Effectiveness} was evaluated by the first author, who is familiar with GIS, Android field mapping, and the application. The evaluator completed the 12 safeguarding and access tasks listed in Appendix Table~\ref{tab:usabilitytasks}. The tasks covered selecting a source dataset, applying halo masking, performing hexagonal binning, creating an OpenPGP identity, synchronising community public keys, selecting recipients, encrypting a dataset, uploading authorised resources, notarising an encrypted package, verifying its integrity, decrypting it, and displaying the recovered layer. Each task was performed twice from the same prepared state using the \textit{North Whang\={a}rei} case-study dataset and the configured \textit{Community~A} resources.
+For \textit{effectiveness}, the first author completed the 12 safeguarding and access tasks listed in Appendix Table~\ref{tab:usabilitytasks}, twice from the same prepared North Whang\={a}rei and Community~A state. All 24 trials were completed successfully, giving a 100\% task-completion rate. No user or system errors, critical errors, assistance events, unintended plaintext uploads, incorrect-recipient encryptions, false integrity acceptances, or unrecovered datasets were recorded. The authoritative layer remained unchanged, derived layers were created separately, and the community workflow did not offer an unencrypted original for publication. This demonstrates functional effectiveness under prepared conditions, not independent first-time-user usability.
 
-We focused on task completion, user errors, system errors, assistance, recovery, and preservation of the authoritative source to assess effectiveness. A critical error was defined as an action that exposed an unencrypted original, irreversibly altered the source dataset, encrypted data for an unintended recipient without detection, accepted an invalid verification result, or prevented recovery of the intended dataset. A non-critical error was a reversible action that was blocked or corrected without compromising the source or protected package. All 24 task trials---12 tasks across two repetitions---were completed successfully, giving a task-completion rate of 100\%. No user errors, system errors, critical errors, assistance events, unintended plaintext uploads, incorrect-recipient encryptions, false integrity acceptances, or unrecovered datasets were recorded. The original point layer was preserved during masking and binning, while each operation created a separate derived representation. The encryption workflow displayed the selected dataset and recipients before creating the package, and the community-upload workflow did not offer an unencrypted original for publication.
+For \textit{efficiency}, the physical-device measurements in Table~\ref{tab:performance-results} show that the principal local operations are practical for field-scale datasets. The 1,000-point rich dataset required median times of 5.96~s for complete masking, 4.24~s for signed encryption, and 3.52~s for verified decryption. Notarisation was excluded from the fixed processing time because wallet approval, transaction submission, connectivity, and blockchain confirmation are external and variable.
 
-The access-control results also corresponded with the intended disclosure decisions. Steven retained the original and derived representations as the data custodian. The BMA representative could discover, download, verify, and decrypt the protected original because the representative's accepted OpenPGP key was included as a recipient. Amber could access the authorised halo-masked and hexagonally aggregated layers but could neither discover nor download the encrypted original in the tested release. The external test identity could not discover or directly read the Community~A resources. After successful decryption, MapSafe cleared the previously displayed layers, imported the recovered GeoJSON dataset, selected it, and zoomed the map to its extent.
-
-\textit{Efficiency} was considered using the physical-device processing measurements reported in Table~\ref{tab:performance-results}. As in the earlier MapSafe evaluation, much of the workflow duration depends on the time required to perform the principal computational operations rather than on additional interface overhead. In the mobile application, these operations include reading and writing NextGIS layers, masking coordinates, calculating Spruill's measure, creating and saving derived layers, performing signed OpenPGP encryption, and verifying and decrypting protected packages.
-
-The performance experiment measured these operations on a Samsung Galaxy A14 using datasets containing 50, 250, 500, 1,000, and 2,000 points. Each measurement followed one warm-up and five recorded repetitions, with the median reported. For the 1,000-point rich dataset, complete masking, encryption, and decryption required median times of 5.96, 4.24, and 3.52~s, respectively. The corresponding times for the 2,000-point rich stress dataset were 11.52, 6.14, and 4.69~s. These results indicate that the main protection operations are practical for the field-scale datasets anticipated in NextGIS Mobile. Notarisation time was not treated as a fixed application-processing cost because it also depends on external-wallet approval, transaction submission, network conditions, and blockchain confirmation.
-
-\textit{Formative interface evidence} was drawn from the earlier evaluation of the \textit{MapSafe QGIS plugin}. That study applied Nielsen's heuristic inspection method \citep{nielsen1995conduct} and involved GIS and cybersecurity professionals completing comparable safeguarding and access workflows. The evaluators favoured the structured sequence, visible progress, explanatory guidance, visual comparison of original and anonymised layers, and documentation supporting unfamiliar privacy and security operations. Their feedback also identified issues involving visible system status, navigation, workflow order, file selection, recognition rather than recall, passphrase handling, configuration validation, screen density, output management, error recovery, and contextual help.
-
-These satisfaction findings were used as formative design requirements rather than being attributed to new participants using \textit{MapSafe Mobile}. Each earlier finding was mapped to the corresponding mobile activity and classified as \emph{implemented}, \emph{adapted}, \emph{partially addressed}, or \emph{not applicable}. The resulting traceability audit is presented in Appendix Table~\ref{tab:usability-traceability}. Visible progress and operation status, consistent navigation actions, early source-layer checks, recognition of an existing encryption identity, deliberate recipient selection, passphrase visibility controls, blockchain-profile validation, and specific OpenPGP error messages were implemented directly. Large desktop panels were adapted as collapsible mobile cards, while Android file selection was followed by format and content validation rather than relying entirely on file-extension or MIME filtering.
+\textit{Formative interface evidence} came from the QGIS study's heuristic inspection and comparable safeguarding and access tasks \citep{nielsen1995conduct}. Its recommendations concerning status visibility, navigation, file selection, recognition rather than recall, passphrase handling, screen density, output management, help, and error recovery were mapped to the mobile activities; the resulting traceability audit is provided in Appendix Table~\ref{tab:usability-traceability}. Progress and validation feedback were implemented directly, while large desktop panels were adapted as collapsible mobile cards and file selection was followed by format and content validation. These inherited findings are design evidence, not satisfaction results from mobile participants; independent testing of mobile satisfaction, accessibility, and learnability remains necessary.
 
 %The previous satisfaction results cannot establish satisfaction with the mobile application because touch interaction, small displays, Android document providers, community-account administration, intermittent connectivity, and external-wallet approval introduce different usability conditions. Similarly, the present effectiveness assessment was conducted by an author familiar with the system and was therefore a functional self-evaluation rather than an independent participant study. The results demonstrate that the intended workflow can be completed without observed errors under the prepared test conditions, but independent mobile-user testing and participatory evaluation with the communities whose data and authority are represented remain necessary before making broader claims about usability, accessibility, satisfaction, or cultural legitimacy.
 
@@ -817,55 +855,26 @@ These satisfaction findings were used as formative design requirements rather th
 \section{Discussion}
 \label{sec:discussion}
 
-Sensitive geospatial information is increasingly collected and managed using mobile devices, but privacy and access controls are often applied only after the data have been synchronised or transferred to a desktop environment. This delay can be consequential when precise coordinates reveal culturally significant places, threatened species, harvesting areas, or other sensitive information whose disclosure cannot be reversed. MapSafe Mobile addresses this gap by integrating anonymisation, encryption, community sharing, notarisation, verification, and decryption into NextGIS Mobile. Its contribution is therefore \emph{capture-time sovereignty}: enabling decisions about spatial detail, recipients, and integrity evidence before the original dataset crosses an external trust boundary.
+Sensitive geospatial information is increasingly collected with mobile devices, yet privacy and access controls are often applied only after synchronisation or transfer to another system. This is consequential when precise coordinates identify culturally significant places, threatened species, harvesting areas, or other sensitive information whose disclosure cannot be reversed. MapSafe Mobile addresses this gap by integrating anonymisation, encryption, community sharing, notarisation, verification, and decryption into NextGIS Mobile. Its main implication is \emph{capture-time sovereignty}: the data owner can decide the spatial detail, recipients, and integrity evidence before the original dataset crosses an external trust boundary.
 
-MapSafe Mobile uses a two-level sharing model consisting of the authoritative original dataset and a separately created anonymised representation. Halo masking and hexagonal binning reduce spatial precision, whereas OpenPGP controls who can recover a selected dataset. These mechanisms serve different purposes. Anonymisation determines what geographic detail is disclosed, while encryption determines who may access that representation. A community member may be dependable but have no legitimate reason to receive precise coordinates, whereas an authorised BMA representative may require them for sovereign oversight and management. Representation and access should therefore be determined by the recipient's role, purpose, and responsibilities rather than by a universal hierarchy of trusted and untrusted users.
+The two-level model keeps the authoritative original separate from an anonymised representation. Halo masking and hexagonal binning determine what geographic detail is disclosed, while OpenPGP determines who can recover a selected dataset. These are independent decisions: a dependable community member may have no legitimate reason to receive precise coordinates, whereas an authorised BMA representative may need them for sovereign oversight. This distinction makes the release decision explicit for Steven, Amber, and the BMA representative rather than reducing their roles to a single trust label. Unlike the earlier nested MapSafe scheme, each selected dataset is protected as its own artefact and, when encrypted, as a separate \texttt{.pgp} package. This lets Steven select recipients for each representation while keeping protection within the established field-data environment.
 
-Unlike the earlier nested MapSafe scheme, the mobile application does not combine the original and anonymised representations within one encrypted volume. Each selected dataset remains an independent artefact and, when encryption is required, is written to a separate \texttt{.pgp} package. This allows Steven to select different recipients for different representations and preserves the distinction between a viewable anonymised NextGIS layer and an opaque encrypted package. Performing these operations within NextGIS Mobile also reduces the need to export an unprotected dataset to another application. Steven can inspect an anonymised result in its geographic context and protect it before leaving the established field-data environment.
+In terms of \textit{performance analysis}, the physical-device results indicate that the intended field-scale operations are practical on a modest Android handset. For the 1,000-point rich dataset, complete halo masking, signed OpenPGP encryption, and verified decryption required median times of 5.96, 4.24, and 3.52~s; the 2,000-point stress case required 11.52, 6.14, and 4.69~s. Masking time was driven mainly by feature count and the reading, construction, indexing, and saving of the NextGIS layer, whereas cryptographic time increased with exported bytes, particularly for rich attributes. Compression made the resulting encrypted packages smaller than their GeoJSON inputs. Network transfer, wallet interaction, blockchain retrieval, and transaction confirmation were not included because they depend on external conditions.
 
-\subsection{Performance Analysis}
+As for \textit{security analysis}, we found that local processing reduces unnecessary disclosure to remote services, but it does not remove the need to trust the handset: original coordinates exist in memory and local storage before protection. \textit{Android Keystore} protection, passphrase-protected keys, device encryption, secure updates, controlled backups, and incident response are therefore complementary requirements. The same boundary applies to retained attachments, screenshots, metadata, and automatic device backups. Masking and aggregation improve the privacy--utility trade-off but do not guarantee anonymity; clustering, attributes, timestamps, photographs, external datasets, singleton cells, and sparse H3 resolutions may still support re-identification \citep{kessler2018geoprivacy,zhang2022rehumanize,cassa2008re,zimmerman2008quantifying}.
 
-The performance experiment focused on datasets containing 50, 250, 500, and 1,000 points because these sizes reflect observations likely to be collected during a mobile field session. A 2,000-point class was added as a stress case. The tests were performed on a Samsung Galaxy A14, with each operation measured five times after one warm-up and the median reported. For the 1,000-point rich dataset, complete halo masking, signed OpenPGP encryption, and verified decryption required 5.96, 4.24, and 3.52~s, respectively. The corresponding median times for the 2,000-point rich dataset were 11.52, 6.14, and 4.69~s. These results indicate that the principal safeguarding and access operations are practical for the intended field-session datasets on a modest Android handset.
+OpenPGP provides recipient-specific confidentiality by encrypting each selected dataset once with a fresh AES-256 session key and wrapping that key for every selected recipient. In the tested release, Steven encrypted and signed the original for himself and the BMA representative, while Amber received only the authorised masked and binned layers. Fingerprint review is still necessary because a public key is not proof of identity; membership changes or compromised keys may also remain hidden in an offline cache until synchronisation resumes \citep{wouters2024openpgp}. The Premium test illustrates the separation of controls: NextGIS ACLs governed discovery and download, OpenPGP recipients governed decryption, and wrong-key or wrong-passphrase attempts produced no plaintext. NextGIS therefore remains trusted for administration, availability, ACL enforcement, and key distribution, but it does not hold the private keys \citep{nextgis2026permissions,wouters2024openpgp}.
 
-Masking and cryptographic performance were influenced by different dataset properties. Numerical coordinate displacement and Spruill assessment were comparatively fast, while the complete masking workflow was dominated by reading the selected NextGIS layer, creating the output layer, inserting its features, rebuilding the spatial index, and saving the map. Masking time therefore increased mainly with feature count. Encryption and decryption were more strongly affected by the number of exported bytes, particularly for the rich attribute profile. The encrypted packages were smaller than their GeoJSON inputs because MapSafe compresses the dataset before encryption.
+Blockchain notarisation has a narrower role than confidentiality or authority. MapSafe records a normalised encrypted-package filename with its SHA-256 digest so that a verifier can establish byte identity for the named package. This does not prove that the observations are accurate, that collection was authorised, or that the wallet controller had legitimate authority. The filename must therefore avoid sensitive information, and production deployment still requires contract review, network and fee policies, wallet recovery, and failure handling.
 
-Network upload, package download, blockchain retrieval, and transaction confirmation were excluded from the local timings because they depend on connectivity, server conditions, wallet interaction, and the selected blockchain network.
+In terms of \textit{usability analysis}, \textit{MapSafe Mobile} was designed to make secure behaviour a continuation of the field workflow. Progress indicators, consistent \emph{Back}, \emph{Stop}, and \emph{Next} actions, early layer validation, identity recognition, deliberate recipient selection, collapsible result cards, and predictable output storage reduce technical barriers while keeping the consequences of protection visible. Carrying the selected dataset between stages, recognising stored identities, listing community artefacts, and displaying the recovered layer directly also reduce repeated file navigation. In the first-author effectiveness evaluation, the 12 safeguarding and access tasks were each completed twice (24 trials) without user or system errors, incorrect-recipient encryptions, false integrity acceptances, unintended plaintext uploads, or unrecovered datasets. This demonstrates functional effectiveness under prepared conditions, not independent first-time-user usability.
 
-\subsection{Security Analysis}
+The design was also informed by the earlier evaluation of the \textit{MapSafe QGIS plugin} \citep{sharma2025mapsafe}, which examined effectiveness, efficiency, and satisfaction using ISO~9241-11:2018 \citep{ISO2018ergonomics} and Nielsen's heuristics \citep{nielsen1995conduct}. The mobile implementation adapted its recommendations on status visibility, navigation, file selection, recognition rather than recall, passphrase handling, screen density, output management, help, and error recovery. Desktop panels became collapsible cards, passphrase visibility was added through eye controls, and existing identities and community keys are recognised automatically. An independent satisfaction and accessibility study remains necessary because the earlier participants did not evaluate the Android application.
 
-Processing the dataset locally reduces unnecessary disclosure to remote services. Precise observations can be masked, aggregated, or encrypted before being uploaded to the selected NextGIS community. Local processing does not, however, remove the need to trust the handset. The original coordinates exist in memory and local storage before protection, and a compromised operating system, malicious application, insecure backup, screen capture, or retained attachment could expose them. Android Keystore protection and passphrase-protected secret keys must therefore be combined with device encryption, secure updates, controlled backups, and appropriate incident-response procedures.
+Our work is not without \textit{limitations and recommendations for future work}. 
+Our evidence is bounded by one Samsung Galaxy A14, one recipient per encrypted package, and local timings that excluded network, wallet, and blockchain latency. The effectiveness assessment was conducted by the first author and did not measure independent satisfaction, accessibility, learnability, or retention. Future benchmarking should vary recipient counts, devices, Android versions, and connectivity, including offline reconnection and confirmation delays.
 
-Halo masking provides an understandable privacy--utility control: the minimum distance moves a transformed point away from its source, while the maximum distance limits the loss of geographic usefulness. The inverted Spruill score assists Steven in comparing candidate outputs. Nevertheless, neither displacement nor a favourable score guarantees anonymity. Re-identification may exploit clustering, roads, coastlines, attributes, timestamps, photographs, filenames, or external datasets \citep{kessler2018geoprivacy,zhang2022rehumanize,cassa2008re,zimmerman2008quantifying}. Hexagonal aggregation also conceals exact coordinates but may remain revealing when a cell contains only one observation or when the chosen resolution produces a sparse distribution. MapSafe consequently provides alternative representations and decision support rather than a universal privacy certificate.
-
-OpenPGP addresses recipient-specific confidentiality. MapSafe generates a fresh AES-256 session key and encrypts each selected dataset once. The session key is then independently protected using the public encryption key of every selected recipient. In the tested release, Steven included himself as a self-recipient and added the BMA representative's accepted key; Amber was intentionally omitted from the encrypted-original recipient set. Each selected recipient uses a locally held private key and personal passphrase to recover the session key and decrypt the dataset. Optional signing allows recipients to verify the signer separately from the encrypted-data integrity checks.
-
-A valid public key is not proof that it belongs to the intended person. MapSafe therefore requires fingerprint review before a discovered community key becomes eligible for recipient selection. Changed, duplicated, revoked, or inconsistent keys are quarantined. Cached accepted keys support field encryption when connectivity is unavailable, but membership changes and compromised keys may not become visible until synchronisation resumes. Removing a member prevents selection for future packages but cannot revoke access to a package already encrypted for that member's key \citep{wouters2024openpgp}.
-
-The Premium multi-account test demonstrated the complementary roles of OpenPGP and NextGIS access-control lists. Steven published his public key, two anonymised layers, and an original dataset encrypted and signed for Steven and the BMA representative. The BMA representative downloaded a byte-identical package, recovered the original, and verified Steven's signature. Amber could list and download the authorised masked and binned layers but could not access the protected original in the tested release. The external test user could not discover or directly read Community~A resources, while wrong-key and wrong-passphrase attempts produced no plaintext.
-
-These findings show that group membership, resource permissions, and encryption recipients are separate controls. A NextGIS ACL determines whether an account can discover or download an artefact, whereas an OpenPGP envelope determines whether the account holder can recover its plaintext \citep{nextgis2026permissions,wouters2024openpgp}. The upload workflow also excludes an unencrypted original. NextGIS remains operationally trusted for account administration, resource availability, ACL enforcement, and public-key distribution, but it does not possess the private keys required to decrypt protected packages.
-
-Blockchain notarisation has a narrower purpose. MapSafe records a normalised encrypted-package filename together with its SHA-256 digest, allowing a verifier to determine whether a named package is byte-for-byte identical to the artefact asserted by the signing wallet. This does not prove that the underlying observations are accurate, that their collection was authorised, or that the wallet controller possessed legitimate authority. Because the filename is publicly recorded, it should not reveal a sensitive place or subject. The external-wallet design prevents MapSafe from storing the blockchain private key, although production use would still require contract review, appropriate network selection, fee planning, wallet recovery, and failure handling.
-
-\subsection{Usability Analysis}
-
-MapSafe Mobile was designed to make secure behaviour a natural continuation of the field workflow. Its compact interface uses visible progress indicators, consistent \emph{Back}, \emph{Stop}, and \emph{Next} actions, early source-layer validation, recognition of an existing encryption identity, deliberate recipient selection, collapsible result cards, and predictable output storage. These features aim to reduce technical barriers without concealing the consequences of anonymisation, key acceptance, encryption, or decryption.
-
-The effectiveness evaluation was conducted by the first author using the 12 safeguarding and access tasks reported in the Appendix. Each task was performed twice, producing 24 task trials. All trials were completed successfully, with no user errors, system errors, critical errors, assistance events, unintended plaintext uploads, incorrect-recipient encryptions, false integrity acceptances, or unrecovered datasets. The source remained unchanged, the intended artefacts were created, and each account received only its authorised representation. These findings demonstrate functional effectiveness under the prepared test conditions. Because the evaluator was familiar with the application and participated in its development, the results should not be interpreted as an independent measure of usability for first-time users.
-
-Efficiency was informed by the physical-device measurements rather than by repeating timings dominated by masking, layer construction, encryption, decryption, and blockchain processing. The measured results show that the local operations are practical for the intended field-scale datasets. Interface overhead is reduced by carrying the selected dataset between stages, recognising stored identities, using a fixed output folder, listing available community artefacts, and displaying the recovered layer directly.
-
-Formative usability findings were drawn from the earlier evaluation of the \textit{MapSafe QGIS plugin} \citep{sharma2025mapsafe}. That evaluation was organised around the effectiveness, efficiency, and satisfaction dimensions of ISO~9241-11:2018 \citep{ISO2018ergonomics} and applied Nielsen's heuristic inspection method \citep{nielsen1995conduct}. Its evaluators favoured clear progress indicators, explanatory guidance, visual comparison of original and anonymised layers, and structured safeguarding and access workflows. They also identified concerns involving system status, navigation, workflow order, file selection, recognition rather than recall, passphrase handling, screen density, output management, contextual help, and error recovery.
-
-These findings were used as formative design evidence rather than being presented as satisfaction results from mobile participants. Earlier recommendations were mapped to the corresponding Android activity and implemented or adapted where appropriate. Large desktop panels became collapsible mobile cards, passphrase visibility was provided through eye controls, existing identities and community keys were recognised automatically, and operation-specific messages were added for incorrect passphrases, non-recipient keys, invalid packages, and integrity failures. An independent satisfaction study remains necessary because the earlier participants did not evaluate the Android application.
-
-\subsection{Limitations and Future Work}
-
-The evidence is bounded by the evaluation design. Physical-device timings were obtained on one Samsung Galaxy A14, used one recipient for each encrypted package, and excluded network transfer, wallet interaction, and blockchain confirmation. Functional effectiveness was assessed by the first author in 24 prepared task trials; it was not an independent participant study and did not measure mobile user satisfaction, accessibility, learnability, or long-term retention. Future work should repeat the benchmark across recipient counts, devices, Android versions, and connectivity conditions, including offline reconnection and blockchain latency.
-
-Deployment also requires stronger lifecycle controls. The current implementation supports one local OpenPGP identity per installation but does not provide complete organisational certification, rotation, revocation, or managed recovery. Secret-key backup and restoration should be tested across device replacement, application removal, compromised accounts, membership changes, ACL changes, stale offline caches, and service interruption, with interoperability checked against independent OpenPGP tools \citep{wouters2024openpgp,nextgis2026permissions}. Production notarisation additionally requires governed contract deployment, wallet recovery, fee and network policies, confirmation handling, and failure-recovery procedures.
-
-The North Whangārei case study also identifies broader research needs. Halo masking and hexagonal aggregation remain vulnerable to contextual inference from routes, coastlines, attributes, timestamps, photographs, singleton cells, and external datasets \citep{kessler2018geoprivacy,cassa2008re,zimmerman2008quantifying}. Future releases should address lines, polygons, trajectories, rasters, attachments, and metadata, while evaluating context-aware masking, organisation-defined H3 rules, and minimum-count warnings. Independent usability and interoperability studies, followed by participatory co-design with the relevant BMAs, are needed to determine acceptable spatial detail, recipient authority, retention, reuse, terminology, and accountability. MapSafe Mobile provides mechanisms for enacting those decisions; it cannot confer sovereignty or cultural legitimacy by itself \citep{kukutai2016indigenous,lovett2019gooddata,carroll2020care,jennings2023care,reyesgarcia2022}.
+Deployment also needs stronger lifecycle controls. The current implementation supports one local OpenPGP identity per installation but not complete organisational certification, rotation, revocation, or managed recovery. Backup and restoration should be tested across device replacement, application removal, compromised accounts, membership and ACL changes, stale caches, and service interruption, with interoperability checked against independent OpenPGP tools \citep{wouters2024openpgp,nextgis2026permissions}. Production notarisation also requires governed contract deployment, wallet recovery, fee and network policies, confirmation handling, and failure recovery. Future releases should address lines, polygons, trajectories, rasters, attachments, and metadata, while testing context-aware masking, organisation-defined H3 rules, and minimum-count warnings. Independent usability, interoperability, and participatory studies with the relevant BMAs are needed to determine acceptable spatial detail, recipient authority, retention, reuse, terminology, and accountability. MapSafe Mobile provides mechanisms for those decisions; it cannot confer sovereignty or cultural legitimacy by itself \citep{kukutai2016indigenous,lovett2019gooddata,carroll2020care,jennings2023care,reyesgarcia2022}.
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -876,7 +885,15 @@ Protecting a dataset introduces an additional step into the mobile GIS workflow,
 
 \textit{MapSafe Mobile} does not by itself guarantee anonymity, establish legitimate authority, or confer Indigenous Data Sovereignty. These outcomes depend on governance, identity verification, appropriate anonymisation parameters, key management, recipient responsibilities, and continuing community oversight. Future work should extend the approach to additional geospatial data types, strengthen key recovery and revocation, evaluate alternative masking strategies, assess production blockchain deployments, and conduct independent and participatory evaluations with the communities whose information is represented. By embedding geoprivacy within mobile GIS, \textit{MapSafe Mobile} demonstrates a practical direction for protecting sensitive observations before external synchronisation and for making disclosure and access decisions more visible, accountable, and closely connected to the people responsible for the data.
 
+% For double-anonymised review, omit author names, affiliations,
+% acknowledgements, and identifying repository links from the review manuscript.
+
+
+
+
 \section*{Appendix}
+
+\noindent\textbf{Evaluation protocol and interpretation.} The effectiveness evaluation was conducted by the first author, who is familiar with GIS, Android field mapping, and the MapSafe implementation. The evaluator used the prepared North Whang\={a}rei dataset and configured Community~A state, and completed the 12 safeguarding and access tasks in the order shown in Table~\ref{tab:usabilitytasks}. Each task was performed twice from the same prepared state. The record considered task completion, user errors, system errors, assistance, recovery, and preservation of the authoritative source. A critical error would expose an unencrypted original, irreversibly alter the source, encrypt for an unintended recipient without detection, accept an invalid integrity result, or prevent recovery of the intended dataset. A non-critical error would be a reversible action that was blocked or corrected without compromising the source or protected package. The resulting 24 trials are a functional self-evaluation under prepared conditions; they are not an independent participant study and do not provide mobile user-satisfaction, accessibility, or learnability evidence.
 
 \noindent Table~\ref{tab:usability-traceability} records how findings from the earlier MapSafe QGIS evaluation were transferred to MapSafe Mobile. \emph{Implemented} denotes a direct mobile control or behaviour; \emph{adapted} denotes a platform-appropriate response rather than literal reproduction; \emph{partial} identifies a remaining convenience or documentation gap; and \emph{not applicable} identifies a desktop-specific concern. These classifications describe design traceability, not participant outcomes. Table~\ref{tab:usabilitytasks} combines the success requirements with the outcomes recorded during the first-author effectiveness evaluation. All 24 task repetitions were completed without a user error, system error, critical error, or assistance event.
 
@@ -963,6 +980,72 @@ Desktop window behaviour & Fix or minimise the plugin window, confirm closure th
 12. Display & Plaintext saved in \texttt{Downloads/MapSafe}, previous layers cleared, and only the newly recovered layer selected and displayed at its extent. & Met & Met & 0/0; 0/0 & The recovered dataset becomes the sole displayed layer. \\
 \end{longtable}
 }
+
+
+\section*{Declarations}
+
+\noindent\textbf{Funding.}
+This research received no specific grant from any funding agency in the
+public, commercial, or not-for-profit sectors.
+
+\medskip
+\noindent\textbf{Disclosure statement.}
+The authors declare no competing interests.
+
+\medskip
+\noindent\textbf{Ethics approval and consent to participate.}
+This study did not recruit human participants or collect new personal data.
+The functional evaluation was conducted by the first author using controlled
+research accounts, synthetic attributes, and previously documented case-study
+materials. Formal human-participant ethics approval and informed consent were
+therefore not required under the applicable institutional policy.
+
+\medskip
+\noindent\textbf{Consent for publication.}
+No identifiable participant data are reported. The screenshots use controlled
+research accounts and role-based identifiers. Where any identifiable account
+information is retained in a submitted figure, permission for publication will
+be obtained before submission.
+
+\medskip
+\noindent\textbf{Data availability statement.}
+The source code, APK, performance logs, synthetic test fixtures, derived
+outputs, and supporting documentation are available through the MapSafe Mobile
+repository and guide website:
+\url{https://osf.io/cyfu7}. 
+Exact North Whangārei coordinates, private keys, passwords, live community
+credentials, and protected NextGIS resource records are not publicly released
+because of Indigenous data-sovereignty, privacy, and security considerations.
+Derived materials may be made available by the corresponding author on
+reasonable request, subject to approval by the relevant data custodians and
+community authorities.
+
+\medskip
+\noindent\textbf{Code availability.}
+The MapSafe Mobile source code is openly available at
+\url{https://osf.io/cyfu7}.
+The controlled research APK and its checksum are available through the
+MapSafe Mobile guide website.
+
+%\medskip
+%\noindent\textbf{Author contributions.}
+%Pankajeshwara Sharma: conceptualisation, methodology, software, investigation,
+%data curation, formal analysis, visualisation, writing---original draft, and
+%writing---review and editing.
+
+\medskip
+\noindent\textbf{Generative AI disclosure.}
+OpenAI Codex based on GPT-5 was used during manuscript preparation for language
+refinement and organisation of literature. The author retained responsibility for all
+technical decisions, analyses, measurements, citations, interpretations, and
+final wording. Generative AI output was not treated as empirical evidence and
+was not used to generate or alter research data, performance measurements, or
+evaluation outcomes.
+
+\medskip
+\noindent\textbf{Acknowledgements.}
+The author acknowledges the NextGIS project and the individuals who assisted
+with platform access, account configuration, and technical testing.
 
 \clearpage
 \bibliography{biblio}

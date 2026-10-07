@@ -1,0 +1,37 @@
+[
+  {
+    "file_name": "ms2026-premium-community-20261004-00-steven-security-community-keys.png",
+    "bytes": 210335,
+    "sha256": "ef46e3d0b8a7e88c4875e4124f5cf93de0c841c77db0907fcef22e790d37e17b"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261004-01-steven-upload-community.png",
+    "bytes": 544197,
+    "sha256": "b92a2326735e1de0e33104a02a0586e91d070933505869b69ef86494cfb8b5c2"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261004-02-steven-community-public-keys.png",
+    "bytes": 419544,
+    "sha256": "af1c76a9890805a27c2a6b5a65f3c038aedafaf6b6ec7ed008d4648a2996d6f2"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261004-03-steven-community-datasets.png",
+    "bytes": 451071,
+    "sha256": "909c8f6f410d4ed0e4873e98f29fe0cbedd59462aaecd86b7baf8518541d73fc"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261004-04-amber-authorised-community-packages.png",
+    "bytes": 478738,
+    "sha256": "f14ac6395089a6097a98c4f9cefda6ab78cf1155d227b53b57da14bef54f11d6"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261004-05-bma-anonymised-community-access.png",
+    "bytes": 478711,
+    "sha256": "28f82987dfcbf226e3b9d1c067da90143229edbca2bc1131b49e4b9fc2ea9da8"
+  },
+  {
+    "file_name": "ms2026-premium-community-20261004-06-external-user-community-denied.png",
+    "bytes": 710182,
+    "sha256": "f309cf36269cc2d2cf5bd7cc07cc9be701f5b062c7f1a2da2e6af90426a214a8"
+  }
+]

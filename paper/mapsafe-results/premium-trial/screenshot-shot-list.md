@@ -18,18 +18,28 @@ The validated final offline run contains 31 PNG files plus SHA-256 values in
 
 ## Premium-only Android evidence
 
-Capture these after `MapSafePremiumAclDeviceTest` passes:
+The automated Premium set was captured on 4 October 2026 after
+`MapSafePremiumAclDeviceTest` passed. The seven PNG files and their SHA-256 manifest
+are in `../screenshots/premium-community-2026-10-04/`. Reproduce them with
+`scripts/capture-mapsafe-premium-screens.ps1`; the script retains all earlier
+manuscript screenshots.
 
-1. Steven (field data custodian): Security & Sharing with `Community A` selected and the
-   three community public-key identities visible.
-2. Steven: recipient confirmation showing only Steven and Amber for the original dataset.
-3. Steven: Upload to Community confirmation distinguishing community-readable
-   anonymised items from the recipient-restricted encrypted package.
-4. Amber (authorised researcher and precise-data recipient): Community Packages showing the protected original,
-   then successful hash checking, decryption, and the recovered North Whangārei map.
-5. BMA representative (anonymised-data recipient for this test): Community Packages
-   showing halo/hexagonal layers but not Steven's protected-original package.
-6. External non-member: a clear access-denied or empty-resource result for Community A.
+1. `00-steven-security-community-keys`: local protected identity plus the three
+   discovered community public-key identities.
+2. `01-steven-upload-community`: Steven's public key, halo layer, and hexbin layer
+   selected together; stored encrypted packages remain separately selectable.
+3. `02-steven-community-public-keys` and `03-steven-community-datasets`: the live
+   Community Packages browser at its key and anonymised-dataset sections.
+4. `04-amber-authorised-community-packages`: Amber can see the protected original and
+   its `Download & verify` action alongside community-readable anonymised layers.
+5. `05-bma-anonymised-community-access`: the BMA representative can download the
+   halo/hexbin outputs and sees `No encrypted packages published`.
+6. `06-external-user-community-denied`: the external account receives a clear
+   membership/resource-permission denial.
+
+The existing North Whangārei verification, decryption, and recovered-map images remain
+the UI evidence for the post-download cryptographic stages; the Premium acceptance log
+provides the exact live Amber download/decryption/signature assertions.
 
 ## Browser evidence on mapsafe.nextgis.com
 

@@ -1,90 +1,136 @@
-# MapSafe Mobile demonstration script (recording deferred)
+# MapSafe Mobile demonstration video transcript
 
-Target length: 6–8 minutes. Record the phone in portrait orientation and the Web GIS
-browser in landscape. Capture clean video first; add narration afterward so no
-passphrase or credential is spoken or exposed.
+Target running time: **3 minutes 30 seconds**. A natural narration rate of
+approximately 125--135 words per minute should keep the finished video between three
+and four minutes.
 
-## 1. Context and source data — 35 seconds
+Record the phone in portrait orientation and NextGIS Web in landscape. Capture the
+screen actions first and add narration afterward. Cut all loading delays, wallet waits,
+and passphrase entry. Never show a password, passphrase, private key, recovery phrase,
+access token, personal email address, or wallet balance.
 
-**On screen:** Start NextGIS Mobile normally, open MapSafe from the menu, load the
-North Whangārei sample, and collapse the MapSafe card to reveal the 23 source points.
+## 0:00--0:20 — purpose and case study
 
-**Narration:** “MapSafe Mobile adds data-protection decisions to the established
-NextGIS field workflow. In this fictional biodiversity example, Steven, the field data
-custodian, holds a 23-point North Whangārei infected-tree dataset on behalf of the
-relevant sovereign parties (BMAs). The published source
-coordinates are retained for reproducibility, while the demonstration attributes are
-synthetic. MapSafe keeps this precise source unchanged.”
+**On screen:** Open NextGIS Mobile normally, choose MapSafe from the menu, and show the
+North Whangārei source layer with its 23 points. Add the title: *Safeguard and controlled
+community access*.
 
-## 2. Anonymised representations — 75 seconds
+**Narration:**
 
-**On screen:** Set halo bounds, apply masking, collapse the result panel, compare the
-red original and blue masked points, expand the score, save; then create and inspect a
-resolution-8 hexagonal aggregate.
+“MapSafe extends NextGIS Mobile with safeguarding and controlled-sharing tools for
+sensitive geospatial data. In this fictional example, Steven is the field data
+custodian for a 23-point North Whangārei infected-tree dataset. The BMAs remain the
+sovereign parties, while Amber is a researcher authorised to receive precise locations.
+MapSafe preserves Steven’s original dataset unchanged.”
 
-**Narration:** “Steven can create a separate representation for a more limited spatial
-purpose. Halo masking moves every point within his chosen distance interval and reports
-the inverted Spruill score. The result can be remasked, saved, or passed to encryption.
-Alternatively, hexagonal binning replaces exact coordinates with occupied cells and
-point counts. A BMA representative assigned the anonymised-data role for this release
-can receive either derived layer but does not need the precise observations.”
+## 0:20--0:55 — create an anonymised representation
 
-## 3. Identity and recipient-controlled encryption — 80 seconds
+**On screen:** Open **Halo Masking**, set the minimum and maximum distances, apply it,
+collapse the result card, and show original and displaced points together. Briefly cut
+to the completed hexagonal-binning map.
 
-**On screen:** Show the persistent local identity and community keys, select Steven and
-Amber, encrypt the original, and show the saved filename and digest. Never reveal the
-passphrase.
+**Narration:**
 
-**Narration:** “Amber is authorised to work with precise coordinates. Steven selects
-Amber’s accepted community public key and normally retains his own checked identity for
-recovery. MapSafe encrypts this dataset once with a fresh AES session key and wraps that
-key separately for each selected OpenPGP recipient. The output is one signed PGP file,
-not a nested multi-level volume. Other selected representations would be encrypted into
-separate packages so each can have its own audience.”
+“Steven can first create an anonymised representation for recipients who need spatial
+patterns but not exact coordinates. Halo masking moves each point within the selected
+distance range and reports an inverted Spruill privacy score. Hexagonal binning offers
+an alternative by replacing precise points with occupied H3 cells and counts. These are
+new shareable layers; neither operation overwrites the authoritative source.”
 
-## 4. Community publication and Premium permissions — 80 seconds
+## 0:55--1:20 — community identities and public keys
 
-**On screen:** Confirm the upload audience, then show the Web GIS hierarchy and the
-three public-key records, two anonymised layers, and protected package. Switch from
-Amber to the BMA-representative account and then the external account to show the
-negative cases.
+**On screen:** Open **Security & Sharing**, show Community A and Steven’s persistent
+identity, then refresh the community key list. Show Steven, Amber, and the BMA
+representative without exposing email addresses.
 
-**Narration:** “The NextGIS authentication group defines the community boundary.
-Public keys and anonymised layers are readable by Community A. Each encrypted package
-has its own non-propagating resource permissions derived from the OpenPGP recipients:
-Steven and Amber can list and download this package, the BMA representative is not an
-OpenPGP recipient for this test package and cannot see it, and the external account—who
-is not in the group—cannot enter the community resources. Private keys and passphrases never
-leave their owners’ devices.”
+**Narration:**
 
-## 5. Optional notarisation — 55 seconds
+“Community A has been prepared in NextGIS Web. Steven, Amber, and a BMA representative
+each keep a passphrase-protected private key on their own device and publish only the
+corresponding public key. MapSafe checks the full fingerprints before accepted keys can
+be selected for encryption. Private keys and passphrases never enter the community
+store.”
 
-**On screen:** Calculate the encrypted package hash, show the filename-bound mint
-payload, open external-wallet approval without revealing wallet secrets, and return to
-the confirmed transaction state.
+## 1:20--1:55 — recipient-controlled encryption
 
-**Narration:** “MapSafe can optionally anchor the encrypted filename and SHA-256 digest
-in a compatible EVM registry. Transaction signing occurs in an external wallet. The
-public record contains no plaintext dataset, private key, or passphrase; it supports a
-later claim about which named encrypted package was recorded.”
+**On screen:** Open **Encrypt**, retain Steven’s checked identity, select Amber, enable
+signing, and encrypt the original. Show the saved `.pgp` filename and SHA-256, but skip
+the passphrase-entry footage.
 
-## 6. Authorised access — 75 seconds
+**Narration:**
 
-**On screen:** As Amber, open Community Packages, download the protected original,
-verify its local digest and blockchain record, decrypt with Amber’s local private key,
-and display only the recovered layer.
+“For the protected original, Steven selects himself and Amber as recipients. MapSafe
+encrypts the dataset once with a fresh AES session key, then wraps that key separately
+for each selected OpenPGP public key. The result is one signed PGP package. Other
+datasets are encrypted separately so every package can have its own recipients and
+purpose.”
 
-**Narration:** “Amber downloads the same PGP package, recomputes its SHA-256, and can
-compare it with the notarised value. After successful verification, Amber’s private key
-unwraps the session key and OpenPGP recovers the dataset automatically. MapSafe checks
-the package integrity and Steven’s signature, imports the GeoJSON, clears the earlier
-comparison layers, and displays the recovered original.”
+## 1:55--2:25 — publish and notarise
 
-## 7. Boundary statement — 25 seconds
+**On screen:** Open **Upload to Community**, select the masked layer, binned layer, public
+key, and encrypted package, then show the completed NextGIS Web resource tree. Cut to
+the notarisation screen and a confirmed external-wallet transaction.
 
-**On screen:** Return to the Safeguard/Access tabs and end on the unobstructed map.
+**Narration:**
 
-**Narration:** “MapSafe supports deliberate representation, recipient, and integrity
-decisions at the collection device. It does not itself determine legitimate authority
-or guarantee anonymity; the data guardian and community remain responsible for the
-purpose, parameters, recipients, and governance of every release.”
+“Steven uploads the anonymised layers for Community A and the encrypted package for its
+selected recipients. NextGIS permissions allow the community to read the derived
+layers, while only Steven and Amber can list or download this protected package.
+Optionally, MapSafe asks an external wallet to record the encrypted filename and its
+SHA-256 digest on Sepolia. No plaintext data or cryptographic secret is written to the
+blockchain.”
+
+## 2:25--3:05 — verify, decrypt, and display
+
+**On screen:** Switch to Amber. Open **Access**, choose **Community Packages**, download
+the package, show local hash verification, decrypt it with Amber’s local identity, and
+finish on the recovered North Whangārei points with no other layers visible.
+
+**Narration:**
+
+“Amber opens Community Packages and downloads the protected original. MapSafe
+recalculates its SHA-256 and, when a transaction is supplied, compares the local
+filename and digest with the blockchain record. Amber’s private key then unwraps the
+session key. OpenPGP verifies package integrity and Steven’s signature before MapSafe
+imports the recovered GeoJSON, clears the previous comparison layers, and displays
+only the decrypted original.”
+
+## 3:05--3:25 — demonstrate the access boundary
+
+**On screen:** Show the BMA representative viewing the anonymised layers but no
+protected package, followed by the external non-member receiving an empty or denied
+Community A view. Use labels: *Anonymised access* and *No community access*.
+
+**Narration:**
+
+“For this release, the BMA representative can use the anonymised layers but was not
+selected for the protected original, so that package remains absent. The external
+non-member cannot access Community A at all. These positive and negative checks confirm
+that community membership and package recipients serve different purposes.”
+
+## 3:25--3:35 — closing statement
+
+**On screen:** Return to the MapSafe Safeguard and Access tabs, then end on the logo and
+the unobstructed map.
+
+**Narration:**
+
+“MapSafe keeps representation, recipient, integrity, and access decisions within one
+mobile workflow, while leaving authority over every release with the data custodian and
+sovereign community.”
+
+## Production notes
+
+- Use short cuts or two-to-four-times speed for uploads, downloads, encryption,
+  decryption, and wallet confirmation; do not imply that processing is instantaneous.
+- Keep the original screen recording and create a separate edited copy.
+- Use captions for names, roles, filenames, and major actions; do not duplicate the full
+  narration as permanent on-screen text.
+- Display full fingerprints only in the evidence version. For a public video, show the
+  final eight characters or blur the middle characters.
+- Show the Sepolia label clearly so viewers do not mistake the demonstration for a
+  production blockchain deployment.
+- Add a final disclosure: *Fictional case study; demonstration attributes are
+  synthetic; no private keys or precise operational field data are hosted publicly.*
+- Export at 1080p, 30 frames per second, H.264 video with AAC audio, and verify that all
+  small mobile text remains legible before publication.

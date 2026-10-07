@@ -1,0 +1,176 @@
+<mxfile host="Electron" agent="Codex">
+  <diagram id="mapsafe-mobile-architecture" name="Figure 1">
+    <mxGraphModel dx="2357" dy="1402" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1260" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=38;fontStyle=1;fontColor=light-dark(#000000, #72b07f);" value="MapSafe Mobile architecture on the NextGIS platform" vertex="1">
+          <mxGeometry height="50" width="1200" x="400" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=19;fontColor=#52606D;" value="Implemented field-device, community-exchange, and filename-bound notarisation flows" vertex="1">
+          <mxGeometry height="32" width="1000" x="500" y="78" as="geometry" />
+        </mxCell>
+        <mxCell id="safeguard_region" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#EFF8F1;strokeColor=#256D35;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="460" width="1030" x="360" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="access_region" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#EEF5FC;strokeColor=#1D5FA7;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="455" width="1030" x="360" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="external_region" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#F5F7F9;strokeColor=#7B8794;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="985" width="365" x="1450" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="safeguard_label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=25;fontStyle=1;fontColor=#256D35;" value="&lt;font style=&quot;font-size: 29px;&quot;&gt;MapSafe Mobile — Safeguard&lt;/font&gt;" vertex="1">
+          <mxGeometry height="42" width="620" x="550" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="access_label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=25;fontStyle=1;fontColor=#1D5FA7;" value="&lt;font style=&quot;font-size: 29px;&quot;&gt;MapSafe Mobile — Access&lt;/font&gt;" vertex="1">
+          <mxGeometry height="42" width="620" x="550" y="678" as="geometry" />
+        </mxCell>
+        <mxCell id="external_label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=25;fontStyle=1;fontColor=#1F2933;" value="External services" vertex="1">
+          <mxGeometry height="42" width="285" x="1490" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="anonymise" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#f2eaf6, #392f3f);strokeColor=#9673a6;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 25px;&quot;&gt;&amp;#x2316;&amp;nbsp;Anonymise&amp;nbsp;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Halo mask or H3 bin&lt;br&gt;Original remains unchanged&lt;/div&gt;" vertex="1">
+          <mxGeometry height="155" width="245" x="400" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="encrypt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#f2eaf6, #392f3f);strokeColor=#9673a6;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 25px;&quot;&gt;&amp;#x1F512;&amp;nbsp;Encrypt &amp;amp; publish&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Original, masked, or binned&lt;br&gt;One .pgp per dataset&lt;br&gt;Publish selected artefact&lt;/div&gt;" vertex="1">
+          <mxGeometry height="155" width="245" x="707.5" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="notarise" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#f2eaf6, #392f3f);strokeColor=#9673a6;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 25px;&quot;&gt;&amp;#x26D3;&amp;nbsp;Notarise&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Bind encrypted filename&lt;br&gt;to SHA-256&lt;/div&gt;" vertex="1">
+          <mxGeometry height="155" width="240" x="1050" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="local_openpgp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;fontColor=#333333;" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Local OpenPGP identity&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Passphrase + Android Keystore&lt;br&gt;Private key stays on device&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="245" x="400" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="security_sharing" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;Security &amp;amp; Sharing&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;NextGIS account/group, key trust,&lt;br&gt;save folder, EVM profile&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="245" x="705" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="external_wallet" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=5;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;External wallet&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Reviews fee and signs&lt;br&gt;transaction&lt;br&gt;Wallet key stays outside&lt;br&gt;MapSafe&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="240" x="1050" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="key_directory" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;NextGIS Web MapSafe public-key resources&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 12px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Authentication group&lt;br&gt;Member public keys + metadata&lt;br&gt;Fingerprint acceptance remains local&lt;/div&gt;" vertex="1">
+          <mxGeometry height="180" width="285" x="1490" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="community_resources" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=7;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;NextGIS community resources&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 12px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Halo-masked / binned vector layers&lt;br&gt;Encrypted .pgp packages&lt;br&gt;SHA-256 + transaction metadata&lt;br&gt;ACL-controlled access&lt;/div&gt;" vertex="1">
+          <mxGeometry height="208" width="285" x="1490" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="evm_record" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=7;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;Blockchain integrity record&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 12px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;&amp;lt;encrypted filename&amp;gt;_&amp;lt;SHA-256&amp;gt;&lt;br&gt;Transaction sender, chain, contract, time&lt;br&gt;Receipt retrieved and checked&lt;/div&gt;" vertex="1">
+          <mxGeometry height="180" width="285" x="1490" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="display" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#f2eaf6, #392f3f);strokeColor=#9673a6;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 25px;&quot;&gt;&amp;#x25A4;&amp;nbsp;Display&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Clear prior layers&lt;br&gt;Show recovered dataset&lt;/div&gt;" vertex="1">
+          <mxGeometry height="155" width="245" x="400" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="decrypt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#f2eaf6, #392f3f);strokeColor=#9673a6;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 25px;&quot;&gt;&amp;#x1F513;&amp;nbsp;Decrypt&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Match local recipient key&lt;br&gt;Unlock, verify, and import&lt;/div&gt;" vertex="1">
+          <mxGeometry height="155" width="245" x="715" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="verify" parent="1" style="rounded=1;whiteSpace:wrap;html=1;arcSize=12;fillColor=light-dark(#f2eaf6, #392f3f);strokeColor=#9673a6;strokeWidth=3;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 25px;&quot;&gt;&amp;#x2713;&amp;nbsp;Verify&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Select community package or local .pgp&lt;br&gt;Local SHA-256, registry, optional Blockchain check&lt;/div&gt;" vertex="1">
+          <mxGeometry height="155" width="245" x="1050" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="recipient_identity" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;font-size:20px;color:#1F2933;font-weight:bold;&quot;&gt;Local recipient identity&lt;/div&gt;&lt;div style=&quot;margin-top:10px;font-size:17px;color:#52606D;&quot;&gt;Matching private key + passphrase&lt;br&gt;Private key never uploaded&lt;/div&gt;" vertex="1">
+          <mxGeometry height="135" width="240" x="720" y="965" as="geometry" />
+        </mxCell>
+        <mxCell id="community_trust" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=light-dark(#fff7df, #1a1a1a);strokeColor=light-dark(#e3ae64, #9577a3);strokeWidth=2;align=center;verticalAlign=middle;spacing=8;fontFamily=Segoe UI;" value="&lt;div style=&quot;color: rgb(31, 41, 51); font-weight: bold;&quot;&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;Community trust and access&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 10px; font-size: 17px; color: rgb(82, 96, 109);&quot;&gt;Synchronise permitted keys/resources&lt;br&gt;ACLs enforced by NextGIS Web&lt;/div&gt;" vertex="1">
+          <mxGeometry height="135" width="265" x="1035" y="965" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_anonymise_encrypt" edge="1" parent="1" source="anonymise" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fillColor=#eeeeee;" target="encrypt" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_encrypt_notarise" edge="1" parent="1" source="encrypt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=3;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fillColor=#eeeeee;" target="notarise" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_publish_community" edge="1" parent="1" source="encrypt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=2;endArrow=block;endFill=1;endSize=12;exitX=0.995;exitY=0.187;exitDx=0;exitDy=0;exitPerimeter=0;fillColor=#eeeeee;entryX=-0.002;entryY=0.435;entryDx=0;entryDy=0;entryPerimeter=0;" target="community_resources" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="244" />
+              <mxPoint x="990" y="200" />
+              <mxPoint x="1410" y="200" />
+              <mxPoint x="1410" y="560.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_publish_community" parent="1" style="text;html=1;strokeColor=none;fillColor=#EEF5FC;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#1D5FA7;" value="publish selected artefact" vertex="1">
+          <mxGeometry height="28" width="220" x="1120" y="176" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_identity_encrypt" edge="1" parent="1" source="local_openpgp" style="edgeStyle=none;rounded=0;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0;entryY=1;fillColor=#eeeeee;" target="encrypt" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_identity_encrypt" parent="1" style="text;html=1;strokeColor=none;fillColor=#EFF8F1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#6B46A5;" value="sign + recipients" vertex="1">
+          <mxGeometry height="28" width="125" x="521" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_security_notarise" edge="1" parent="1" source="security_sharing" style="edgeStyle=none;rounded=0;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=1;exitY=0.5;entryX=0.05;entryY=1;fillColor=#eeeeee;" target="notarise" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_security_notarise" parent="1" style="text;html=1;strokeColor=none;fillColor=#EFF8F1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#6B46A5;" value="network profile" vertex="1">
+          <mxGeometry height="28" width="150" x="840" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_notarise_wallet" edge="1" parent="1" source="key_directory" style="edgeStyle=none;rounded=0;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=0.337;exitY=1.004;entryX=1;entryY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryDx=0;entryDy=0;fillColor=#eeeeee;" target="external_wallet" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_identity_publish" edge="1" parent="1" source="local_openpgp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=10;exitX=0.75;exitY=1;entryX=0;entryY=0.5;exitDx=0;exitDy=0;fillColor=#eeeeee;" target="key_directory" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="545" />
+              <mxPoint x="580" y="575" />
+              <mxPoint x="1420" y="575" />
+              <mxPoint x="1420" y="295" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_identity_publish" parent="1" style="text;html=1;strokeColor=none;fillColor=#EFF8F1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#256D35;" value="publish public key" vertex="1">
+          <mxGeometry height="28" width="160" x="790" y="552" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_wallet_chain" edge="1" parent="1" source="external_wallet" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#36393d, #3e4041);strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=0.708;exitY=1.008;exitDx=0;exitDy=0;exitPerimeter=0;fillColor=#eeeeee;" target="evm_record" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1219.89" y="630.03" />
+              <mxPoint x="1440" y="630.03" />
+              <mxPoint x="1440" y="860.03" />
+            </Array>
+            <mxPoint x="1472.28" y="860" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_community_verify" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=3;endArrow=block;endFill=1;endSize=12;entryX=1;entryY=0.5;fillColor=#eeeeee;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1490" y="579.94" />
+              <mxPoint x="1490" y="605" />
+              <mxPoint x="1410" y="605" />
+              <mxPoint x="1410" y="837.47" />
+            </Array>
+            <mxPoint x="1490" y="600" as="sourcePoint" />
+            <mxPoint x="1294.97" y="837.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_verify_decrypt" edge="1" parent="1" source="verify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.5;entryX=1;entryY=0.5;fillColor=#eeeeee;" target="decrypt" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_decrypt_display" edge="1" parent="1" source="decrypt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=4;endArrow=block;endFill=1;endSize=12;exitX=0;exitY=0.5;entryX=1;entryY=0.5;fillColor=#eeeeee;" target="display" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_recipient_decrypt" edge="1" parent="1" source="recipient_identity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fillColor=#eeeeee;" target="decrypt" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_recipient_decrypt" parent="1" style="text;html=1;strokeColor=none;fillColor=#EEF5FC;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=15;fontColor=#6B46A5;" value="matching private key" vertex="1">
+          <mxGeometry height="28" width="185" x="800" y="928" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_chain_verify" edge="1" parent="1" source="evm_record" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=block;endFill=1;endSize=12;entryX=1;entryY=0.75;entryDx=0;entryDy=0;fillColor=#eeeeee;exitX=0.007;exitY=0.364;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1470" y="875.51" />
+              <mxPoint x="1470" y="874.03" />
+            </Array>
+            <mxPoint x="1470" y="881.5086206896551" as="sourcePoint" />
+            <mxPoint x="1295" y="874" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="WaXWpiJ2sq922KT3rFkE-2" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#36393d;strokeWidth=3;dashed=1;dashPattern=7 5;endArrow=none;endFill=0;endSize=12;fillColor=#eeeeee;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="764" y="574.64" />
+            </Array>
+            <mxPoint x="764" y="550" as="sourcePoint" />
+            <mxPoint x="764" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

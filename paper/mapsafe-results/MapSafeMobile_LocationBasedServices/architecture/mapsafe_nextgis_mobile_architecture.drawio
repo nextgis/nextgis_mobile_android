@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-08-10T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="mapsafe-nextgis-mobile" name="MapSafe NextGIS Mobile Architecture">
+    <mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;MapSafe Mobile architecture on the NextGIS platform&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=30;fontColor=#1B5E20;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="subtitle" value="Implemented mobile safeguarding and access flows, with planned blockchain functions shown separately" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="390" y="65" width="1020" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Device trust boundaries -->
+        <mxCell id="ownerBoundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FBF7;strokeColor=#2E7D32;strokeWidth=3;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="140" y="110" width="1080" height="390" as="geometry"/>
+        </mxCell>
+        <mxCell id="recipientBoundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFE;strokeColor=#1565C0;strokeWidth=3;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="140" y="600" width="1080" height="380" as="geometry"/>
+        </mxCell>
+        <mxCell id="externalBoundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#616161;strokeWidth=2;arcSize=8;dashed=1;dashPattern=8 5;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="110" width="460" height="870" as="geometry"/>
+        </mxCell>
+
+        <!-- Lane headings -->
+        <mxCell id="ownerHeading" value="&lt;b&gt;MapSafe Mobile used for safeguarding&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=23;fontColor=#1B5E20;" vertex="1" parent="1">
+          <mxGeometry x="350" y="120" width="660" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="recipientHeading" value="&lt;b&gt;MapSafe Mobile used for verification and access&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=23;fontColor=#0D47A1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="610" width="760" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="externalHeading" value="&lt;b&gt;Internet and external infrastructure&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="120" width="380" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Actors -->
+        <mxCell id="ownerActor" value="&lt;b&gt;Data owner /&lt;br&gt;field collector&lt;/b&gt;" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;align=center;strokeColor=#2E7D32;fillColor=#81C784;fontColor=#1B5E20;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="25" y="210" width="90" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="recipientActor" value="&lt;b&gt;Authorised&lt;br&gt;data recipient&lt;/b&gt;" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;align=center;strokeColor=#1565C0;fillColor=#64B5F6;fontColor=#0D47A1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="25" y="700" width="90" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Owner-side functions -->
+        <mxCell id="represent" value="&lt;b&gt;1. Representation control&lt;/b&gt;&lt;br&gt;&lt;br&gt;Halo masking + inverted Spruill score&lt;br&gt;or hexagonal binning&lt;br&gt;&lt;font color=&quot;#555555&quot;&gt;Source layer remains unchanged&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3CD;strokeColor=#D6A93D;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="190" y="180" width="260" height="135" as="geometry"/>
+        </mxCell>
+        <mxCell id="encrypt" value="&lt;b&gt;2. Encrypt and sign&lt;/b&gt;&lt;br&gt;&lt;br&gt;OpenPGP multi-recipient package&lt;br&gt;AES-256-GCM payload&lt;br&gt;RSA-3072 session-key envelopes&lt;br&gt;optional SHA-256 signature" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3CD;strokeColor=#D6A93D;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="485" y="180" width="270" height="135" as="geometry"/>
+        </mxCell>
+        <mxCell id="notarisePlanned" value="&lt;b&gt;3. Notarise&lt;/b&gt;&lt;br&gt;&lt;br&gt;Compute SHA-256 digest&lt;br&gt;and submit external receipt&lt;br&gt;&lt;font color=&quot;#C62828&quot;&gt;PLANNED - production client not configured&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;strokeWidth=2;dashed=1;dashPattern=8 5;fontSize=15;align=center;verticalAlign=middle;spacing=8;fontColor=#616161;" vertex="1" parent="1">
+          <mxGeometry x="790" y="180" width="230" height="135" as="geometry"/>
+        </mxCell>
+        <mxCell id="share" value="&lt;b&gt;4. Share / synchronise&lt;/b&gt;&lt;br&gt;&lt;br&gt;Transmit only the encrypted&lt;br&gt;binary .pgp package" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3CD;strokeColor=#D6A93D;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="180" width="145" height="135" as="geometry"/>
+        </mxCell>
+
+        <!-- Owner identity and key exchange -->
+        <mxCell id="ownerIdentity" value="&lt;b&gt;Local encryption identity&lt;/b&gt;&lt;br&gt;RSA-3072 OpenPGP key pair&lt;br&gt;Passphrase + Android Keystore protection&lt;br&gt;&lt;font color=&quot;#C62828&quot;&gt;Private key stays on this device&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="1">
+          <mxGeometry x="235" y="355" width="330" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="ownerSecurity" value="&lt;b&gt;Security and Sharing&lt;/b&gt;&lt;br&gt;Select NextGIS account and group&lt;br&gt;Publish public key, synchronise member keys,&lt;br&gt;verify and pin full fingerprints" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="1">
+          <mxGeometry x="610" y="355" width="400" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Recipient-side functions -->
+        <mxCell id="receive" value="&lt;b&gt;1. Receive package&lt;/b&gt;&lt;br&gt;&lt;br&gt;Select encrypted .pgp package&lt;br&gt;from storage or sharing channel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE8CC;strokeColor=#D98C00;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="190" y="675" width="225" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="decrypt" value="&lt;b&gt;2. Authorised decryption&lt;/b&gt;&lt;br&gt;&lt;br&gt;Match recipient key identifier&lt;br&gt;Unlock local private key with passphrase&lt;br&gt;Recover content-encryption key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE8CC;strokeColor=#D98C00;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="450" y="675" width="250" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="verify" value="&lt;b&gt;3. Cryptographic verification&lt;/b&gt;&lt;br&gt;&lt;br&gt;Require OpenPGP AEAD integrity&lt;br&gt;Report signature as valid, invalid,&lt;br&gt;unknown signer, or unsigned" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE8CC;strokeColor=#D98C00;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="735" y="675" width="250" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="view" value="&lt;b&gt;4. Import and view&lt;/b&gt;&lt;br&gt;&lt;br&gt;Verified GeoJSON becomes a&lt;br&gt;local NextGIS vector layer&lt;br&gt;Select layer and zoom to extent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE8CC;strokeColor=#D98C00;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="675" width="175" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- Recipient key management -->
+        <mxCell id="recipientIdentity" value="&lt;b&gt;Local recipient identity&lt;/b&gt;&lt;br&gt;Matching private key and passphrase&lt;br&gt;&lt;font color=&quot;#C62828&quot;&gt;Never sent to owner, cloud, or NextGIS Web&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="1">
+          <mxGeometry x="235" y="845" width="330" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="recipientSecurity" value="&lt;b&gt;Security and Sharing&lt;/b&gt;&lt;br&gt;Synchronise public keys and membership&lt;br&gt;Compare full fingerprint out of band&lt;br&gt;Accept and pin trusted recipient keys" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="1">
+          <mxGeometry x="610" y="845" width="400" height="105" as="geometry"/>
+        </mxCell>
+
+        <!-- External services -->
+        <mxCell id="keyDirectory" value="&lt;b&gt;NextGIS Web&lt;br&gt;public-key directory&lt;/b&gt;&lt;br&gt;&lt;br&gt;Existing account + authentication group&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;mapsafe_keys_&amp;lt;group-id&amp;gt;&lt;/font&gt;&lt;br&gt;One member-owned file bucket:&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;public-key.asc&lt;/font&gt; + metadata&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#1B5E20&quot;&gt;Public material only - discovery is not trust&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=3;fontSize=15;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="1325" y="185" width="370" height="235" as="geometry"/>
+        </mxCell>
+        <mxCell id="packageStore" value="&lt;b&gt;Encrypted package storage / sharing&lt;/b&gt;&lt;br&gt;&lt;br&gt;NextGIS, cloud storage, file transfer,&lt;br&gt;or another communication channel&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#0D47A1&quot;&gt;Receives only the encrypted .pgp package&lt;/font&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=3;fontSize=16;align=center;verticalAlign=middle;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1325" y="460" width="370" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="blockchain" value="&lt;b&gt;Blockchain integrity registry&lt;/b&gt;&lt;br&gt;&lt;br&gt;Would store package SHA-256 digest&lt;br&gt;and minimal non-sensitive metadata&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#C62828&quot;&gt;PLANNED - no production transaction&lt;/font&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;strokeWidth=3;dashed=1;dashPattern=8 5;fontSize=16;fontColor=#616161;align=center;verticalAlign=middle;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1325" y="710" width="370" height="190" as="geometry"/>
+        </mxCell>
+
+        <!-- Implemented owner flow -->
+        <mxCell id="edgeOwnerInput" value="selected point-vector layer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ownerActor" target="represent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeRepresentEncrypt" value="masked or aggregated layer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="represent" target="encrypt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeEncryptShare" value="encrypted and optionally signed .pgp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="encrypt" target="share">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="775" y="335"/>
+              <mxPoint x="1120" y="335"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeShareStore" value="encrypted package only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#1565C0;fontColor=#0D47A1;fontSize=14;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="share" target="packageStore">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeStoreReceive" value="encrypted .pgp package" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#1565C0;fontColor=#0D47A1;fontSize=14;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="packageStore" target="receive">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260" y="555"/>
+              <mxPoint x="1260" y="740"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Implemented recipient flow -->
+        <mxCell id="edgeReceiveDecrypt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="receive" target="decrypt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeDecryptVerify" value="candidate plaintext held in app cache" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="decrypt" target="verify">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeVerifyView" value="only after integrity succeeds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="verify" target="view">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeRecipientActor" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="recipientActor" target="receive">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Local identity relationships -->
+        <mxCell id="edgeOwnerIdentityEncrypt" value="signing key + self-recipient public key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7B1FA2;fontColor=#6A1B9A;fontSize=13;dashed=1;dashPattern=4 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ownerIdentity" target="encrypt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeOwnerIdentitySecurity" value="public key only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7B1FA2;fontColor=#6A1B9A;fontSize=13;dashed=1;dashPattern=4 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ownerIdentity" target="ownerSecurity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeRecipientIdentityDecrypt" value="matching private key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7B1FA2;fontColor=#6A1B9A;fontSize=13;dashed=1;dashPattern=4 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="recipientIdentity" target="decrypt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeRecipientIdentitySecurity" value="public key only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7B1FA2;fontColor=#6A1B9A;fontSize=13;dashed=1;dashPattern=4 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="recipientIdentity" target="recipientSecurity">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Public-key exchange with NextGIS Web -->
+        <mxCell id="edgeOwnerDirectory" value="publish and discover public keys + metadata" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=3;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=14;dashed=1;dashPattern=6 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ownerSecurity" target="keyDirectory">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeRecipientDirectory" value="synchronise membership, keys, and trust state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=3;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=14;dashed=1;dashPattern=6 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="recipientSecurity" target="keyDirectory">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1245" y="895"/>
+              <mxPoint x="1245" y="350"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeAcceptedRecipients" value="accepted recipient public keys" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7B1FA2;fontColor=#6A1B9A;fontSize=13;dashed=1;dashPattern=4 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ownerSecurity" target="encrypt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Planned blockchain flow -->
+        <mxCell id="edgeEncryptNotarise" value="SHA-256 of final encrypted package" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#9E9E9E;fontColor=#C62828;fontSize=13;dashed=1;dashPattern=8 5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="encrypt" target="notarisePlanned">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edgeNotariseBlockchain" value="digest + minimal metadata only (planned)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#9E9E9E;fontColor=#C62828;fontSize=13;dashed=1;dashPattern=8 5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="notarisePlanned" target="blockchain">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260" y="250"/>
+              <mxPoint x="1260" y="805"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edgeFutureVerify" value="future encrypted-package digest comparison" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=open;startFill=0;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#9E9E9E;fontColor=#C62828;fontSize=13;dashed=1;dashPattern=8 5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="receive" target="blockchain">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260" y="825"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#222222&quot;&gt;Solid arrow: implemented protected-data flow&lt;/font&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#2E7D32&quot;&gt;Green dashed: implemented public-key exchange&lt;/font&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#7B1FA2&quot;&gt;Purple dashed: local key use&lt;/font&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#C62828&quot;&gt;Gray dashed: planned blockchain flow&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#BDBDBD;strokeWidth=1;fontSize=13;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="210" y="1010" width="1380" height="55" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="mapsafe-nextgis-key-exchange" name="Public-key Exchange Detail">
+    <mxGraphModel dx="1600" dy="980" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="k0"/>
+        <mxCell id="k1" parent="k0"/>
+
+        <mxCell id="kTitle" value="&lt;b&gt;MapSafe public-key exchange through NextGIS Web&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontColor=#1B5E20;" vertex="1" parent="k1">
+          <mxGeometry x="260" y="20" width="1080" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="kSubtitle" value="Authentication-group membership supports discovery; explicit fingerprint confirmation establishes local trust" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=15;fontColor=#555555;" vertex="1" parent="k1">
+          <mxGeometry x="330" y="65" width="940" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kOwnerLane" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FBF7;strokeColor=#2E7D32;strokeWidth=3;arcSize=8;" vertex="1" parent="k1">
+          <mxGeometry x="40" y="120" width="440" height="760" as="geometry"/>
+        </mxCell>
+        <mxCell id="kServerLane" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#616161;strokeWidth=3;arcSize=8;" vertex="1" parent="k1">
+          <mxGeometry x="580" y="120" width="440" height="760" as="geometry"/>
+        </mxCell>
+        <mxCell id="kRecipientLane" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FAFE;strokeColor=#1565C0;strokeWidth=3;arcSize=8;" vertex="1" parent="k1">
+          <mxGeometry x="1120" y="120" width="440" height="760" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kOwnerHeading" value="&lt;b&gt;Publishing member's Android device&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontColor=#1B5E20;" vertex="1" parent="k1">
+          <mxGeometry x="80" y="135" width="360" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="kServerHeading" value="&lt;b&gt;NextGIS Web&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontColor=#333333;" vertex="1" parent="k1">
+          <mxGeometry x="620" y="135" width="360" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="kRecipientHeading" value="&lt;b&gt;Discovering member's Android device&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontColor=#0D47A1;" vertex="1" parent="k1">
+          <mxGeometry x="1160" y="135" width="360" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Publishing device -->
+        <mxCell id="kGenerate" value="&lt;b&gt;1. Generate local identity&lt;/b&gt;&lt;br&gt;&lt;br&gt;RSA-3072 signing primary key&lt;br&gt;+ RSA-3072 encryption subkey&lt;br&gt;Display full OpenPGP fingerprint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="90" y="200" width="340" height="125" as="geometry"/>
+        </mxCell>
+        <mxCell id="kPrivate" value="&lt;b&gt;Private-key custody&lt;/b&gt;&lt;br&gt;Passphrase-protected secret keyring&lt;br&gt;+ Android Keystore AES-GCM wrapper&lt;br&gt;&lt;font color=&quot;#C62828&quot;&gt;Never uploaded&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#C62828;strokeWidth=2;fontSize=14;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="k1">
+          <mxGeometry x="90" y="360" width="340" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="kPublish" value="&lt;b&gt;2. Publish public material&lt;/b&gt;&lt;br&gt;&lt;br&gt;Select authenticated NextGIS account&lt;br&gt;and authentication group&lt;br&gt;Upload public-key.asc + metadata only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="90" y="515" width="340" height="125" as="geometry"/>
+        </mxCell>
+
+        <!-- NextGIS Web -->
+        <mxCell id="kAuthGroup" value="&lt;b&gt;Authentication group&lt;/b&gt;&lt;br&gt;&lt;br&gt;Supplies current member identifiers&lt;br&gt;and group access context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="630" y="200" width="340" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="kDirectory" value="&lt;b&gt;Group key directory resource&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot;&gt;mapsafe_keys_&amp;lt;group-id&amp;gt;&lt;/font&gt;&lt;br&gt;Propagated group read/create permissions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="630" y="345" width="340" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="kBucket" value="&lt;b&gt;One member-owned file bucket&lt;/b&gt;&lt;br&gt;&lt;br&gt;public-key.asc&lt;br&gt;key-metadata.json&lt;br&gt;owner must match publishing member" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3CD;strokeColor=#D6A93D;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="630" y="495" width="340" height="125" as="geometry"/>
+        </mxCell>
+        <mxCell id="kServerNote" value="&lt;b&gt;Server role: authenticated discovery, not automatic trust&lt;/b&gt;&lt;br&gt;No private key, passphrase, plaintext dataset, or content-encryption key is stored here." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;strokeWidth=1;fontSize=13;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="k1">
+          <mxGeometry x="630" y="660" width="340" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- Discovering device -->
+        <mxCell id="kSync" value="&lt;b&gt;3. Synchronise directory&lt;/b&gt;&lt;br&gt;&lt;br&gt;Download public keys and manifests&lt;br&gt;for current group members" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;fontSize=15;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="1170" y="200" width="340" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="kValidate" value="&lt;b&gt;4. Validate discovered entry&lt;/b&gt;&lt;br&gt;&lt;br&gt;Group and current membership match&lt;br&gt;member owns exactly one bucket&lt;br&gt;manifest fingerprint matches key&lt;br&gt;usable encryption key is present" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=2;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="1170" y="345" width="340" height="135" as="geometry"/>
+        </mxCell>
+        <mxCell id="kReview" value="&lt;b&gt;5. Human fingerprint review&lt;/b&gt;&lt;br&gt;&lt;br&gt;Status remains DISCOVERED / UNVERIFIED&lt;br&gt;Compare the full fingerprint through&lt;br&gt;an independent trusted channel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3CD;strokeColor=#D6A93D;strokeWidth=2;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="k1">
+          <mxGeometry x="1170" y="520" width="340" height="125" as="geometry"/>
+        </mxCell>
+        <mxCell id="kAccepted" value="&lt;b&gt;6. ACCEPTED and pinned&lt;/b&gt;&lt;br&gt;Key becomes selectable for future encryption&lt;br&gt;and remains available from the accepted offline cache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;fontSize=14;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="k1">
+          <mxGeometry x="1170" y="680" width="340" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- Main sequence arrows -->
+        <mxCell id="ke1" value="local key pair" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7B1FA2;fontColor=#6A1B9A;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kGenerate" target="kPrivate">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke2" value="public key only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kGenerate" target="kPublish">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="260"/>
+              <mxPoint x="455" y="575"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ke3" value="authenticated publication" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kPublish" target="kBucket">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke4" value="membership" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kAuthGroup" target="kDirectory">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke5" value="member-owned child resource" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kDirectory" target="kBucket">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke6" value="group membership + public material" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kAuthGroup" target="kSync">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke7" value="manifest + public key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kBucket" target="kValidate">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke8" value="structurally valid but not trusted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kValidate" target="kReview">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke9" value="explicit acceptance pins fingerprint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=13;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kReview" target="kAccepted">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Quarantine branch -->
+        <mxCell id="kQuarantine" value="&lt;b&gt;QUARANTINED / BLOCKED&lt;/b&gt;&lt;br&gt;Changed fingerprint, removed member, missing or duplicate bucket, revoked entry, or unusable encryption key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#C62828;strokeWidth=2;fontSize=13;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="k1">
+          <mxGeometry x="640" y="790" width="320" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="ke10" value="any later mismatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C62828;fontColor=#C62828;fontSize=13;dashed=1;dashPattern=6 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kValidate" target="kQuarantine">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="410"/>
+              <mxPoint x="1080" y="828"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ke11" value="fingerprint changes after acceptance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C62828;fontColor=#C62828;fontSize=13;dashed=1;dashPattern=6 4;labelBackgroundColor=#FFFFFF;" edge="1" parent="k1" source="kAccepted" target="kQuarantine">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kFooter" value="&lt;b&gt;Trust rule:&lt;/b&gt; NextGIS membership and bucket ownership support authenticated discovery. They do not replace out-of-band verification of the complete OpenPGP fingerprint." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#BDBDBD;strokeWidth=1;fontSize=14;align=center;verticalAlign=middle;spacing=7;" vertex="1" parent="k1">
+          <mxGeometry x="260" y="900" width="1080" height="60" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
