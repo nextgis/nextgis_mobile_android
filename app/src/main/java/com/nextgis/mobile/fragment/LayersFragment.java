@@ -34,11 +34,11 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.PeriodicSync;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.graphics.Color;
 import android.graphics.Point;
+import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import androidx.fragment.app.Fragment;
@@ -52,7 +52,8 @@ import android.preference.PreferenceManager;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
-import android.text.style.ClickableSpan;
+import android.text.style.StyleSpan;
+import android.text.util.Linkify;
 import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -62,7 +63,6 @@ import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.ListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -86,7 +86,6 @@ import com.nextgis.maplibui.fragment.LayersListAdapter;
 import com.nextgis.maplibui.fragment.ReorderedLayerView;
 import com.nextgis.maplibui.mapui.SyncAccountWorker;
 import com.nextgis.maplibui.util.ControlHelper;
-import com.nextgis.maplibui.util.HyperLogCrashHandler;
 import com.nextgis.maplibui.util.NGIDUtils;
 import com.nextgis.maplibui.util.UiUtil;
 import com.nextgis.mobile.R;
@@ -104,7 +103,8 @@ import static com.nextgis.maplib.util.AccountUtil.saveSyncPeriodForAccount;
 import static com.nextgis.maplib.util.Constants.SYNC_NONE;
 import static com.nextgis.maplib.util.Constants.TAG;
 import static com.nextgis.maplibui.GISApplication.getAccountSyncTime;
-import static com.nextgis.maplibui.mapui.SyncAccountWorker.schedule;
+import static com.nextgis.maplibui.mapui.SyncAccountWorker.scheduleOneTime;
+import static com.nextgis.maplibui.mapui.SyncAccountWorker.schedulePeriodic;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_CREATE;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_EDIT;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_GEOSERVICE;
@@ -115,7 +115,6 @@ import static com.nextgis.maplibui.util.ConstantsUI.GA_MENU;
 import static com.nextgis.maplibui.util.ConstantsUI.GA_NGW;
 import static com.nextgis.maplibui.util.SettingsConstantsUI.KEY_PREF_OFFLINE_SYNC_ON;
 import static com.nextgis.maplibui.util.UiUtil.showNoEditPermAlert;
-import static com.nextgis.mobile.util.AppSettingsConstants.AUTHORITY;
 
 /**
  * A layers fragment class
@@ -578,7 +577,7 @@ public class LayersFragment
                 public void onClick(DialogInterface dialog, int which) {
                     long period =  getAccountSyncTime(account,  (GISApplication)context.getApplicationContext());
                     saveSyncPeriodForAccount(context, account.name, period );
-                    schedule(context, account.name, period);
+                    schedulePeriodic(context, account.name, period);
 
 //                    ContentResolver.setSyncAutomatically(account,
 //                            //"com.nextgis.mobile.provider",
@@ -679,7 +678,8 @@ public class LayersFragment
 
                 if (offlineSync || !NGIDUtils.NGID_MY.equals(base)){
                     HyperLog.v(Constants.TAG, "onClick start on-premise sync");
-                    OfflineSyncIntentService.startActionFoo(v.getContext());
+                    //OfflineSyncIntentService.startActionFoo(v.getContext());
+                    SyncAccountWorker.scheduleOneTime(v.getContext());
                 } else {
 
                     final Runnable switchRunnable = new Runnable() {
@@ -691,7 +691,8 @@ public class LayersFragment
                                 mPreferences.edit().
                                         putBoolean(KEY_PREF_OFFLINE_SYNC_ON, true).
                                         apply();
-                            OfflineSyncIntentService.startActionFoo(v.getContext());
+                            SyncAccountWorker.scheduleOneTime(v.getContext());
+                            //OfflineSyncIntentService.startActionFoo(v.getContext());
                         }
                     };
 
@@ -720,6 +721,16 @@ public class LayersFragment
                     PopupMenu popup = new PopupMenu(getActivity(), view);
                     UiUtil.setForceShowIcon(popup);
                     popup.getMenuInflater().inflate(R.menu.add_layer, popup.getMenu());
+
+                    MenuItem item = popup.getMenu().findItem(R.id.menu_data);
+                    SpannableString title = new SpannableString(item.getTitle());
+                    title.setSpan(
+                            new StyleSpan(Typeface.BOLD),
+                            0,
+                            title.length(),
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    item.setTitle(title);
+
                     popup.setOnMenuItemClickListener(this);
                     if (!AccountUtil.isProUser(getActivity())) {
                         popup.getMenu().findItem(R.id.menu_add_ngw).setIcon(com.nextgis.maplibui.R.drawable.ic_lock_black_24dp);
@@ -762,9 +773,43 @@ public class LayersFragment
                     ((MainActivity) getActivity()).addNGWLayer();
                 }
                 return true;
+
+            case R.id.menu_data:
+                showDataProposal();
+                return true;
             default:
                 return super.onContextItemSelected(menuItem);
         }
+    }
+
+
+    public  void showDataProposal(){
+
+        SpannableString  s = new SpannableString(requireContext().getString(com.nextgis.maplibui.R.string.data_text));
+        Linkify.addLinks(s, Linkify.ALL);
+
+        AlertDialog alertDialog = new AlertDialog.Builder(requireActivity())
+                .setTitle(com.nextgis.maplibui.R.string.data_title)
+                .setMessage(s)
+                .setPositiveButton(com.nextgis.maplibui.R.string.data_proposal,
+                        new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://data.nextgis.com/")
+                        );
+                        startActivity(intent);
+                    }
+                })
+                .create();
+        alertDialog.show();
+
+        TextView messageView = alertDialog.findViewById(android.R.id.message);
+        if (messageView != null) {
+            messageView.setMovementMethod(LinkMovementMethod.getInstance());
+        }
+
     }
 
     protected class SyncReceiver

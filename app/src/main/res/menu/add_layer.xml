@@ -40,4 +40,10 @@
     <item
         android:id="@+id/menu_add_ngw"
         android:title="@string/ngw_layer_add"/>
+
+    <item
+        android:id="@+id/menu_data"
+        android:title="@string/data_proposal_menu"
+        />
+
 </menu>
