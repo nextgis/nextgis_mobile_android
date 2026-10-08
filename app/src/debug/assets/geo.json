@@ -55,3 +55,334 @@
   "connection":{"identity":"connection","label":"Р’РЅРµС€РЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ","permissions":{"read":{"identity":"read","label":"Р§С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ СЃРѕРµРґРёРЅРµРЅРёСЏ"},"write":{"identity":"write","label":"РќР°СЃС‚СЂРѕР№РєР° СЃРѕРµРґРёРЅРµРЅРёСЏ"},"connect":{"identity":"connect","label":"РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ"}}},"service":{"identity":"service","label":"РЎРµСЂРІРёСЃС‹ Р’РµР± Р“РРЎ","permissions":{"connect":{"identity":"connect","label":"Р”РѕСЃС‚СѓРї Рє СЃРµСЂРІРёСЃСѓ"},"configure":{"identity":"configure","label":"РќР°СЃС‚СЂРѕР№РєР° СЃРµСЂРІРёСЃР°"}}},
   "webmap":{"identity":"webmap","label":"Р’РµР±-РєР°СЂС‚Р°","permissions":{"annotation_read":{"identity":"annotation_read","label":"РџСЂРѕСЃРјРѕС‚СЂ Р°РЅРЅРѕС‚Р°С†РёР№"},"annotation_write":{"identity":"annotation_write","label":"Р РёСЃРѕРІР°РЅРёРµ Р°РЅРЅРѕС‚Р°С†РёР№"},"annotation_manage":{"identity":"annotation_manage","label":"РЈРїСЂР°РІР»РµРЅРёРµ Р°РЅРЅРѕС‚Р°С†РёСЏРјРё"}}}},"categories":{"layers_and_styles":{"identity":"layers_and_styles","label":"РЎР»РѕРё Рё СЃС‚РёР»Рё","order":20},"maps_and_services":{"identity":"maps_and_services","label":"РљР°СЂС‚С‹ Рё СЃРµСЂРІРёСЃС‹","order":40},"field_data_collection":{"identity":"field_data_collection","label":"РЎР±РѕСЂ РґР°РЅРЅС‹С…","order":60},"external_connections":{"identity":"external_connections","label":"Р’РЅРµС€РЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ","order":80},"miscellaneous":{"identity":"miscellaneous","label":"Р”СЂСѓРіРёРµ СЂРµСЃСѓСЂСЃС‹","order":100}}}
 
+
+
+
+{
+"resource": {
+"id": 494,
+"cls": "vector_layer",
+"creation_date": "2026-06-01T04:47:27.605836",
+"parent": {
+"id": 0,
+"parent": {
+"id": null
+}
+},
+"owner_user": {
+"id": 4
+},
+"permissions": [],
+"keyname": null,
+"display_name": "493",
+"description": null,
+"children": true,
+"interfaces": [
+"IBboxLayer",
+"IFilterableFeatureLayer",
+"IFeatureLayer",
+"IFieldEditableFeatureLayer",
+"IGeometryEditableFeatureLayer",
+"IWritableFeatureLayer",
+"IVersionableFeatureLayer"
+],
+"scopes": [
+"data",
+"resource"
+]
+},
+"resmeta": {
+"items": {}
+},
+"social": {
+"image_exists": false,
+"description": null
+},
+
+
+"feature_layer": {
+"srs": {
+"id": 3857
+},
+"geometry_type": "POLYGON",
+"fields": [
+{
+"id": 1250,
+"keyname": "field_1",
+"display_name": "Field 1",
+"datatype": "STRING",
+"typemod": null,
+"label_field": false,
+"grid_visibility": true,
+"text_search": true,
+"required": false,
+"lookup_table": null
+},
+{
+"id": 1251,
+"keyname": "field_2",
+"display_name": "Field 2",
+"datatype": "DATE",
+"typemod": null,
+"label_field": false,
+"grid_visibility": true,
+"text_search": true,
+"required": false,
+"lookup_table": null
+}
+],
+
+
+"versioning": {
+      "enabled": true,
+      "epoch": 76,
+      "latest": 5
+},
+"aggregations": [
+      "min_max",
+      "unique_values"
+]
+},
+"vector_layer": {
+"srs": {
+"id": 3857
+},
+"geometry_type": "POLYGON"
+}
+}
+
+https://alexey655.nextgis.com/api/resource/494
+
+HttpResponse response = NetworkUtil.get(getResourceMetaUrl(accountData), accountData.login,
+accountData.password, false);
+
+
+
+[[1, {"action":"feature.update","fields":{"field_1":"77777","field_3":0},"geom":"AAAAAAFBaP4KCK8TtsFOHwpDetyw"}],
+[2, {"action":"feature.delete","fid":24}],
+[3, {"action":"feature.create","fields":{"field_1":"spain","field_3":0},"geom":"AAAAAAHBI0DI9SzIxEFVy7ducyGU"}],
+[4, {"action":"feature.create","fields":{"field_1":"norwain","field_3":0},"geom":"AAAAAAFBJ2WBUNeJpkFgc3EmXIvJ"}]]action":"feature.create","fields":{"field_1":"norwain","field_3":0},"geom":"AAAAAAFBJ2WBUNeJpkFgc3EmXIvJ"}]]
+
+
+{"title":"Validation error","message":
+"Object missing required field `fid` - at
+`$[0][1]`",
+
+"contact":"support","status_code":422,"exception":"nextgisweb.core.exception.ValidationError","request_id":"c71ba8b85fbafc66","data":{}}
+
+
+[{"id":31,"geom":"POINT(13103184.271371704 -3948052.5271869525)","fields":{"field_1":"77777","field_2":null,"field_3":0},"extensions":{"attachment":null}},
+
+{"id":48,"geom":"POINT(2048621.733095667 6680857.859176602)","fields":{"field_1":"spain турц","field_2":null,"field_3":0},"extensions":{"attachment":null}},
+
+{"id":61,"geom":"POINT(-7676413.774441298 -6441479.318562966)",
+    "fields":{"field_1":"norwain исланд","field_2":"чили","field_3":36},
+"extensions":
+ {"attachment":[
+                {"id":488,"name":"1000087385.jpg","keyname":null,"size":2813043,"mime_type":"image/jpeg","description":"описаниеаттач","is_image":true,
+              "file_meta":{"timestamp":"2026-09-26T19:07:53"}}]
+ }},
+
+{"id":62,"geom":"POINT(17696835.20538016 7351293.860483212)","fields":{"field_1":"мадагаскар","field_2":"камч6","field_3":7777},"extensions":{"attachment":null}}]
+
+
+{
+  "resource": {
+  "id": 508,
+  "cls": "vector_layer",
+  "creation_date": "2026-07-30T07:16:49.138635",
+  "parent": {"id": 0, "parent": {"id": null} },
+  "owner_user": { "id": 4 },
+  "permissions": [],
+  "keyname": null,
+  "display_name": "1test",
+  "description": null,
+  "children": false,
+  "interfaces": [
+      "IBboxLayer",
+      "IFilterableFeatureLayer",
+      "IFeatureLayer",
+      "IFieldEditableFeatureLayer",
+      "IWritableFeatureLayer",
+    "IVersionableFeatureLayer"
+                              ],
+"scopes": [ "resource", "data" ]
+  },
+
+"resmeta": { "items": {} },
+
+"feature_layer": { "srs": { "id": 3857 },
+                  "geometry_type": "POINT", "fields": [ { "id": 1336,
+                              "keyname": "field_1",
+                              "display_name": "qwe",
+                              "datatype": "STRING",
+                              "typemod": null,
+                              "label_field": false,
+                              "grid_visibility": true,
+                              "text_search": true,
+                              "required": false,
+                              "lookup_table": null
+                                    },
+                      { "id": 1337, "keyname": "field_2", "display_name": "str", "datatype": "STRING", "typemod": null, "label_field": false,  "grid_visibility": true, "text_search": true, "required": false, "lookup_table": null
+                      }     ,
+                      {                   "id": 1338,                   "keyname": "field_3",                   "display_name": "int",                   "datatype": "INTEGER",                   "typemod": null,                   "label_field": false,                   "grid_visibility": true,                   "text_search": true,                   "required": false,                   "lookup_table": null }
+                    ],
+
+"versioning": {
+    "enabled": true,
+    "epoch": 100,
+    "latest": 1
+    },
+"aggregations": [ "min_max", "unique_values", "sum" ]
+},
+"vector_layer": { "srs": { "id": 3857 }, "geometry_type": "POINT" },
+"social": { "image_exists": false, "description": null }
+}
+
+
+"feature_layer": versioning   "enabled": true, "epoch": 100, "latest": 1
+
+
+
+-d '[[
+1, {"action":"attachment.create", "fid": 1, "source": {"id": "01a1099ac10e60919b32ea76fac85a26"}, "name": "myfile", "description": "myfile description"}],
+                            FeatureChanges.removeChangeRecord(changeTableName, changeRecordId);
+                            FeatureChanges.removeAttachChangesToLast(changeTableName,
+                                    changeFeatureId, changeAttachId,
+                                    Constants.CHANGE_OPERATION_CHANGED, lastChangeRecordId);
+
+
+
+
+[2, {"action":"attachment.update", "fid": 1, "aid": 1, "description": "description changed"}],
+
+FeatureChanges.removeChangeRecord(changeTableName, changeRecordId);
+FeatureChanges.removeAttachChangesToLast(changeTableName,
+changeFeatureId, changeAttachId,Constants.CHANGE_OPERATION_CHANGED, lastChangeRecordId);
+
+
+[3, {"action": "attachment.delete", "fid": 1, "aid": 2}]]'
+
+
+
+
+
+///
+
+
+
+
+
+
+sendAttachOnServer
+// need delete attach locally ?
+FeatureChanges.removeAttachChanges(getChangeTableName(), featureId, attachId);
+deleteAttach(String.valueOf(featureId), String.valueOf(attachId));
+
+
+
+FeatureChanges.removeChangeRecord(changeTableName, changeRecordId);
+FeatureChanges.removeAttachChangesToLast(changeTableName,changeFeatureId, changeAttachId,Constants.CHANGE_OPERATION_CHANGED, lastChangeRecordId);
+
+
+
+
+{
+"resource": {
+"id": 342,
+"cls": "vector_layer",
+"creation_date": "2025-07-29T08:28:19.191956",
+"parent": {
+"id": 0,
+"parent": {
+"id": null
+}
+},
+"owner_user": {
+"id": 4
+},
+"permissions": [
+{
+"action": "allow",
+"principal": {
+"id": 4
+},
+"identity": "",
+"scope": "resource",
+"permission": "",
+"propagate": true
+},
+{
+"action": "deny",
+"principal": {
+"id": 1
+},
+"identity": "",
+"scope": "",
+"permission": "",
+"propagate": true
+}
+],
+"keyname": null,
+"display_name": "line",
+"description": null,
+"children": false,
+"interfaces": [
+"IBboxLayer",
+"IFilterableFeatureLayer",
+"IFeatureLayer",
+"IFieldEditableFeatureLayer",
+"IWritableFeatureLayer",
+"IVersionableFeatureLayer"
+],
+"scopes": [
+"resource",
+"data"
+]
+},
+"resmeta": {
+"items": {}
+},
+"feature_layer": {
+"srs": {
+"id": 3857
+},
+"geometry_type": "LINESTRING",
+"fields": [
+{
+"id": 670,
+"keyname": "description",
+"display_name": "Описание",
+"datatype": "STRING",
+"typemod": null,
+"label_field": false,
+"grid_visibility": true,
+"text_search": true,
+"required": false,
+"lookup_table": null
+}
+],
+
+
+"versioning": {
+"enabled": true,
+"epoch": 96,
+"latest": 5
+},
+"aggregations": [
+"min_max",
+"unique_values",
+"sum"
+]
+},
+
+
+"vector_layer": {
+"srs": {
+"id": 3857 },
+"geometry_type": "LINESTRING" },
+
+"social": { "image_exists": false,  "description": null }
+
+
+}

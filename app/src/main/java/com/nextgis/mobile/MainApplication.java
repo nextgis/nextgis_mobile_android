@@ -24,9 +24,12 @@
 package com.nextgis.mobile;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Handler;
 import android.preference.PreferenceManager;
@@ -55,7 +58,9 @@ import com.nextgis.maplibui.mapui.RemoteTMSLayerUI;
 import com.nextgis.maplibui.mapui.TrackLayerUI;
 import com.nextgis.maplibui.mapui.VectorLayerUI;
 import com.nextgis.maplibui.service.TrackerService;
+import com.nextgis.maplibui.util.NotificationHelper;
 import com.nextgis.maplibui.util.SettingsConstantsUI;
+import com.nextgis.mobile.activity.MainActivity;
 import com.nextgis.mobile.activity.SettingsActivity;
 import com.nextgis.mobile.util.Logger;
 import com.nextgis.mobile.util.OfflineSyncIntentService;
@@ -64,12 +69,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.nextgis.maplib.datasource.ngw.SyncAdapter.SYNC_CANCELED;
+import static com.nextgis.maplib.datasource.ngw.SyncAdapter.SYNC_CHANGES;
+import static com.nextgis.maplib.datasource.ngw.SyncAdapter.SYNC_FINISH;
+import static com.nextgis.maplib.datasource.ngw.SyncAdapter.SYNC_START;
 import static com.nextgis.maplib.util.Constants.DEBUG_MODE;
 import static com.nextgis.maplib.util.Constants.TAG;
 import static com.nextgis.maplib.util.GeoConstants.TMSTYPE_OSM;
+import static com.nextgis.maplibui.util.NotificationHelper.createBuilder;
+import static com.nextgis.mobile.datasource.SyncAdapter.NOTIFICATION_ID;
 import static com.nextgis.mobile.util.AppSettingsConstants.AUTHORITY;
 import static com.nextgis.mobile.util.AppSettingsConstants.KEY_PREF_APP_VERSION;
 import static com.nextgis.mobile.util.AppSettingsConstants.KEY_PREF_GA;
+
+import androidx.core.app.NotificationCompat;
 
 /**
  * Main application class
@@ -392,5 +405,71 @@ public class MainApplication extends GISApplication
 
         vectorLayer.create(layerType, fields);
         return vectorLayer;
+    }
+
+
+    @Override
+    public void sendNotification(
+            Context context,
+            String notificationType,
+            String message)
+    {
+        final String KEY_PREF_SHOW_SYNC     = "show_sync";
+        if (!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(KEY_PREF_SHOW_SYNC, false))
+            return;
+
+        Intent notificationIntent = new Intent(context, MainActivity.class);
+        notificationIntent.setFlags(
+                Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent contentIntent = PendingIntent.getActivity(
+                context, 0, notificationIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder builder = createBuilder(context, com.nextgis.maplibui.R.string.sync);
+        builder.setSmallIcon(R.drawable.ic_action_sync)
+                .setWhen(System.currentTimeMillis())
+                .setContentIntent(contentIntent)
+                .setAutoCancel(true)
+                .setOngoing(false)         ;
+
+        Bitmap largeIcon = NotificationHelper.getLargeIcon(R.drawable.ic_action_sync, context.getResources());
+        switch (notificationType) {
+            case SYNC_START:
+                largeIcon = NotificationHelper.getLargeIcon(com.nextgis.maplibui.R.drawable.ic_next_dark, context.getResources());
+                builder.setProgress(0, 0, true)
+                        .setTicker(context.getString(com.nextgis.maplib.R.string.sync_started))
+                        .setContentTitle(context.getString(com.nextgis.maplib.R.string.synchronization))
+                        .setContentText(context.getString(com.nextgis.maplib.R.string.sync_progress));
+                break;
+
+            case SYNC_FINISH:
+                largeIcon = NotificationHelper.getLargeIcon(com.nextgis.maplibui.R.drawable.ic_action_apply_dark, context.getResources());
+                builder.setProgress(0, 0, false)
+                        .setTicker(context.getString(com.nextgis.maplib.R.string.sync_finished))
+                        .setContentTitle(context.getString(com.nextgis.maplib.R.string.synchronization))
+                        .setContentText(context.getString(com.nextgis.maplib.R.string.sync_finished));
+                break;
+
+            case SYNC_CANCELED:
+                largeIcon = NotificationHelper.getLargeIcon(com.nextgis.maplibui.R.drawable.ic_action_cancel_dark, context.getResources());
+                builder.setProgress(0, 0, false)
+                        .setTicker(context.getString(com.nextgis.maplib.R.string.sync_canceled))
+                        .setContentTitle(context.getString(com.nextgis.maplib.R.string.synchronization))
+                        .setContentText(context.getString(com.nextgis.maplib.R.string.sync_canceled));
+                break;
+
+            case SYNC_CHANGES:
+                largeIcon = NotificationHelper.getLargeIcon(com.nextgis.maplibui.R.drawable.ic_action_warning_dark, context.getResources());
+                builder.setProgress(0, 0, false)
+                        .setTicker(context.getString(com.nextgis.maplib.R.string.sync_error))
+                        .setContentTitle(context.getString(com.nextgis.maplib.R.string.synchronization))
+                        .setStyle(new NotificationCompat.BigTextStyle()
+                                .bigText(message))
+                        .setContentText(message);
+                break;
+        }
+
+        builder.setLargeIcon(largeIcon);
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 }

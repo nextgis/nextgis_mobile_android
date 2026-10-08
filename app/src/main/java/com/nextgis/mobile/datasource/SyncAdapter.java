@@ -53,7 +53,7 @@ import static com.nextgis.maplib.util.Constants.MESSAGE_TITLE_EXTRA;
 import static com.nextgis.maplibui.util.NotificationHelper.createBuilder;
 
 public class SyncAdapter extends com.nextgis.maplib.datasource.ngw.SyncAdapter {
-    private static final int NOTIFICATION_ID = 517;
+    public static final int NOTIFICATION_ID = 517;
 
     public SyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
@@ -99,7 +99,7 @@ public class SyncAdapter extends com.nextgis.maplib.datasource.ngw.SyncAdapter {
 //        Log.e("RRFRSH", "SyncAdapter datasource - onPerformSync end");
     }
 
-    public void sendNotification(
+    static public void sendNotification(
             Context context,
             String notificationType,
             String message)

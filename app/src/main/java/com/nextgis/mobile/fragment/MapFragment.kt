@@ -1368,7 +1368,7 @@ public class MapFragment
 
         if (null != feature && feature.geometry != null) {
             try {
-                outState.putByteArray(BUNDLE_KEY_SAVED_FEATURE, feature.geometry.toBlob())
+                outState.putByteArray(BUNDLE_KEY_SAVED_FEATURE, feature.geometry?.toBlob())
             } catch (e: IOException) {
                 e.printStackTrace()
             }
