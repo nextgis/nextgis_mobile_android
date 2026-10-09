@@ -57,6 +57,7 @@ object HexabinningWorkflow {
         fields.add(Field(GeoConstants.FTString, "engine", "Hexbin Engine"))
         fields.add(Field(GeoConstants.FTInteger, "point_count", "Point Count"))
         fields.add(Field(GeoConstants.FTInteger, "resolution", "Resolution"))
+        fields.add(Field(GeoConstants.FTString, HexbinDensity.FIELD_NAME, "Density Class"))
 
         val outputLayer = app.createEmptyVectorLayer(
             outputLayerName,
@@ -65,7 +66,8 @@ object HexabinningWorkflow {
             fields
         )
         outputLayer.isVisible = false
-        MapSafeLayerStyle.applyBluePolygonStyle(outputLayer)
+        val maximumCount = groupedCells.values.maxOrNull() ?: 1
+        MapSafeLayerStyle.applyHexbinDensityStyle(outputLayer)
 
         map.addLayer(outputLayer)
         map.save()
@@ -77,7 +79,9 @@ object HexabinningWorkflow {
                     "cell_id" to cellId,
                     "engine" to engine.fieldValue,
                     "point_count" to count,
-                    "resolution" to resolution
+                    "resolution" to resolution,
+                    HexbinDensity.FIELD_NAME to
+                        HexbinDensity.classForCount(count, maximumCount).toString()
                 )
             )
         }

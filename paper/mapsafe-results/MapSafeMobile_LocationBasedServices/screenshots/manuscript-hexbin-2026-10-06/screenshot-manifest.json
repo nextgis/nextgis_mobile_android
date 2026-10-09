@@ -1,17 +1,17 @@
 [
   {
     "file_name": "ms2026-north-whangarei-hexbin-20261006-01-configuration-source-only.png",
-    "bytes": 897792,
-    "sha256": "9f0bc3076088e8efe168ff9b11e3f9fd8fbf44293ff7b0ddfbb8db71278ae170"
+    "bytes": 898450,
+    "sha256": "e28546178265ff10e7c2369b898864420c9b820a1618a75b436da05eb60ccc8a"
   },
   {
     "file_name": "ms2026-north-whangarei-hexbin-20261006-02-applied-source-and-cells.png",
-    "bytes": 910796,
-    "sha256": "556cf80398dee10c33bd7e6036ac459faffcbe61908ac172301f3a0b0a74a4ca"
+    "bytes": 904720,
+    "sha256": "ea49df990f0f825ea4ca76acda7ce0053d9b0f1164a2150455568093188105cb"
   },
   {
     "file_name": "ms2026-north-whangarei-hexbin-20261006-03-collapsed-cells-only.png",
-    "bytes": 1624686,
-    "sha256": "0241377b97ef351310fb8eed23b03c491b3801ceda56f76742038d704dac54e4"
+    "bytes": 1610987,
+    "sha256": "64b78e59d86290ebcd5d71387c48696242c46ce5074a22487154908c7e87ea15"
   }
 ]

@@ -169,7 +169,7 @@ object MapSafeWorkflowRunner {
             WorkflowMessage.Success(
                 message = "Created ${result.outputLayerName} using ${result.engine.displayName} " +
                     "at resolution ${result.resolution}. " +
-                    "Grouped ${result.sourcePoints} points into ${result.hexagons} blue hexagons.",
+                    "Grouped ${result.sourcePoints} points into ${result.hexagons} graduated-density hexagons.",
                 selectedLayer = result.outputLayer,
                 zoomExtent = GeoEnvelope(result.outputLayer.extents),
                 hexabinningDetails = HexabinningDetails(

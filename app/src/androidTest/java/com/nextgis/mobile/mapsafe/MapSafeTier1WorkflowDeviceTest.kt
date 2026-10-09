@@ -5,6 +5,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import com.nextgis.maplib.display.RuleFeatureRenderer
 import com.nextgis.mobile.MainApplication
 import com.nextgis.mobile.activity.MainActivity
 import com.nextgis.mobile.mapsafe.crypto.openpgp.OpenPgpEngine
@@ -96,6 +97,8 @@ class MapSafeTier1WorkflowDeviceTest {
 
         val hexbinLayer = requireNotNull(context.map.getLayerByName(hexbin.outputLayerName))
             as com.nextgis.maplib.map.VectorLayer
+        assertTrue(hexbinLayer.fields.any { it.name == "density_class" })
+        assertTrue(hexbinLayer.renderer is RuleFeatureRenderer)
         val exportedHexbin = MapSafeGeoJsonWorkflow.exportLayer(hexbinLayer, workDirectory)
         assertEquals(hexbin.hexagons, exportedHexbin.featureCount)
         show(
