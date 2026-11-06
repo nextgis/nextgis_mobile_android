@@ -834,6 +834,7 @@ public class MapFragment
                 }
                 mMapRef.get()!!.map!!.showVertex()
                 mMapRef.get()!!.map!!.showMarker();
+                hideRulerButton()
             }
 
             MODE_EDIT_BY_WALK -> {
@@ -844,12 +845,9 @@ public class MapFragment
 
                 mMapRef.get()!!.map!!.unselectFeatureFromEdit(false, true)
                 mMapRef.get()!!.map!!.hideVertex()
-
                 mMapRef.get()!!.map!!.hideMarker()
-
                 askPerm = true
-
-
+                hideRulerButton()
             }
 
             MODE_EDIT_BY_TOUCH -> {
@@ -863,7 +861,7 @@ public class MapFragment
                 mMapRef.get()!!.map!!.unselectFeatureFromEdit(false, true)
                 mMapRef.get()!!.map!!.hideVertex()
                 mMapRef.get()!!.map!!.hideMarker()
-
+                hideRulerButton()
             }
 
             MODE_SELECT_ACTION -> {
@@ -913,21 +911,15 @@ public class MapFragment
                                     mMapRef.get()!!.map!!.originalSelectedFeature,
                                     mMapRef.get()!!.map!!.editingObject
                                 )
-
-
                             }
 
                             R.id.menu_feature_edit -> {
-
                                 if (mMapRef.get()!!.map!!.getLayerFeatures(mSelectedLayer!!) == null){
                                     Toast.makeText(context,
                                         com.nextgis.maplibui.R.string.edit_invisible,
                                         Toast.LENGTH_LONG
                                     ).show()
-
                                 } else {
-
-
                                     setNewMode(MODE_EDIT)
                                     undoRedoOverlay!!.saveToHistory(editLayerOverlay!!.selectedFeature)
                                     editLayerOverlay!!.setHasEdits(false)
@@ -937,7 +929,6 @@ public class MapFragment
                                             false)
                                 }
                             }
-
                             R.id.menu_feature_delete -> deleteFeature()
                             R.id.menu_feature_attributes -> setNewMode(MODE_INFO)
                         }
@@ -1538,7 +1529,8 @@ public class MapFragment
 
         showControls =
             mPreferences!!.getBoolean(AppSettingsConstants.KEY_PREF_SHOW_MEASURING, true)
-        if (showControls) mRuler!!.visibility = View.VISIBLE
+        if (showControls)
+            showRulerButton()
         else mRuler!!.visibility = View.GONE
 
         if (null != mMapRef.get()) {
@@ -1691,6 +1683,24 @@ public class MapFragment
                     }
                 }
             }
+
+        val savedArray = mApp?.loadSelection()
+        if (savedArray != null && savedArray.size == 2){
+            val layer = mMapRef.get()?.getLayerById(savedArray[0].toInt())
+            if (layer != null && layer is VectorLayer){
+                val feature = layer.getFeature(savedArray[1])
+                if (feature != null){
+                    showViewModeForFeature(layer,
+                        feature,
+                        layer,
+                        feature.geometry,
+                        savedArray[1],
+                        savedArray[1] ,
+                        mode == MODE_SELECT_ACTION)
+                }
+            }
+            mApp?.clearSavedSelection()
+        }
     }
 
     protected fun setMarginsToPanel() {
@@ -2294,7 +2304,7 @@ public class MapFragment
 
 
     fun showRulerButton() {
-        if (mPreferences!!.getBoolean(
+        if ( modeForRuler() &&   mPreferences!!.getBoolean(
                 AppSettingsConstants.KEY_PREF_SHOW_MEASURING,
                 true
             )
@@ -2302,6 +2312,10 @@ public class MapFragment
             View.VISIBLE
     }
 
+    fun modeForRuler(): Boolean
+    {
+        return mode == MODE_NORMAL
+    }
 
     fun hideRulerButton() {
         mRuler!!.visibility = View.GONE
@@ -3195,6 +3209,8 @@ public class MapFragment
             } else addPointByTap()
 
             R.id.action_ruler -> {
+                if (mode == MODE_EDIT_BY_WALK || mode == MODE_EDIT_BY_TOUCH)
+                    return
                 startMeasuring()
                 Toast.makeText(context, R.string.tap_to_measure, Toast.LENGTH_SHORT).show()
             }
