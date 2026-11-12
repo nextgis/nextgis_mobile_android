@@ -23,7 +23,10 @@
 package com.nextgis.mobile.fragment
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -99,12 +102,15 @@ import com.nextgis.maplib.util.Constants.MESSAGE_INTENT_RELOAD
 import com.nextgis.maplib.util.Constants.MESSAGE_INTENT_STYLING
 import com.nextgis.maplib.util.FileUtil
 import com.nextgis.maplib.util.GeoConstants
+import com.nextgis.maplib.util.GeoConstants.CRS_WEB_MERCATOR
+import com.nextgis.maplib.util.GeoConstants.CRS_WGS84
 import com.nextgis.maplib.util.LocationUtil
 import com.nextgis.maplibui.GISApplication
 import com.nextgis.maplibui.api.EditEventListener
 import com.nextgis.maplibui.api.ILayerUI
 import com.nextgis.maplibui.api.IVectorLayerUI
 import com.nextgis.maplibui.api.MapViewEventListener
+import com.nextgis.maplibui.api.OverlayItem
 import com.nextgis.maplibui.dialog.ChooseLayerDialog
 import com.nextgis.maplibui.fragment.CompassFragment
 import com.nextgis.maplibui.mapui.MapViewOverlays
@@ -174,11 +180,14 @@ public class MapFragment
     protected var mRuler: FloatingActionButton? = null
     protected var mAddNewGeometry: FloatingActionButton? = null
     protected var mAddPointButton: FloatingActionButton? = null
+    protected var mCopyLocationButton: FloatingActionButton? = null
+
 
     protected var mStatusSource: TextView? = null
     protected var mStatusAccuracy: TextView? = null
     protected var mStatusSpeed: TextView? = null
     protected var mStatusAltitude: TextView? = null
+    protected var mShareButton: View? = null
     protected var mStatusLatitude: TextView? = null
     protected var mStatusLongitude: TextView? = null
     protected var mZoom: TextView? = null
@@ -327,7 +336,11 @@ public class MapFragment
 
         mMainButton = view.findViewById(R.id.multiple_actions)
         mAddPointButton = view.findViewById(R.id.add_point_by_tap)
+        mCopyLocationButton = view.findViewById(R.id.copy_location)
+
         mAddPointButton?.setOnClickListener(this)
+
+        mCopyLocationButton?.setOnClickListener(this)
 
         val addCurrentLocation = view.findViewById<View>(R.id.add_current_location)
         addCurrentLocation.setOnClickListener(this)
@@ -902,7 +915,7 @@ public class MapFragment
                                         editLayerOverlay!!.selectedFeature,
                                         true,
                                         mSelectedLayer!!.defaultStyleNoExcept,
-                                        false )
+                                        false, null)
 
                                 // update rudiment code - created geometry on old pre-maplibre code
                                 // on editing it updates on MotionEvent.ACTION_UP actions
@@ -926,7 +939,7 @@ public class MapFragment
                                     if(mSelectedLayer!= null)
                                         mMapRef.get()!!.map!!.startFeatureSelectionForEdit(mSelectedLayer, mSelectedLayer!!.geometryType,
                                             editLayerOverlay!!.selectedFeature, false, mSelectedLayer!!.defaultStyleNoExcept,
-                                            false)
+                                            false, null)
                                 }
                             }
                             R.id.menu_feature_delete -> deleteFeature()
@@ -1907,10 +1920,17 @@ public class MapFragment
         editLayerOverlay!!.setHasEdits(true)
         undoRedoOverlay!!.saveToHistory(editLayerOverlay!!.selectedFeature)
 
+        var  tappedPoint: LatLng? =  null;
+
+        if (editLayerOverlay!!.overlayPoint != null){
+            val geoPoint = editLayerOverlay!!.overlayPoint.getCoordinates(CRS_WGS84)
+            tappedPoint = LatLng(geoPoint.y, geoPoint.x)
+        }
+
         mMapRef.get()!!.map!!.startFeatureSelectionForEdit(mSelectedLayer,
             mSelectedLayer!!.geometryType,
             editLayerOverlay!!.selectedFeature, true,mSelectedLayer!!.defaultStyleNoExcept,
-            isFillByWalking)
+            isFillByWalking, tappedPoint)
     }
 
     // useCreatePouintFromOverlay - need to call if create by click R.id.add_current_location button
@@ -2294,12 +2314,15 @@ public class MapFragment
         // old odd code
     }
 
-    fun showAddByTapButton() {
+    fun showAddByTapButton(isMeasuring: Boolean) {
         mAddPointButton!!.visibility = View.VISIBLE
+        if (!isMeasuring)
+            mCopyLocationButton!!.visibility = View.VISIBLE
     }
 
     fun hideAddByTapButton() {
         mAddPointButton!!.visibility = View.GONE
+        mCopyLocationButton!!.visibility = View.GONE
     }
 
 
@@ -2348,7 +2371,7 @@ public class MapFragment
 
     fun showOverlayPoint(screenX : Double, screenY: Double) {
         hideMainButton()
-        showAddByTapButton()
+        showAddByTapButton(false)
         editLayerOverlay!!.setOverlayPoint(screenX, screenY)
 
         val pointf = PointF(screenX.toFloat(), screenY.toFloat())
@@ -2931,6 +2954,7 @@ public class MapFragment
             mStatusPanel!!.removeAllViews()
             panel.background.alpha = 128
             mStatusPanel!!.addView(panel)
+            panel.setOnClickListener { onCopyCurrentLocation() }
         } else
             fillTextViews(location)
     }
@@ -3038,6 +3062,7 @@ public class MapFragment
         mStatusAccuracy = panel.findViewById(R.id.tv_accuracy)
         mStatusSpeed = panel.findViewById(R.id.tv_speed)
         mStatusAltitude = panel.findViewById(R.id.tv_altitude)
+        mShareButton= panel.findViewById(R.id.button_share)
         mStatusLatitude = panel.findViewById(R.id.tv_latitude)
         mStatusLongitude = panel.findViewById(R.id.tv_longitude)
         mZoom = panel.findViewById(R.id.tv_zoom)
@@ -3046,6 +3071,11 @@ public class MapFragment
                 false
             )
         ) View.VISIBLE else View.GONE
+        mShareButton?.setOnClickListener {
+            //onShare()
+            //openInMaps()
+            shareLocation()
+        }
     }
 
 
@@ -3196,17 +3226,36 @@ public class MapFragment
                 mMapRef.get()!!.map.maplibreMap.get()?.animateCamera(cameraUpdate)
             }
 
-            R.id.add_point_by_tap -> if (mRulerOverlay!!.isMeasuring) {
-                mRulerOverlay!!.stopMeasuring()
-                showMainButton()
-                showRulerButton()
-                hideAddByTapButton()
-                mAddPointButton!!.setIcon(com.nextgis.maplibui.R.drawable.ic_action_add_point)
-                mActivity!!.title = mActivity!!.appName
-                mActivity!!.setSubtitle(null)
-                mMapRef.get()!!.map.stoptMeasuring()
+            R.id.copy_location -> {
+                var  tappedPoint: LatLng? =  null;
+                if (editLayerOverlay!!.overlayPoint != null){
+                    val geoPoint = editLayerOverlay!!.overlayPoint.getCoordinates(CRS_WGS84)
+                    tappedPoint = LatLng(geoPoint.y, geoPoint.x)
+                }
 
-            } else addPointByTap()
+                if (tappedPoint != null){
+                    val lat  = tappedPoint.latitude
+                    val lon  = tappedPoint.longitude
+                    onCopyLocation(lat, lon  )
+                } else {
+                    Toast.makeText(requireContext(), com.nextgis.maplib.R.string.strange_error,
+                        Toast.LENGTH_LONG ).show()
+                }
+            }
+
+            R.id.add_point_by_tap -> {
+                if (mRulerOverlay!!.isMeasuring) {
+                    mRulerOverlay!!.stopMeasuring()
+                    showMainButton()
+                    showRulerButton()
+                    hideAddByTapButton()
+                    mAddPointButton!!.setIcon(com.nextgis.maplibui.R.drawable.ic_action_add_point)
+                    mActivity!!.title = mActivity!!.appName
+                    mActivity!!.setSubtitle(null)
+                    mMapRef.get()!!.map.stoptMeasuring()
+                } else
+                    addPointByTap()
+            }
 
             R.id.action_ruler -> {
                 if (mode == MODE_EDIT_BY_WALK || mode == MODE_EDIT_BY_TOUCH)
@@ -3222,7 +3271,7 @@ public class MapFragment
         hideOverlayPoint()
         hideMainButton()
         hideRulerButton()
-        showAddByTapButton()
+        showAddByTapButton(true)
         mAddPointButton!!.setIcon(com.nextgis.maplibui.R.drawable.ic_action_apply_dark)
         mMapRef.get()!!.map.startMeasuring()
     }
@@ -3604,12 +3653,79 @@ public class MapFragment
             return mMapRef.get()!!.map!!.getLayerFeatures(layer)
         }
 
-
     override
     fun getSelfContext(): Context?{
         return this.activity
     }
 
+    fun onShare( ){
+        val lat  = mGpsEventSource?.lastKnownLocation?.latitude
+        val lon  = mGpsEventSource?.lastKnownLocation?.longitude
 
+        val geoUri = Uri.parse("geo:$lat,$lon?q=$lat,$lon")
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, geoUri.toString())
+        }
 
+        requireContext().startActivity(
+            Intent.createChooser(intent, requireContext().getString(R.string.send_location)))
+    }
+
+    fun openInMaps() {
+        val lat  = mGpsEventSource?.lastKnownLocation?.latitude
+        val lon  = mGpsEventSource?.lastKnownLocation?.longitude
+
+        val coords = "%.6f,%.6f".format(Locale.US, lat, lon)
+        val label = ""
+        val uri = if (label != null) {
+            Uri.parse("geo:0,0?q=$coords(${Uri.encode(label)})")
+        } else {
+            Uri.parse("geo:$coords")
+        }
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        try {
+            context?.startActivity(Intent.createChooser(intent, null))
+        } catch (e: ActivityNotFoundException) {
+            // no applications - open on browser
+            context?.startActivity(
+                Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/$lat/$lon"))
+            )
+        }
+    }
+
+    fun shareLocation() {
+        val lat  = mGpsEventSource?.lastKnownLocation?.latitude
+        val lon  = mGpsEventSource?.lastKnownLocation?.longitude
+        val coords = "%.6f, %.6f".format(Locale.US, lat, lon)
+        val text = buildString {
+            //append("Я здесь на карте")
+            //""?.let { append("\n").append(it) }
+            append("\n").append(coords)
+            //append("\nhttps://www.openstreetmap.org/?mlat=$lat&mlon=$lon#map=17/$lat/$lon")
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        context?.startActivity(Intent.createChooser(intent, null))
+    }
+
+    fun onCopyCurrentLocation(){
+        val lat  = mGpsEventSource?.lastKnownLocation?.latitude
+        val lon  = mGpsEventSource?.lastKnownLocation?.longitude
+        onCopyLocation(lat, lon)
+    }
+
+    fun onCopyLocation(lat : Double?, lon :Double?){
+        val coords = "%.6f, %.6f".format(Locale.US, lat, lon)
+        val text = buildString {
+            append("\n").append(coords)
+        }
+        val clipboard: ClipboardManager =
+            getContext()!!.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip: ClipData = ClipData.newPlainText("location", text)
+        clipboard.setPrimaryClip(clip)
+    }
 }

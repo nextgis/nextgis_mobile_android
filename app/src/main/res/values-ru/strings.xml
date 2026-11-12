@@ -205,5 +205,6 @@
     <string name="goto_error">Ошибка при парсинге широты/долготы</string>
     <string name="goto_error_out">Координата за границами валидного значения</string>
 
+    <string name="send_location">Отправить местоположение</string>
 
 </resources>

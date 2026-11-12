@@ -21,14 +21,21 @@
   ~ You should have received a copy of the GNU General Public License
   ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
   -->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorPrimary"
+    >
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
               android:id="@+id/status_container"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:background="?attr/colorPrimary"
               android:gravity="center_vertical"
-              android:orientation="vertical">
+              android:orientation="vertical"
+              android:layout_toStartOf="@+id/button_share"
+    >
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -67,7 +74,6 @@
             />
 
     </RelativeLayout>
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -100,11 +106,22 @@
             android:drawableLeft="@drawable/ic_speed"
             android:drawableStart="@drawable/ic_speed"/>
     </LinearLayout>
-
     <View
         android:id="@+id/divider"
         android:layout_width="match_parent"
         android:layout_height="1dip"
-        android:background="@color/color_grey_400"/>
+        android:background="@color/color_grey_400"
+        />
 
 </LinearLayout>
+    <ImageView
+        android:id="@+id/button_share"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:src="@drawable/ic_action_social_share_dark"
+        android:background="@color/color_transparent2"
+        android:padding="8dp"
+        />
+</RelativeLayout>

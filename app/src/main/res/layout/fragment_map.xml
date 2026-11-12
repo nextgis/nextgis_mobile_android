@@ -129,6 +129,22 @@
     </LinearLayout>
 
     <com.getbase.floatingactionbutton.FloatingActionButton
+        android:id="@+id/copy_location"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/add_point_by_tap"
+        android:layout_alignStart="@id/add_point_by_tap"
+        android:layout_alignLeft="@id/add_point_by_tap"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:visibility="gone"
+        fab:fab_addButtonColorNormal="?attr/colorPrimary"
+        fab:fab_addButtonColorPressed="?attr/colorAccent"
+        fab:fab_addButtonPlusIconColor="@android:color/white"
+        fab:fab_icon="@drawable/baseline_content_copy_24_white"
+        fab:fab_size="mini" />
+
+    <com.getbase.floatingactionbutton.FloatingActionButton
         android:id="@+id/add_point_by_tap"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -142,6 +158,8 @@
         fab:fab_addButtonColorPressed="?attr/colorAccent"
         fab:fab_addButtonPlusIconColor="@android:color/white"
         fab:fab_icon="@drawable/ic_action_add_point"/>
+
+
 
     <com.getbase.floatingactionbutton.FloatingActionsMenu
         android:id="@+id/multiple_actions"

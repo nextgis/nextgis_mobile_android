@@ -583,10 +583,35 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
             .show()
     }
 
-    private fun handleInput(latStr: String, lonStr: String): Boolean {
-        if (latStr.isBlank() || lonStr.isBlank()) {
-            Toast.makeText(this, R.string.goto_lat_lon_erro_fillboth, Toast.LENGTH_SHORT).show()
-            return false
+    private fun handleInput( latStrOrigin: String, lonStrOrigin: String): Boolean {
+
+        var latStr = latStrOrigin
+        var lonStr = lonStrOrigin
+
+        var bothExists = false
+        if (! latStr.isBlank() || lonStr.isBlank()) {
+            //try both from one field
+            val parts = latStr.split(" ")
+            if (parts.size == 2){
+                var lat1 = parts[0]
+                var lon1 = parts[1]
+
+                if (lat1.endsWith(","))
+                    lat1 = lat1.substring(0, lat1.length - 1)
+                if (lat1.length > 0 &&  lon1.length > 0){
+                    bothExists = true;
+                    latStr = lat1
+                    lonStr = lon1
+
+                }
+            }
+        }
+
+        if (!bothExists) {
+            if (latStr.isBlank() || lonStr.isBlank()) {
+                Toast.makeText(this, R.string.goto_lat_lon_erro_fillboth, Toast.LENGTH_SHORT).show()
+                return false
+            }
         }
 
         try {
