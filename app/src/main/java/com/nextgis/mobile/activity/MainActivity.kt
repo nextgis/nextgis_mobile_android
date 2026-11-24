@@ -1213,8 +1213,7 @@ class MainActivity : NGActivity(), GpsEventListener, IChooseLayerResult,
                         mapFragment!!.addLocalVectorLayer(uri)
                     }
                 } else if (fileName.lowercase(Locale.getDefault())
-                        .endsWith("ngfp")
-                ) { //create local vector layer with form
+                        .endsWith("ngfp")){ //create local vector layer with form
                     if (null != mapFragment) {
                         mapFragment!!.addLocalVectorLayerWithForm(uri)
                     }
